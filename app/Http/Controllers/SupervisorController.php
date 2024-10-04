@@ -30,14 +30,14 @@ public function store(Request $request)
         'name' => 'required|string|max:255',
         'email' => 'required|string|email|max:255|unique:users',
         'password' => 'required|string|min:8|confirmed',
-        'supervisor_id' => 'nullable|exists:users,id',
+        //'supervisor_id' => 'nullable|exists:users,id',
     ]);
 
     $supervisor = User::create([
         'name' => $validated['name'],
         'email' => $validated['email'],
         'password' => Hash::make($validated['password']),
-        'supervisor_id' => $validated['supervisor_id'],
+        //'supervisor_id' => $validated['supervisor_id'],
     ]);
 
     // Asignar el rol de 'jefe' al usuario recién creado

@@ -9,34 +9,47 @@
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
-                    <form method="POST" action="{{ route('recursoshumanos.store') }}">
+                    <form action="{{ route('recursoshumanos.store') }}" method="POST">
                         @csrf
-
+                        <!-- Campo Nombre -->
                         <div class="mb-4">
-                            <x-label for="name" :value="__('Nombre Completo')" />
-                            <x-input id="name" class="block w-full mt-1" type="text" name="name" :value="old('name')" required autofocus />
+                            <label for="name" class="block text-sm font-medium text-gray-700">Nombre</label>
+                            <input type="text" name="name" id="name" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
                         </div>
 
+                        <!-- Campo Email -->
                         <div class="mb-4">
-                            <x-label for="email" :value="__('Correo Electrónico')" />
-                            <x-input id="email" class="block w-full mt-1" type="email" name="email" :value="old('email')" required />
+                            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" name="email" id="email" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
                         </div>
 
+                        <!-- Campo Contraseña -->
                         <div class="mb-4">
-                            <x-label for="password" :value="__('Contraseña')" />
-                            <x-input id="password" class="block w-full mt-1" type="password" name="password" required />
+                            <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                            <input type="password" name="password" id="password" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
                         </div>
 
+                        <!-- Campo Confirmar Contraseña -->
                         <div class="mb-4">
-                            <x-label for="password_confirmation" :value="__('Confirmar Contraseña')" />
-                            <x-input id="password_confirmation" class="block w-full mt-1" type="password" name="password_confirmation" required />
+                            <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirmar Contraseña</label>
+                            <input type="password" name="password_confirmation" id="password_confirmation" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
                         </div>
 
-                        <div class="flex items-center justify-end mt-4">
-                            <x-button class="ml-4">
-                                {{ __('Guardar') }}
-                            </x-button>
+                        <!-- Campo Selección de Supervisor -->
+                        <div class="mb-4">
+                            <label for="supervisor_id" class="block text-sm font-medium text-gray-700">Supervisor</label>
+                            <select name="supervisor_id" id="supervisor_id" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <option value="">Seleccionar Supervisor</option>
+                                @foreach($supervisores as $supervisor)
+                                    <option value="{{ $supervisor->id }}">{{ $supervisor->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
+
+                        <!-- Botón Guardar -->
+                        <button type="submit" class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:border-blue-800 focus:ring focus:ring-blue-200 disabled:opacity-25">
+                            Guardar
+                        </button>
                     </form>
                 </div>
             </div>

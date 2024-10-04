@@ -9,6 +9,8 @@ use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\RecursosHumanosController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 
+use App\Http\Controllers\EmpleadoController;
+
 Route::get('/', function () {
     return view('welcome');
 });
@@ -43,9 +45,18 @@ Route::resource('supervisores', SupervisorController::class)->parameters([
     'supervisores' => 'supervisor',
 ]);
 
+//Gestionar usuarios
 
-    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('/register', [RegisteredUserController::class, 'store']);
+
+Route::middleware(['auth', 'role:administrador'])->group(function () {
+    Route::get('/empleados', [EmpleadoController::class, 'index'])->name('empleados.index');
+    Route::get('/empleados/crear', [EmpleadoController::class, 'create'])->name('empleados.create');
+    Route::post('/empleados', [EmpleadoController::class, 'store'])->name('empleados.store');
+
+    Route::get('/empleados/{id}/edit', [EmpleadoController::class, 'edit'])->name('empleados.edit');
+    Route::put('/empleados/{id}', [EmpleadoController::class, 'update'])->name('empleados.update');
+    Route::delete('/empleados/{id}', [EmpleadoController::class, 'destroy'])->name('empleados.destroy');
+});
 
 Route::resource('supervisores', SupervisorController::class);
 
@@ -80,6 +91,20 @@ Route::middleware(['role:recursos_humanos'])->group(function () {
     Route::get('/rh/export-week', [PermissionController::class, 'exportWeek'])->name('rh.exportWeek');
 });
 
+//Control de ausencias del personal
+
+use App\Http\Controllers\SolicitudPermisoController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/permisos', [SolicitudPermisoController::class, 'index'])->name('permisos.index');
+    Route::get('permisos/create', [SolicitudPermisoController::class, 'create'])->name('permisos.create');
+    Route::post('permisos', [SolicitudPermisoController::class, 'store'])->name('permisos.store');
+    Route::get('/permisos/{id}', [SolicitudPermisoController::class, 'show'])->name('permisos.show');
+    Route::post('/permisos/{id}/aprobar', [SolicitudPermisoController::class, 'aprobar'])->name('permisos.aprobar');
+    Route::post('/permisos/{id}/rechazar', [SolicitudPermisoController::class, 'rechazar'])->name('permisos.rechazar');
+
+
+});
 
 
 

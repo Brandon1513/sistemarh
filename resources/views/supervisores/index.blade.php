@@ -9,7 +9,9 @@
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
-                    <a href="{{ route('supervisores.create') }}" class="mb-4 btn btn-primary">Agregar Supervisor</a>
+                    <a href="{{ route('supervisores.create') }}" class="inline-flex items-center px-4 py-2 mb-4 text-xs font-semibold tracking-widest text-white uppercase transition bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:border-blue-800 focus:ring focus:ring-blue-200 disabled:opacity-25">
+                        {{ __('Agregar Jefe') }}
+                    </a>
 
                     <table class="min-w-full bg-white border">
                         <thead class="bg-gray-50">
