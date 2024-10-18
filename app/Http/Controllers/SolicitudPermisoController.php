@@ -2,24 +2,44 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\PermisosExport;
 use App\Models\User;
 use App\Models\Department;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use App\Models\SolicitudPermiso;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\NotificacionSolicitudPermiso;
-use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SolicitudPermisoController extends Controller
 {
     public function index()
     {
-        // Obtener todas las solicitudes de permisos
-        $solicitudes = SolicitudPermiso::with('empleado', 'departamento')->get();
+        $user = Auth::user();  // Obtener el usuario autenticado
 
-        // Retornar la vista index con los datos de las solicitudes
-        return view('permisos.index', compact('solicitudes'));
+        if ($user->hasRole('jefe')) {
+            // Si el usuario es jefe, muestra los permisos de los empleados que supervisa y los suyos propios
+            $solicitudes = SolicitudPermiso::whereHas('empleado', function ($query) use ($user) {
+                    $query->where('supervisor_id', $user->id);  // Filtra los empleados supervisados
+                })
+                ->orWhere('empleado_id', $user->id)  // Muestra los permisos del propio jefe
+                ->with('empleado', 'departamento')  // Cargar las relaciones
+                ->get();
+        } else {
+            // Si es un empleado, solo muestra sus permisos
+            $solicitudes = SolicitudPermiso::where('empleado_id', $user->id)
+                ->with('empleado', 'departamento')
+                ->get();
+        }
+    
+        // Retorna la vista con los permisos filtrados
+        return view('permisos.index', compact(var_name: 'solicitudes'));
+
+        
     }
 
     public function create()
@@ -30,10 +50,6 @@ class SolicitudPermisoController extends Controller
         // Retornar la vista y pasar los departamentos
         return view('permisos.create', compact('departamentos'));
     }
-
-   
-
-
     public function store(Request $request)
     {
         // Validar los datos del formulario
@@ -73,10 +89,6 @@ class SolicitudPermisoController extends Controller
         // Redirigir con mensaje de éxito
         return redirect()->route('permisos.index')->with('success', 'La solicitud de permiso ha sido enviada y notificada al supervisor.');
     }
-
-    
-
-
     public function show($id)
     {
         // Buscar la solicitud de permiso por su ID
@@ -121,4 +133,78 @@ class SolicitudPermisoController extends Controller
         // Redirigir con mensaje de éxito
         return redirect()->route('permisos.index')->with('success', 'Permiso rechazado con éxito.');
     }
+
+    public function indexSolicitudesPermiso(Request $request)
+{
+    $query = SolicitudPermiso::with('empleado', 'departamento')
+        ->whereIn('estado', ['aprobado', 'rechazado', 'pendiente']);
+
+    // Filtrar por nombre de empleado si se proporciona
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->whereHas('empleado', function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%");
+        });
+    }
+
+    // Filtrar por rango de fechas si se proporciona
+    if ($request->filled('start_date') && $request->filled('end_date')) {
+        $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
+        $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+        $query->whereBetween('fecha_inicio', [$startDate, $endDate]);
+    }
+
+    // Obtener los permisos filtrados
+    $permisos = $query->get();
+
+    return view('solicitudes_permisos.index', compact('permisos'));
+}
+
+public function downloadPDF($id)
+{
+    // Obtener el permiso por ID
+    $permiso = SolicitudPermiso::findOrFail($id);
+
+    // Generar el PDF utilizando una vista de Blade
+    $pdf = Pdf::loadView('solicitudes_permisos.pdf', compact('permiso'));
+
+    // Retornar la descarga del archivo PDF
+    return $pdf->download('permiso_'.$permiso->id.'.pdf');
+}
+
+ //EXPORTAR LIBRO MAYO
+ public function export(Request $request)
+{
+    // Construir la consulta base con las relaciones necesarias
+    $query = SolicitudPermiso::with('user', 'department');
+
+    // **Filtro por nombre del empleado** si se proporciona
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->whereHas('user', function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%");
+        });
+    }
+
+    // **Filtro por fecha específica** si se proporciona
+    if ($request->filled('date')) {
+        $date = $request->input('date');
+        $query->whereDate('fecha_inicio', $date)
+              ->orWhereDate('fecha_termino', $date);
+    }
+
+    // **Si no se proporciona ni nombre ni fecha**, descargar los permisos de la semana actual
+    if (!$request->filled('search') && !$request->filled('date')) {
+        $startOfWeek = Carbon::now()->startOfWeek();  // Lunes
+        $endOfWeek = Carbon::now()->endOfWeek();      // Domingo
+        $query->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]);
+    }
+
+    // Obtener los permisos filtrados
+    $SolicitudPermiso = $query->get();
+
+    // Descargar los permisos en un archivo Excel
+    return Excel::download(new PermisosExport(permisos: $SolicitudPermiso), 'controlausencia.xlsx');
+}
+
 }

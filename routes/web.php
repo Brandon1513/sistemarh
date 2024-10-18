@@ -102,10 +102,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/permisos/{id}', [SolicitudPermisoController::class, 'show'])->name('permisos.show');
     Route::post('/permisos/{id}/aprobar', [SolicitudPermisoController::class, 'aprobar'])->name('permisos.aprobar');
     Route::post('/permisos/{id}/rechazar', [SolicitudPermisoController::class, 'rechazar'])->name('permisos.rechazar');
-
-
 });
 
+
+Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
+    Route::get('/solicitudes_permisos', [SolicitudPermisoController::class, 'indexSolicitudesPermiso'])->name('solicitudes_permisos.index');
+    Route::get('/solicitudes_permisos/export', [SolicitudPermisoController::class, 'export'])->name('solicitudes_permisos.export');
+    Route::get('/solicitudes_permisos/exportWeek', [SolicitudPermisoController::class, 'exportWeek'])->name('solicitudes_permisos.exportWeek');
+    Route::post('/solicitudes_permisos/download-zip', [SolicitudPermisoController::class, 'downloadPDFsAsZip'])->name('solicitudes_permisos.download-zip');
+    // Ruta para mostrar un permiso individual
+    Route::get('/solicitudes_permisos/{id}', [SolicitudPermisoController::class, 'show'])->name('solicitudes_permisos.show');
+    // Ruta para descargar el PDF de un permiso individual
+    Route::get('/solicitudes_permisos/{id}/download', [SolicitudPermisoController::class, 'downloadPDF'])->name('solicitudes_permisos.download');
+});
 
 
 require __DIR__.'/auth.php';

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Notifications\PermissionRequested;
 use Illuminate\Support\Facades\Notification;
 
+use App\Models\SolicitudPermiso;
 
 class PermissionController extends Controller
 {
@@ -110,6 +111,8 @@ class PermissionController extends Controller
     }
     //RECURSOS HUMANOS
     // Mantén solo esta versión de indexHR
+    
+
     public function indexRH(Request $request)
     {
     $query = Permission::with('user', 'department')
@@ -144,6 +147,8 @@ if (!$request->filled('search') && !$request->filled('start_date') && !$request-
 
     return view('rh.index', compact('permisos'));
     }
+    
+
 
     //EXPORTAR LIBRO MAYO
     public function export(Request $request)
