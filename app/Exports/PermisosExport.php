@@ -18,10 +18,11 @@ class PermisosExport implements FromCollection, WithHeadings
         // Estructura los datos para el Excel
         return $this->permisos->map(function ($permiso) {
             return [
-                'Empleado' => $permiso->empleado->nombre,
-                'Departamento' => $permiso->departamento->nombre,
+                'Empleado' => $permiso->empleado->name,
+                'Departamento' => $permiso->departamento->name,
                 'Fecha Inicio' => $permiso->fecha_inicio,
                 'Fecha Término' => $permiso->fecha_termino,
+                'Tipo permiso' => $permiso->tipo_permiso,
                 'Motivo' => $permiso->motivo,
                 'Estado' => ucfirst($permiso->estado),
             ];
@@ -32,7 +33,7 @@ class PermisosExport implements FromCollection, WithHeadings
     {
         // Encabezados del archivo Excel
         return [
-            'Empleado', 'Departamento', 'Fecha Inicio', 'Fecha Término', 'Motivo', 'Estado',
+            'Empleado', 'Departamento', 'Fecha Inicio', 'Fecha Término', 'Tipo de permiso','Motivo', 'Estado',
         ];
     }
 }

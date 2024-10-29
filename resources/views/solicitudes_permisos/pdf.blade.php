@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitud de Permiso</title>
+    <title>Control de ausencias del personal</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,169 +11,203 @@
             line-height: 1.4;
         }
 
-        .header-table, .info-table {
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
         }
 
-        .header-table td, .info-table td {
+        th, td {
             border: 1px solid black;
-            padding: 8px;
-            
-            vertical-align: top;
+            padding: 5px;
+            text-align: center;
         }
-        table.info-table th {
-        border: 1px solid black;
-        padding: 8px;
-        text-align: left;
-        vertical-align: top;
-    }
 
-        .header-table {
-            margin-bottom: 20px;
-            max-width: 100%;
+        .header {
+            background-color: #D3A1D1;
         }
 
         .logo {
-            width: 80px;
-            
-            
+            max-width: 100px;
         }
 
-        .header-title {
-            text-align: center;
+        .info {
+            background-color: #F0E0F6;
             font-weight: bold;
         }
 
         .signature {
-            margin-top: 30px;
-        }
-
-        .signature-line {
             border-top: 1px solid black;
             width: 200px;
+            margin: 20px auto 0;
             text-align: center;
-            margin-top: 5px;
         }
 
-        .footer {
-            margin-top: 40px;
-            text-align: center;
+        .section-title {
+            background-color: #D3A1D1;
             font-weight: bold;
+            text-align: left;
+            padding-left: 10px;
         }
-        
-            
+
+        .checkbox {
+            width: 10px;
+            height: 10px;
+            border: 1px solid black;
+            display: inline-block;
+        }
+
     </style>
 </head>
 <body>
 
     <!-- Header con logo y detalles del documento -->
-    <table class="header-table">
+    <table>
         <tr>
-            <td rowspan="2" style="width: 10%; border: 1px solid black; text-align: center;">
-                <img src="{{ public_path('images/logo.png') }}" class="logo" alt="Logo" style="max-width: 100px;" >
+            <td rowspan="2" class="header" style="width: 15%; text-align: center;">
+                <img src="{{ public_path('images/logo.png') }}" class="logo" alt="Logo">
             </td>
-            <td colspan="3" class="header-title" style="width: 90%; border: 1px solid black; text-align: center;" ><strong>Nombre del documento:</strong><br>
-                Permiso de Pase de Salida 
+            <td colspan="3" class="header" style="text-align: center;">
+                <strong>Nombre del documento:</strong><br>Control de Ausencias del Personal
             </td>
         </tr>
         <tr>
-            <td class="header-title"> Fecha de Emisión:<br>
-                17-jun-2024
-            </td>
-             <td class="header-title">Revisión:<br>
-                05
-            </td>    
-                <td class="header-title">
-                    Código: <br>
-                    F-REH-02
-                </td>
+            <td class="header">Fecha de Emisión:<br>17-jun-2024</td>
+            <td class="header">Revisión:<br>03</td>
+            <td class="header">Código:<br>F-REH-36</td>
         </tr>
     </table>
 
-    <!-- Información del permiso -->
-    <table class="info-table">
+    <!-- Información del empleado -->
+    <table>
         <tr>
-            <td>Pase de Entrada: @if($permission->entry_exit_type == 'entrada') (X) @else ( ) @endif</td>
-            <td colspan="3">Pase de Salida: @if($permission->entry_exit_type == 'salida') (X) @else ( ) @endif</td>
-         </tr>
-        <tr>
-            <td>Nombre:</td>
-            <td colspan="3">{{ $permission->user->name }}</td>
+            <td class=" section-title" colspan="3">Fecha</td>
+            <td class="section-title" colspan="2">Nombre Completo (Apellido Paterno, Materno, Nombre(s))</td>
+            <td class="section-title">Departamento</td>
         </tr>
         <tr>
-            <td>Puesto:</td>
-            <td colspan="3">{{ $permission->position }}</td>
-        </tr>
-        <tr>
-            <td>Departamento:</td>
-            <td colspan="3">{{ $permission->department->name }}</td>
-        </tr>
-        <tr>
-            <td>Horario Oficial:</td>
-            <td colspan="3">{{ \Carbon\Carbon::parse($permission->official_schedule)->format('h:i A') }} </td>
-        </tr>
-        <tr>
-            <td>Hora de Entrada/Salida:</td>
-            <td  colspan="3">{{ \Carbon\Carbon::parse($permission->entry_exit_time)->format('h:i A') }} </td>
-        </tr>
-        <tr>
-            <td>Fecha del Permiso:</td>
-            <td colspan="3">{{ $permission->date }}</td>
-        </tr>
-        <tr>
-            <td>Motivo:</td>
-            <td colspan="3">{{ $permission->reason }}</td>
+            <td colspan="3">{{ date('d', strtotime($permiso->fecha_inicio)) }} {{ date('M', strtotime($permiso->fecha_inicio)) }} {{ date('Y', strtotime($permiso->fecha_inicio)) }}</td>
+            <td colspan="2">{{ $permiso->empleado->name }}</td>
+            <td>{{ $permiso->departamento->name }}</td>
         </tr>
     </table>
 
-    <!-- Firmas -->
-    <table style="width: 100%; margin-top: 50px;">
+    <!-- Detalles del permiso -->
+    <table>
         <tr>
-            <td style="text-align: center;">
-                ____________________________
-            </td>
+            <td class="section-title" colspan="2">Permiso</td>
+            <td class="section-title" colspan="2">Comisión</td>
+            <td class="section-title" colspan="2">Suspensión</td>
         </tr>
         <tr>
-            <td style="text-align: center;">
-                Firma del Empleado
-            </td>
-        </tr>
-    </table>
-    
-    <table style="width: 100%; margin-top: 100px;">
-        <tr>
-            <td style="text-align: center; width: 50%;">
-                @if($permission->status == 'pendiente')
-                    Pendiente
-                @elseif($permission->status == 'aprobado')
-                    Aprobado
+            <td colspan="2">
+                @if ($permiso->tipo == 'Permiso')
+                    <div class="checkbox" style="background-color: black;"></div>
                 @else
-                    Rechazado
+                    <div class="checkbox"></div>
                 @endif
             </td>
-            <td style="text-align: center; width: 50%;">
+            <td colspan="2">
+                @if ($permiso->tipo == 'Comisión')
+                    <div class="checkbox" style="background-color: black;"></div>
+                @else
+                    <div class="checkbox"></div>
+                @endif
             </td>
-        </tr>
-        <tr>
-            <td style="text-align: center; width: 50%;">
-                ____________________________
-            </td>
-            <td style="text-align: center; width: 50%;">
-                ____________________________
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align: center;">
-                Firma del Jefe Inmediato
-            </td>
-            <td style="text-align: center;">
-                Firma de Recursos Humanos
+            <td colspan="2">
+                @if ($permiso->tipo == 'Suspensión')
+                    <div class="checkbox" style="background-color: black;"></div>
+                @else
+                    <div class="checkbox"></div>
+                @endif
             </td>
         </tr>
     </table>
-    
+
+    <!-- Tipo de permiso -->
+    <table>
+        <tr>
+            <td class="section-title" colspan="3">Con Goce de Sueldo</td>
+            <td class="section-title" colspan="3">Sin Goce de Sueldo</td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                @if ($permiso->tipo_permiso == 'Con Goce de Sueldo')
+                    <div class="checkbox" style="background-color: black;"></div>
+                @else
+                    <div class="checkbox"></div>
+                @endif
+            </td>
+            <td colspan="3">
+                @if ($permiso->tipo_permiso == 'Sin Goce de Sueldo')
+                    <div class="checkbox" style="background-color: black;"></div>
+                @else
+                    <div class="checkbox"></div>
+                @endif
+            </td>
+        </tr>
+    </table>
+
+    <!-- Fechas de inicio y término -->
+    <table>
+        <tr>
+            <td class="section-title">Fecha de Inicio</td>
+            <td class="section-title">Fecha de Término</td>
+            <td class="section-title">Regresa a Laborar</td>
+        </tr>
+        <tr>
+            <td>{{ date('d', strtotime($permiso->fecha_inicio)) }} {{ date('M', strtotime($permiso->fecha_inicio)) }} {{ date('Y', strtotime($permiso->fecha_inicio)) }}</td>
+            <td>{{ date('d', strtotime($permiso->fecha_termino)) }} {{ date('M', strtotime($permiso->fecha_termino)) }} {{ date('Y', strtotime($permiso->fecha_termino)) }}</td>
+            <td>{{ date('d', strtotime($permiso->fecha_regreso_laborar)) }} {{ date('M', strtotime($permiso->fecha_regreso_laborar)) }} {{ date('Y', strtotime($permiso->fecha_regreso_laborar)) }}</td>
+        </tr>
+    </table>
+
+    <!-- Día de descanso -->
+    <table>
+        <tr>
+            <td class="section-title">Día de Descanso</td>
+        </tr>
+        <tr>
+            <td>{{ $permiso->dia_descanso }}</td>
+        </tr>
+    </table>
+
+    <!-- Observaciones -->
+    <table>
+        <tr>
+            <td class="section-title">Observaciones</td>
+        </tr>
+        <tr>
+            <td>{{ $permiso->motivo ?? 'N/A' }}</td>
+        </tr>
+    </table>
+
+   <!-- Firmas -->
+<table>
+    <tr>
+        <td class="section-title">Empleado (Nombre y Firma)</td>
+        <td class="section-title">Jefe Inmediato</td>
+        <td class="section-title">Recursos Humanos</td>
+    </tr>
+    <tr>
+        <!-- Nombre del empleado -->
+        <td>{{ $permiso->empleado->name  }}</td>
+
+        <!-- Estado de aprobación/rechazo del jefe inmediato -->
+        <td>
+            @if($permiso->estado == 'aprobado')
+                <span class="badge bg-success">Aprobado</span>
+            @elseif($permiso->estado == 'rechazado')
+                <span class="badge bg-danger">Rechazado</span>
+            @else
+                <span class="badge bg-warning">Pendiente</span>
+            @endif
+        </td>
+
+        <!-- Espacio para Recursos Humanos (puedes añadir más lógica si es necesario) -->
+        <td><br></td>
+    </tr>
+</table>
+
 
 </body>
 </html>
