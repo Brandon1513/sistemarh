@@ -33,8 +33,8 @@
                         </a>
 
                         <!-- Formulario de descarga ZIP -->
-                        <form action="{{ route('solicitudes_permisos.download-zip') }}" method="POST">
-                            @csrf
+                        <!-- Formulario de descarga ZIP -->
+                        <form action="{{ route('solicitudes_permisos.download-zip') }}" method="GET">
                             <input type="hidden" name="search" value="{{ request('search') }}">
                             <input type="hidden" name="start_date" value="{{ request('start_date') }}">
                             <input type="hidden" name="end_date" value="{{ request('end_date') }}">
@@ -42,6 +42,7 @@
                                 Descargar Solicitudes en ZIP
                             </button>
                         </form>
+
                     </div>
 
                     @if($permisos->isEmpty())

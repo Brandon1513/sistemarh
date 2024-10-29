@@ -18,29 +18,33 @@ use Maatwebsite\Excel\Facades\Excel;
 class SolicitudPermisoController extends Controller
 {
     public function index()
-    {
-        $user = Auth::user();  // Obtener el usuario autenticado
+{
+    $user = Auth::user();  // Obtener el usuario autenticado
 
-        if ($user->hasRole('jefe')) {
-            // Si el usuario es jefe, muestra los permisos de los empleados que supervisa y los suyos propios
-            $solicitudes = SolicitudPermiso::whereHas('empleado', function ($query) use ($user) {
-                    $query->where('supervisor_id', $user->id);  // Filtra los empleados supervisados
-                })
-                ->orWhere('empleado_id', $user->id)  // Muestra los permisos del propio jefe
-                ->with('empleado', 'departamento')  // Cargar las relaciones
-                ->get();
-        } else {
-            // Si es un empleado, solo muestra sus permisos
-            $solicitudes = SolicitudPermiso::where('empleado_id', $user->id)
-                ->with('empleado', 'departamento')
-                ->get();
-        }
-    
-        // Retorna la vista con los permisos filtrados
-        return view('permisos.index', compact(var_name: 'solicitudes'));
+    // Definir el rango de la semana nominativa
+    $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY); // Inicio desde el miércoles de esta semana
+    $endOfWeek = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay(); // Fin hasta el martes de la siguiente semana
 
-        
+    if ($user->hasRole('jefe')) {
+        // Si el usuario es jefe, muestra los permisos de los empleados que supervisa y los suyos propios
+        $solicitudes = SolicitudPermiso::whereHas('empleado', function ($query) use ($user) {
+                $query->where('supervisor_id', $user->id);  // Filtra los empleados supervisados
+            })
+            ->orWhere('empleado_id', $user->id)  // Muestra los permisos del propio jefe
+            ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek])  // Filtrar por la semana nominativa
+            ->with('empleado', 'departamento')  // Cargar las relaciones
+            ->get();
+    } else {
+        // Si es un empleado, solo muestra sus permisos
+        $solicitudes = SolicitudPermiso::where('empleado_id', $user->id)
+            ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek])  // Filtrar por la semana nominativa
+            ->with('empleado', 'departamento')
+            ->get();
     }
+
+    // Retorna la vista con los permisos filtrados por la semana nominativa
+    return view('permisos.index', compact('solicitudes'));
+}
 
     public function create()
     {
@@ -136,8 +140,21 @@ class SolicitudPermisoController extends Controller
 
     public function indexSolicitudesPermiso(Request $request)
 {
+    // Definir el rango de la semana nominativa (de miércoles a martes)
+    $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY); // Desde el miércoles de esta semana
+    $endOfWeek = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay(); // Hasta el martes de la siguiente semana
+
+    // Construir la consulta base
     $query = SolicitudPermiso::with('empleado', 'departamento')
         ->whereIn('estado', ['aprobado', 'rechazado', 'pendiente']);
+
+    // Verificar si hay filtros aplicados
+    $hasFilters = $request->filled('search') || ($request->filled('start_date') && $request->filled('end_date'));
+
+    // Si no hay filtros, aplicar el filtro de la semana nominativa
+    if (!$hasFilters) {
+        $query->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]);
+    }
 
     // Filtrar por nombre de empleado si se proporciona
     if ($request->filled('search')) {
@@ -157,13 +174,16 @@ class SolicitudPermisoController extends Controller
     // Obtener los permisos filtrados
     $permisos = $query->get();
 
+    // Retornar la vista con los permisos
     return view('solicitudes_permisos.index', compact('permisos'));
 }
 
+
+
 public function downloadPDF($id)
 {
-    // Obtener el permiso por ID
-    $permiso = SolicitudPermiso::findOrFail($id);
+    // Obtener el permiso por su ID
+    $permiso = SolicitudPermiso::with('empleado', 'departamento')->findOrFail($id);
 
     // Generar el PDF utilizando una vista de Blade
     $pdf = Pdf::loadView('solicitudes_permisos.pdf', compact('permiso'));
@@ -176,35 +196,99 @@ public function downloadPDF($id)
  public function export(Request $request)
 {
     // Construir la consulta base con las relaciones necesarias
-    $query = SolicitudPermiso::with('user', 'department');
+    $query = SolicitudPermiso::with('empleado', 'departamento');
 
     // **Filtro por nombre del empleado** si se proporciona
     if ($request->filled('search')) {
         $search = $request->input('search');
-        $query->whereHas('user', function ($q) use ($search) {
+        $query->whereHas('empleado', function ($q) use ($search) {
             $q->where('name', 'like', "%{$search}%");
         });
     }
 
-    // **Filtro por fecha específica** si se proporciona
-    if ($request->filled('date')) {
-        $date = $request->input('date');
-        $query->whereDate('fecha_inicio', $date)
-              ->orWhereDate('fecha_termino', $date);
-    }
-
-    // **Si no se proporciona ni nombre ni fecha**, descargar los permisos de la semana actual
-    if (!$request->filled('search') && !$request->filled('date')) {
-        $startOfWeek = Carbon::now()->startOfWeek();  // Lunes
-        $endOfWeek = Carbon::now()->endOfWeek();      // Domingo
-        $query->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]);
+    // **Filtro por rango de fechas** si se proporciona
+    if ($request->filled('start_date') && $request->filled('end_date')) {
+        $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
+        $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+        $query->whereBetween('fecha_inicio', [$startDate, $endDate]);
     }
 
     // Obtener los permisos filtrados
-    $SolicitudPermiso = $query->get();
+    $solicitudes = $query->get();
 
-    // Descargar los permisos en un archivo Excel
-    return Excel::download(new PermisosExport(permisos: $SolicitudPermiso), 'controlausencia.xlsx');
+    // Descargar los permisos filtrados en un archivo Excel
+    return Excel::download(new PermisosExport($solicitudes), 'controlausencia.xlsx');
 }
+
+//Exporta por seman nominal miercoles a martes
+    public function exportWeek()
+    {
+        // Obtener el inicio y fin de la semana nominativa
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY); // Desde miércoles de esta semana
+        $endOfWeek = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay(); // Hasta martes de la siguiente semana
+
+        // Filtrar las solicitudes de permisos en ese rango
+        $solicitudes = SolicitudPermiso::with('empleado', 'departamento')
+            ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek])
+            ->get();
+
+        // Descargar los permisos de la semana nominativa en un archivo Excel
+        return Excel::download(new PermisosExport($solicitudes), 'permisos_semana_nominativa.xlsx');
+    }
+
+    public function downloadSolicitudesZIP(Request $request)
+{
+    // Crear una nueva instancia de ZipArchive
+    $zip = new \ZipArchive();
+    $fileName = 'solicitudes_permisos.zip';
+
+    // Ruta donde se almacenará el archivo ZIP temporalmente
+    $zipPath = public_path($fileName);
+
+    if ($zip->open($zipPath, \ZipArchive::CREATE) === TRUE) {
+        // Construir la consulta base
+        $query = SolicitudPermiso::with('empleado', 'departamento')
+            ->whereIn('estado', ['aprobado', 'rechazado', 'pendiente']);
+
+        // Filtrar por nombre si se proporciona
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->whereHas('empleado', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtrar por rango de fechas si se proporciona
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
+            $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+            $query->whereBetween('fecha_inicio', [$startDate, $endDate]);
+        }
+
+        // Obtener los permisos filtrados
+        $permisos = $query->get();
+
+        // Generar PDFs y agregarlos al ZIP
+        foreach ($permisos as $permiso) {
+            // Generar el PDF para el permiso y pasar la variable correctamente
+            $pdf = Pdf::loadView('solicitudes_permisos.pdf', ['permiso' => $permiso]);
+
+            // Guardar el contenido del PDF como una cadena
+            $pdfOutput = $pdf->output();
+
+            // Añadir el PDF al archivo ZIP (usa el ID del permiso para el nombre del archivo)
+            $zip->addFromString('permiso_'.$permiso->id.'.pdf', $pdfOutput);
+        }
+
+        // Cerrar el archivo ZIP después de agregar todos los PDFs
+        $zip->close();
+    }
+
+    // Retornar el archivo ZIP para descarga
+    return response()->download($zipPath)->deleteFileAfterSend(true);
+}
+
+
+ 
 
 }
