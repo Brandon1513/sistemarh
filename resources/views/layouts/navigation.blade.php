@@ -180,46 +180,52 @@
                 </div>
 
                 <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')">
-                        {{ __('Perfil') }}
-                    </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('permissions.index')" :active="request()->routeIs('permissions.index')">
-                    {{ __('Permisos') }}
-                </x-responsive-nav-link>
-                
-                
-                @if(Auth::user()->hasRole('administrador'))
-                    <x-responsive-nav-link :href="route('empleados.index')" :active="request()->routeIs('empleados.index')">
-                    {{ __('Gestionar Usuarios') }}
-                    </x-responsive-nav-link>
-                @endif
-
-                @if(Auth::user()->hasRole('administrador'))
-                    <x-responsive-nav-link :href="route('supervisores.index')" :active="request()->routeIs('supervisores.index')">
-                    {{ __('Gestionar Jefes') }}
-                    </x-responsive-nav-link>
-                @endif
-                
-                @if(Auth::user()->hasRole('administrador'))
-                    <x-responsive-nav-link :href="route('recursoshumanos.index')" :active="request()->routeIs('recursoshumanos.index')">
-                    {{ __('Gestionar RH') }}
-                    </x-responsive-nav-link>
-                @endif  
-
-                @if(Auth::user()->hasRole('recursos_humanos'))
-                    <x-responsive-nav-link :href="route('rh.index')" :active="request()->routeIs('rh.index')">
-                        {{ __('Permisos RH') }}
-                    </x-responsive-nav-link>
-                @endif
-                    <!-- Authentication -->
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <x-responsive-nav-link :href="route('logout')"
-                                onclick="event.preventDefault();
-                                            this.closest('form').submit();">
-                            {{ __('Salir') }}
+                    <x-responsive-nav-link :href="route('profile.edit')">
+                            {{ __('Perfil') }}
                         </x-responsive-nav-link>
-                    </form>
+                    <x-responsive-nav-link :href="route('permissions.index')" :active="request()->routeIs('permissions.index')">
+                        {{ __('Permisos') }}
+                    </x-responsive-nav-link>
+                    
+                    
+                    @if(Auth::user()->hasRole('administrador'))
+                        <x-responsive-nav-link :href="route('empleados.index')" :active="request()->routeIs('empleados.index')">
+                        {{ __('Gestionar Usuarios') }}
+                        </x-responsive-nav-link>
+                    @endif
+
+                    @if(Auth::user()->hasRole('administrador'))
+                        <x-responsive-nav-link :href="route('supervisores.index')" :active="request()->routeIs('supervisores.index')">
+                        {{ __('Gestionar Jefes') }}
+                        </x-responsive-nav-link>
+                    @endif
+                    
+                    @if(Auth::user()->hasRole('administrador'))
+                        <x-responsive-nav-link :href="route('recursoshumanos.index')" :active="request()->routeIs('recursoshumanos.index')">
+                        {{ __('Gestionar RH') }}
+                        </x-responsive-nav-link>
+                    @endif  
+
+                    @if(Auth::user()->hasRole('recursos_humanos'))
+                        <x-responsive-nav-link :href="route('rh.index')" :active="request()->routeIs('rh.index')">
+                            {{ __('Permisos RH') }}
+                        </x-responsive-nav-link>
+                        <x-responsive-nav-link :href="route('solicitudes_permisos.index')" :active="request()->routeIs('solicitudes_permisos.index')">
+                            {{ __('Control ausencias RH') }}
+                        </x-responsive-nav-link>
+                        <x-responsive-nav-link :href="route('rh.index')" :active="request()->routeIs('rh.index')">
+                            {{ __('Vacaciones RH Proximamente') }}
+                        </x-responsive-nav-link>
+                    @endif
+                        <!-- Authentication -->
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <x-responsive-nav-link :href="route('logout')"
+                                    onclick="event.preventDefault();
+                                                this.closest('form').submit();">
+                                {{ __('Salir') }}
+                            </x-responsive-nav-link>
+                        </form>
                 </div>
             </div>
         @else

@@ -46,6 +46,9 @@ class EmpleadoController extends Controller
         'email' => 'required|string|email|max:255|unique:users',
         'password' => 'required|string|min:8|confirmed',
         'supervisor_id' => 'required|exists:users,id', 
+        'clave_empleado' => 'nullable|string|max:255',
+        'fecha_ingreso' => 'nullable|date',
+        'puesto_empleado' => 'nullable|string|max:255',
     ]);
 
     // Crear el empleado
@@ -53,6 +56,9 @@ class EmpleadoController extends Controller
         'name' => $request->name,
         'email' => $request->email,
         'password' => Hash::make($request->password),
+        'clave_empleado' => $request->clave_empleado,
+        'fecha_ingreso' => $request->fecha_ingreso,
+        'puesto_empleado' => $request->puesto_empleado,
         'supervisor_id' => $request->supervisor_id,
     ]);
 
@@ -88,30 +94,39 @@ class EmpleadoController extends Controller
     }
 
     public function update(Request $request, $id)
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-        'supervisor_id' => 'required|exists:users,id',
-        'password' => 'nullable|string|min:8|confirmed', // La contraseña es opcional
-    ]);
-
-    $user = User::findOrFail($id);
-
-    // Actualizar los campos
-    $user->name = $request->name;
-    $user->email = $request->email;
-    $user->supervisor_id = $request->supervisor_id;
-
-    // Solo actualizamos la contraseña si se proporciona una nueva
-    if ($request->filled('password')) {
-        $user->password = bcrypt($request->password);
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'supervisor_id' => 'required|exists:users,id',
+            'password' => 'nullable|string|min:8|confirmed', // La contraseña es opcional
+            'clave_empleado' => 'nullable|string|max:255',
+            'fecha_ingreso' => 'nullable|date',
+            'puesto_empleado' => 'nullable|string|max:255',
+        ]);
+    
+        $user = User::findOrFail($id);
+    
+        // Actualizar los campos
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->supervisor_id = $request->supervisor_id;
+    
+        // Actualizar los nuevos campos agregados
+        $user->clave_empleado = $request->clave_empleado;
+        $user->fecha_ingreso = $request->fecha_ingreso;
+        $user->puesto_empleado = $request->puesto_empleado;
+    
+        // Solo actualizamos la contraseña si se proporciona una nueva
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->password);
+        }
+    
+        $user->save();
+    
+        return redirect()->route('empleados.index')->with('success', 'Usuario actualizado correctamente.');
     }
-
-    $user->save();
-
-    return redirect()->route('empleados.index')->with('success', 'Usuario actualizado correctamente.');
-}
+    
     public function destroy($id)
     {
         // Buscar el empleado por ID

@@ -32,6 +32,27 @@
                             <x-input-error :messages="$errors->get('email')" class="mt-2" />
                         </div>
 
+                        <!-- Clave del Empleado -->
+                        <div class="mb-4">
+                            <x-input-label for="clave_empleado" :value="__('Clave del Empleado')" />
+                            <x-text-input id="clave_empleado" class="block w-full mt-1" type="text" name="clave_empleado" :value="old('clave_empleado', $user->clave_empleado)" required />
+                            <x-input-error :messages="$errors->get('clave_empleado')" class="mt-2" />
+                        </div>
+
+                        <!-- Fecha de Ingreso -->
+                        <div class="mb-4">
+                            <x-input-label for="fecha_ingreso" :value="__('Fecha de Ingreso')" />
+                            <x-text-input id="fecha_ingreso" class="block w-full mt-1" type="date" name="fecha_ingreso" :value="old('fecha_ingreso', optional($user->fecha_ingreso)->format('Y-m-d'))" required />
+                            <x-input-error :messages="$errors->get('fecha_ingreso')" class="mt-2" />
+                        </div>
+
+                        <!-- Puesto del Empleado -->
+                        <div class="mb-4">
+                            <x-input-label for="puesto_empleado" :value="__('Puesto del Empleado')" />
+                            <x-text-input id="puesto_empleado" class="block w-full mt-1" type="text" name="puesto_empleado" :value="old('puesto_empleado', $user->puesto_empleado)" required />
+                            <x-input-error :messages="$errors->get('puesto_empleado')" class="mt-2" />
+                        </div>
+
                         <!-- Selección de Supervisor -->
                         <div class="mb-4">
                             <x-input-label for="supervisor_id" :value="__('Supervisor')" />
