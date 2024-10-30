@@ -16,6 +16,9 @@ class User extends Authenticatable
         'email',
         'password',
         'supervisor_id',
+        'clave_empleado',   // Agrega este campo
+        'fecha_ingreso',    // Agrega este campo
+        'puesto_empleado',  // Agrega este campo
     ];
 
     protected $hidden = [
@@ -25,6 +28,12 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'fecha_ingreso' => 'date',
+    ];
+
+    // Conversión de fechas a objetos Carbon
+    protected $dates = [
+        'fecha_ingreso',   // Agrega este campo si quieres tratarlo como fecha
     ];
 
     // Relación con el supervisor del usuario
