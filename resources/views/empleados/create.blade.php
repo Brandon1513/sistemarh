@@ -52,6 +52,16 @@
                             <x-input-error :messages="$errors->get('puesto_empleado')" class="mt-2" />
                         </div>
 
+                        <div class="mb-4">
+                            <label for="departamento_id" class="block text-sm font-medium text-gray-700">Departamento</label>
+                            <select name="departamento_id" id="departamento_id" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                                <option value="" disabled selected>Seleccione un departamento</option>
+                                @foreach ($departamentos as $departamento)
+                                    <option value="{{ $departamento->id }}">{{ $departamento->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
                         <!-- Selección de Supervisor -->
                         <div class="mb-4">
                             <x-input-label for="supervisor_id" :value="__('Supervisor')" />

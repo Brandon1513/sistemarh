@@ -1,14 +1,16 @@
 <?php
 
 namespace App\Http\Controllers;
-use Spatie\Permission\Models\Role;
-
 use App\Models\User;
+
 use Illuminate\View\View;
+use App\Models\Department;
 use App\Mail\NewUserCreated;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Carbon\Carbon;
 
 
 class EmpleadoController extends Controller
@@ -23,8 +25,8 @@ class EmpleadoController extends Controller
     }
 
     public function create(): View
-    {
-        // Filtrar usuarios que tengan el rol de 'jefe'
+{
+    // Filtrar usuarios que tengan el rol de 'jefe'
     $supervisors = User::whereHas('roles', function($query) {
         $query->where('name', 'jefe');
     })->get();
@@ -32,12 +34,18 @@ class EmpleadoController extends Controller
     // Obtener todos los roles disponibles
     $roles = Role::all(); // Obtener todos los roles
 
-    // Retornar la vista con los supervisores y roles
+    // Obtener todos los departamentos
+    $departamentos = Department::all();
+
+
+    // Retornar la vista con los supervisores, roles y departamentos
     return view('empleados.create', [
         'supervisors' => $supervisors,
-        'roles' => $roles, // Pasamos los roles a la vista
+        'roles' => $roles,
+        'departamentos' => $departamentos,
     ]);
-    }
+}
+
 
     public function store(Request $request)
 {
@@ -49,6 +57,7 @@ class EmpleadoController extends Controller
         'clave_empleado' => 'nullable|string|max:255',
         'fecha_ingreso' => 'nullable|date',
         'puesto_empleado' => 'nullable|string|max:255',
+        'departamento_id' => 'required|exists:departments,id',
     ]);
 
     // Crear el empleado
@@ -60,6 +69,7 @@ class EmpleadoController extends Controller
         'fecha_ingreso' => $request->fecha_ingreso,
         'puesto_empleado' => $request->puesto_empleado,
         'supervisor_id' => $request->supervisor_id,
+        'departamento_id' => $request->departamento_id,
     ]);
 
     // Obtener los roles seleccionados o asignar el rol 'empleado' por defecto

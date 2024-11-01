@@ -4,12 +4,12 @@ use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\CheckAdminRole;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\RecursosHumanosController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 
-use App\Http\Controllers\EmpleadoController;
+use App\Http\Controllers\SolicitudPermisoController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -93,7 +93,8 @@ Route::middleware(['role:recursos_humanos'])->group(function () {
 
 //Control de ausencias del personal
 
-use App\Http\Controllers\SolicitudPermisoController;
+use App\Http\Controllers\SolicitudVacacionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/permisos', [SolicitudPermisoController::class, 'index'])->name('permisos.index');
@@ -123,5 +124,48 @@ Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
     Route::get('/rh/permisos', [SolicitudPermisoController::class, 'indexRH'])->name('rh.permisos.index');
 });
 
+
+//VACACIONES
+// Listar todas las solicitudes de vacaciones (para admin o supervisores)
+Route::get('/vacaciones', [SolicitudVacacionController::class, 'index'])->name('vacaciones.index');
+
+// Formulario para crear una nueva solicitud de vacaciones
+Route::get('/vacaciones/create', [SolicitudVacacionController::class, 'create'])->name('vacaciones.create');
+
+// Guardar la nueva solicitud de vacaciones
+Route::post('/vacaciones', [SolicitudVacacionController::class, 'store'])->name('vacaciones.store');
+
+// Ver una solicitud específica de vacaciones
+Route::get('/vacaciones/{id}', [SolicitudVacacionController::class, 'show'])->name('vacaciones.show');
+
+// Aprobar una solicitud de vacaciones (solo para supervisores o RH)
+Route::post('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'aprobar'])->name('vacaciones.aprobar');
+
+// Rechazar una solicitud de vacaciones (solo para supervisores o RH)
+Route::post('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'rechazar'])->name('vacaciones.rechazar');
+
+
+//PERIODOS
+
+use App\Http\Controllers\PeriodoVacacionController;
+
+
+
+// Editar un período de vacaciones existente
+Route::get('/periodos/{id}/editar', [PeriodoVacacionController::class, 'edit'])->name('periodos.edit');
+
+// Actualizar un período de vacaciones
+Route::put('/periodos/{id}', [PeriodoVacacionController::class, 'update'])->name('periodos.update');
+
+// Eliminar un período de vacaciones
+Route::delete('/periodos/{id}', [PeriodoVacacionController::class, 'destroy'])->name('periodos.destroy');
+
+Route::middleware(['auth', 'role:administrador'])->group(function () {
+    Route::get('/periodos/create', [PeriodoVacacionController::class, 'create'])->name('periodos.create');
+    Route::post('/periodos/store', [PeriodoVacacionController::class, 'store'])->name('periodos.store');
+    Route::post('/calculate-days', [PeriodoVacacionController::class, 'calculateDays'])->name('calculate.days');
+    Route::get('/periodos', [PeriodoVacacionController::class, 'index'])->name('periodos.index');
+
+});
 
 require __DIR__.'/auth.php';

@@ -41,6 +41,9 @@
                                         <x-dropdown-link :href="route('recursoshumanos.index')">
                                             {{ __('Gestionar RH') }}
                                         </x-dropdown-link>
+                                        <x-dropdown-link :href="route('periodos.index')">
+                                            {{ __('Gestionar periodos') }}
+                                        </x-dropdown-link>
                                         <x-dropdown-link :href="route('empleados.index')">
                                             {{ __('Gestionar Usuarios') }}
                                         </x-dropdown-link>
@@ -70,8 +73,8 @@
                                     <x-dropdown-link :href="route('permisos.index')" :active="request()->routeIs('permisos.index')">
                                         {{ __('Control de ausencias') }}
                                     </x-dropdown-link>
-                                    <x-dropdown-link :href="route('dashboard')">
-                                        {{ __('Vacaciones Proximamente') }}
+                                    <x-dropdown-link :href="route('vacaciones.index')" :active="request()->routeIs('vacaciones.index')">
+                                        {{ __('Solicitar Vacaciones') }}
                                     </x-dropdown-link>
                                 </x-slot>
                             </x-dropdown>

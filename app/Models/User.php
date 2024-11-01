@@ -19,6 +19,8 @@ class User extends Authenticatable
         'clave_empleado',   // Agrega este campo
         'fecha_ingreso',    // Agrega este campo
         'puesto_empleado',  // Agrega este campo
+        'departamento_id',
+
     ];
 
     protected $hidden = [
@@ -65,4 +67,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(Permission::class, 'hr_id');
     }
+    // En el modelo User
+    public function departamento()
+    {
+    return $this->belongsTo(Department::class);
+    }
+    public function vacaciones()
+{
+    return $this->hasMany(SolicitudVacacion::class);
+}
+
+
 }
