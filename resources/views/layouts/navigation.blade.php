@@ -17,7 +17,7 @@
                             {{ __('Dashboard') }}
                         </x-nav-link>
 
-                        @if (Auth::user()->hasRole('administrador'))
+                        @if (Auth::user()->hasAnyRole(['administrador', 'recursos_humanos']))
                             <!-- Dropdown para "Gestionar Jefes" y "Gestionar RH" -->
                             <div class="relative">
                                 <x-dropdown align="left">
@@ -34,19 +34,24 @@
 
                                     <x-slot name="content">
                                         <!-- Gestionar Jefes -->
-                                        <x-dropdown-link :href="route('supervisores.index')">
-                                            {{ __('Gestionar Jefes') }}
-                                        </x-dropdown-link>
-                                        <!-- Gestionar RH -->
-                                        <x-dropdown-link :href="route('recursoshumanos.index')">
-                                            {{ __('Gestionar RH') }}
-                                        </x-dropdown-link>
-                                        <x-dropdown-link :href="route('periodos.index')">
-                                            {{ __('Gestionar periodos') }}
-                                        </x-dropdown-link>
-                                        <x-dropdown-link :href="route('empleados.index')">
-                                            {{ __('Gestionar Usuarios') }}
-                                        </x-dropdown-link>
+                                        @if (Auth::user()->hasRole('administrador'))
+                                            <x-dropdown-link :href="route('supervisores.index')">
+                                                {{ __('Gestionar Jefes') }}
+                                            </x-dropdown-link>
+                                            <x-dropdown-link :href="route('recursoshumanos.index')">
+                                                {{ __('Gestionar RH') }}
+                                            </x-dropdown-link>
+                                        @endif
+                                        <!-- Opción "Gestionar periodos" visible para administrador y recursos_humanos -->
+                                            <x-dropdown-link :href="route('periodos.index')">
+                                                {{ __('Gestionar periodos') }}
+                                            </x-dropdown-link>
+                                        <!-- Opción "Gestionar Usuarios" solo visible para administrador -->
+                                        @if (Auth::user()->hasRole('administrador'))
+                                            <x-dropdown-link :href="route('empleados.index')">
+                                                {{ __('Gestionar Usuarios') }}
+                                            </x-dropdown-link>
+                                         @endif
                                     </x-slot>
                                 </x-dropdown>
                             </div>
@@ -207,7 +212,13 @@
                         <x-responsive-nav-link :href="route('recursoshumanos.index')" :active="request()->routeIs('recursoshumanos.index')">
                         {{ __('Gestionar RH') }}
                         </x-responsive-nav-link>
-                    @endif  
+                    @endif 
+
+                    @if(Auth::user()->hasRole('administrador') || Auth::user()->hasRole('recursos_humanos'))
+                        <x-responsive-nav-link :href="route('periodos.index')" :active="request()->routeIs('periodos.index')">
+                        {{ __('Gestionar Periodos') }}
+                        </x-responsive-nav-link>
+                    @endif 
 
                     @if(Auth::user()->hasRole('recursos_humanos'))
                         <x-responsive-nav-link :href="route('rh.index')" :active="request()->routeIs('rh.index')">

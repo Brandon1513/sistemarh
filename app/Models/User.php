@@ -76,6 +76,9 @@ class User extends Authenticatable
 {
     return $this->hasMany(SolicitudVacacion::class);
 }
-
+public function getIsJefeAttribute()
+{
+    return $this->role === 'jefe'; // O como esté definido en tu sistema
+}
 
 }

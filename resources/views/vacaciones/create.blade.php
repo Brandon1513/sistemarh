@@ -114,17 +114,7 @@
                             <input type="date" name="fecha_presentarse_trabajar" id="fecha_presentarse_trabajar" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                         </div>
 
-                        <!-- Estado de la Solicitud -->
-                        <div class="mb-4">
-                            <label for="estado" class="block text-sm font-medium text-gray-700">
-                                {{ __('Estado de la Solicitud') }}
-                            </label>
-                            <select name="estado" id="estado" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                <option value="pendiente">Pendiente</option>
-                                <option value="aprobado">Aprobado</option>
-                                <option value="rechazado">Rechazado</option>
-                            </select>
-                        </div>
+                        <input type="hidden" name="estado" value="pendiente">
 
                         <!-- Botón para Enviar -->
                         <div class="mb-4">
@@ -147,7 +137,13 @@
             </div>
         </div>
     </div>
+    @if (session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+@endif
 </x-app-layout>
+
 
 
 <script>
@@ -176,5 +172,38 @@
             const pendientes = diasCorresponden - diasSolicitados;
             pendientesDisfrutarInput.value = pendientes;
         }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const fechaInicioInput = document.getElementById('fecha_inicio_vacaciones');
+        const fechaTerminoInput = document.getElementById('fecha_termino_vacaciones');
+        const fechaPresentarseInput = document.getElementById('fecha_presentarse_trabajar');
+        const diasSolicitadosInput = document.getElementById('dias_solicitados');
+
+        // Función para actualizar las fechas en función de los días solicitados
+        function actualizarFechas() {
+            const diasSolicitados = parseInt(diasSolicitadosInput.value) || 0;
+            const fechaInicio = new Date(fechaInicioInput.value);
+
+            if (!isNaN(diasSolicitados) && !isNaN(fechaInicio.getTime()) && diasSolicitados > 0) {
+                // Fecha de Término de Vacaciones: fecha de inicio + días solicitados - 1
+                const fechaTermino = new Date(fechaInicio);
+                fechaTermino.setDate(fechaInicio.getDate() + diasSolicitados - 1);
+                fechaTerminoInput.value = fechaTermino.toISOString().split('T')[0];
+
+                // Fecha para Presentarse a Trabajar: día siguiente a la fecha de término
+                const fechaPresentarse = new Date(fechaTermino);
+                fechaPresentarse.setDate(fechaTermino.getDate() + 1);
+                fechaPresentarseInput.value = fechaPresentarse.toISOString().split('T')[0];
+            } else {
+                fechaTerminoInput.value = '';
+                fechaPresentarseInput.value = '';
+            }
+        }
+
+        // Actualiza las fechas cuando cambian los días solicitados o la fecha de inicio
+        diasSolicitadosInput.addEventListener('input', actualizarFechas);
+        fechaInicioInput.addEventListener('input', actualizarFechas);
     });
 </script>

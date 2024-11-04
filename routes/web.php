@@ -138,11 +138,9 @@ Route::post('/vacaciones', [SolicitudVacacionController::class, 'store'])->name(
 // Ver una solicitud específica de vacaciones
 Route::get('/vacaciones/{id}', [SolicitudVacacionController::class, 'show'])->name('vacaciones.show');
 
-// Aprobar una solicitud de vacaciones (solo para supervisores o RH)
-Route::post('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'aprobar'])->name('vacaciones.aprobar');
+Route::get('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'approve'])->name('vacaciones.aprobar');
+Route::get('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'reject'])->name('vacaciones.rechazar');
 
-// Rechazar una solicitud de vacaciones (solo para supervisores o RH)
-Route::post('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'rechazar'])->name('vacaciones.rechazar');
 
 
 //PERIODOS
@@ -160,7 +158,7 @@ Route::put('/periodos/{id}', [PeriodoVacacionController::class, 'update'])->name
 // Eliminar un período de vacaciones
 Route::delete('/periodos/{id}', [PeriodoVacacionController::class, 'destroy'])->name('periodos.destroy');
 
-Route::middleware(['auth', 'role:administrador'])->group(function () {
+Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function () {
     Route::get('/periodos/create', [PeriodoVacacionController::class, 'create'])->name('periodos.create');
     Route::post('/periodos/store', [PeriodoVacacionController::class, 'store'])->name('periodos.store');
     Route::post('/calculate-days', [PeriodoVacacionController::class, 'calculateDays'])->name('calculate.days');

@@ -8,6 +8,11 @@
     <div class="py-12">
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                @if (session('success'))
+                    <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+                        {{ session('success') }}
+                    </div>
+                @endif
                 <div class="p-6 bg-white border-b border-gray-200">
                     <!-- Botón para crear un nuevo permiso -->
                     <div class="mb-4">
@@ -18,35 +23,66 @@
                     @if($solicitudes->isEmpty())
                         <p class="text-gray-600">No tienes solicitudes de vacaciones registradas.</p>
                     @else
-                        <table class="min-w-full bg-white border">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase border-b border-gray-200">Periodo Correspondiente</th>
-                                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase border-b border-gray-200">Fecha de Inicio</th>
-                                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase border-b border-gray-200">Fecha de Fin</th>
-                                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase border-b border-gray-200">Días Solicitados</th>
-                                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase border-b border-gray-200">Estado</th>
+                        
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow">
+                            <thead>
+                                <tr class="text-sm leading-normal text-gray-600 uppercase bg-gray-200">
+                                    <th class="px-6 py-3 text-left">Periodo Correspondiente</th>
+                                    <th class="px-6 py-3 text-left">Fecha de Inicio</th>
+                                    <th class="px-6 py-3 text-left">Fecha de Fin</th>
+                                    <th class="px-6 py-3 text-center">Días Solicitados</th>
+                                    <th class="px-6 py-3 text-center">Estado</th>
+                                    <th class="px-6 py-3 text-center">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @foreach($solicitudes as $solicitud)
-                                    <tr>
-                                        <td class="px-6 py-4 border-b border-gray-200">{{ $solicitud->periodo_correspondiente }}</td>
-                                        <td class="px-6 py-4 border-b border-gray-200">{{ $solicitud->fecha_inicio }}</td>
-                                        <td class="px-6 py-4 border-b border-gray-200">{{ $solicitud->fecha_fin }}</td>
-                                        <td class="px-6 py-4 border-b border-gray-200">{{ $solicitud->dias_solicitados }}</td>
-                                        <td class="px-6 py-4 border-b border-gray-200">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                            @if($solicitud->estado == 'pendiente') bg-yellow-100 text-yellow-800 
-                                            @elseif($solicitud->estado == 'aprobado') bg-green-100 text-green-800 
-                                            @else bg-red-100 text-red-800 @endif">
+                            <tbody class="text-sm font-light text-gray-600">
+                                @foreach ($solicitudes as $solicitud)
+                                    <tr class="border-b border-gray-200 hover:bg-gray-100">
+                                        <td class="px-6 py-3 text-left whitespace-nowrap">
+                                            {{ $solicitud->periodo_correspondiente }}
+                                        </td>
+                                        <td class="px-6 py-3 text-left">
+                                            {{ \Carbon\Carbon::parse($solicitud->fecha_inicio)->format('d/m/Y') }}
+                                        </td>
+                                        <td class="px-6 py-3 text-left">
+                                            {{ \Carbon\Carbon::parse($solicitud->fecha_fin)->format('d/m/Y') }}
+                                        </td>
+                                        <td class="px-6 py-3 text-center">
+                                            {{ $solicitud->dias_solicitados }}
+                                        </td>
+                                        <td class="px-6 py-3 text-center">
+                                            <span class="py-1 px-3 rounded-full text-xs {{ $solicitud->estado == 'pendiente' ? 'bg-yellow-200 text-yellow-600' : ($solicitud->estado == 'aprobado' ? 'bg-green-200 text-green-600' : 'bg-red-200 text-red-600') }}">
                                                 {{ ucfirst($solicitud->estado) }}
                                             </span>
+                                        </td>
+                                        <td class="px-6 py-3 text-center">
+                                            @if (auth()->user()->id == $solicitud->empleado->supervisor_id)
+                                                <div class="flex justify-center space-x-4">
+                                                    <a href="{{ route('vacaciones.show', $solicitud->id) }}" class="text-blue-600 hover:underline">
+                                                        Ver
+                                                    </a>
+                                                    <a href="{{ route('vacaciones.aprobar', $solicitud->id) }}" class="text-green-600 hover:underline">
+                                                        Aprobar
+                                                    </a>
+                                                    <a href="{{ route('vacaciones.rechazar', $solicitud->id) }}" class="text-red-600 hover:underline">
+                                                        Rechazar
+                                                    </a>
+                                                </div>
+                                            @else
+                                                <span class="text-sm text-gray-500">No autorizado</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
+                        
+                        
+                    </div>
+                    <div class="mt-4">
+                        {{ $solicitudes->links() }}
+                    </div>
                     @endif
                 </div>
             </div>
