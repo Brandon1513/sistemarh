@@ -17,12 +17,25 @@
                             <label class="block text-sm font-medium text-gray-700">
                                 {{ __('Selecciona Empleados') }}
                             </label>
-                            @foreach($usuarios as $usuario)
-                                <div>
-                                    <input type="checkbox" name="empleado_id[]" value="{{ $usuario->id }}" class="empleado-checkbox">
-                                    <label>{{ $usuario->name }}</label>
-                                </div>
-                            @endforeach
+                        
+                            <!-- Campo de búsqueda -->
+                            <input type="text" id="busqueda-empleado" placeholder="Buscar empleado..." class="w-full mt-2 mb-2 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        
+                            <!-- Checkbox de Seleccionar Todos -->
+                            <div class="py-1 my-1">
+                                <input type="checkbox" id="seleccionar-todos">
+                                <label for="seleccionar-todos">Seleccionar Todos</label>
+                            </div>
+                            
+                            <!-- Lista de empleados con scroll -->
+                            <div id="lista-empleados" class="h-64 overflow-y-auto border border-gray-300 rounded-md">
+                                @foreach($usuarios as $usuario)
+                                    <div class="empleado-item">
+                                        <input type="checkbox" name="empleado_id[]" value="{{ $usuario->id }}" class="empleado-checkbox">
+                                        <label>{{ $usuario->name }}</label>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
 
                         <!-- Año -->
@@ -30,7 +43,7 @@
                             <label for="anio" class="block text-sm font-medium text-gray-700">
                                 {{ __('Año') }}
                             </label>
-                            <input type="number" name="anio" id="anio" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                            <input type="number" name="anio" id="anio" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"   required>
                         </div>
 
                         <!-- Resultados Dinámicos para Días Correspondientes -->
@@ -97,6 +110,37 @@
         anioInput.addEventListener('change', fetchVacationDays);
         empleadosCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', fetchVacationDays);
+        });
+    });
+</script>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const busquedaEmpleado = document.getElementById('busqueda-empleado');
+        const listaEmpleados = document.getElementById('lista-empleados');
+        const seleccionarTodos = document.getElementById('seleccionar-todos');
+        const empleadosCheckboxes = document.querySelectorAll('.empleado-checkbox');
+
+        // Filtrar empleados en tiempo real
+        busquedaEmpleado.addEventListener('input', function () {
+            const filtro = busquedaEmpleado.value.toLowerCase();
+            document.querySelectorAll('.empleado-item').forEach(item => {
+                const nombreEmpleado = item.textContent.toLowerCase();
+                if (nombreEmpleado.includes(filtro)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Seleccionar o deseleccionar todos
+        seleccionarTodos.addEventListener('change', function () {
+            const isChecked = seleccionarTodos.checked;
+            empleadosCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
         });
     });
 </script>

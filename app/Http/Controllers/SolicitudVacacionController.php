@@ -2,25 +2,44 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SolicitudVacacion;
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Department;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 use App\Models\PeriodoVacacion;
+use App\Models\SolicitudVacacion;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\VacationRequestNotification;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\VacationRHNotification;
+use App\Notifications\VacationApprovedNotification;
+use App\Notifications\VacationRejectedNotification;
+use App\Models\VacationRequest;
+
 
 class SolicitudVacacionController extends Controller
 {
     public function index()
-{
-    // Obtener el usuario autenticado
-    $user = auth()->user();
+    {
+        $user = auth()->user();
     
-    // Obtener las solicitudes de vacaciones del usuario autenticado
-    $solicitudes = SolicitudVacacion::where('empleado_id', $user->id)->get();
-
-    return view('vacaciones.index', compact('solicitudes'));
-}
+        if ($user->hasRole('jefe')) {
+            $solicitudes = SolicitudVacacion::whereHas('empleado', function ($query) use ($user) {
+                $query->where('supervisor_id', $user->id);
+            })->orWhere('empleado_id', $user->id)
+              ->with('empleado', 'departamento')
+              ->orderBy('created_at', 'desc') // Ordenar por fecha de creación, del más reciente al más antiguo
+              ->paginate(10); // Paginación de 10 solicitudes por página
+        } else {
+            $solicitudes = SolicitudVacacion::where('empleado_id', $user->id)
+                ->with('empleado', 'departamento')
+                ->orderBy('created_at', 'desc') // Ordenar del más reciente al más antiguo
+                ->paginate(10); // Paginación de 10 solicitudes por página
+        }
+    
+        return view('vacaciones.index', compact('solicitudes'));
+    }
+    
 
     public function create()
 {
@@ -71,7 +90,8 @@ public function store(Request $request)
     $periodo->dias_disponibles -= $request->dias_solicitados;
     $periodo->save();
 
-    SolicitudVacacion::create([
+    // Crear la solicitud de vacaciones en la base de datos
+    $vacationRequest = SolicitudVacacion::create([
         'empleado_id' => $user->id,
         'departamento_id' => $user->departamento_id,
         'fecha_solicitud' => now(),
@@ -85,8 +105,52 @@ public function store(Request $request)
         'estado' => 'pendiente',
     ]);
 
-    return redirect()->route('vacaciones.index')->with('success', 'Solicitud de vacaciones creada correctamente.');
+    // Enviar correo al jefe directo
+    $supervisor = $user->supervisor; // Asegúrate de que existe una relación 'supervisor' en el modelo User
+    if ($supervisor && $supervisor->email) {
+        Mail::to($supervisor->email)->send(new VacationRequestNotification($user, $vacationRequest));
+    }
+
+    return redirect()->route('vacaciones.index')->with('success', 'Solicitud de vacaciones creada correctamente y notificación enviada al jefe directo.');
 }
+
+public function approve($id)
+{
+    $vacationRequest = SolicitudVacacion::findOrFail($id);
+    $vacationRequest->estado = 'aprobado';
+    $vacationRequest->save();
+
+    $employee = $vacationRequest->empleado;
+    $rhEmails = User::role('recursos_humanos')->pluck('email')->toArray();
+
+    // Notificar al empleado
+    $employee->notify(new VacationApprovedNotification($vacationRequest));
+
+    // Notificar al departamento de Recursos Humanos
+    Notification::route('mail', $rhEmails)->notify(new VacationRHNotification($vacationRequest, 'aprobada'));
+
+    return redirect()->route('vacaciones.index')->with('success', 'Solicitud aprobada.');
+}
+
+// En la función reject
+public function reject($id)
+{
+    $vacationRequest = SolicitudVacacion::findOrFail($id);
+    $vacationRequest->estado = 'rechazado';
+    $vacationRequest->save();
+
+    $employee = $vacationRequest->empleado;
+    $rhEmails = User::role('recursos_humanos')->pluck('email')->toArray();
+
+    // Notificar al empleado
+    $employee->notify(new VacationRejectedNotification($vacationRequest));
+
+    // Notificar al departamento de Recursos Humanos
+    Notification::route('mail', $rhEmails)->notify(new VacationRHNotification($vacationRequest, 'rechazada'));
+
+    return redirect()->route('vacaciones.index')->with('success', 'Solicitud rechazada.');
+}
+
 
 
     
