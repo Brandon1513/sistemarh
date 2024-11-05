@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Carbon\Carbon;
+
 class VacationRHNotification extends Notification
 {
     use Queueable;
@@ -26,13 +27,23 @@ class VacationRHNotification extends Notification
 
     public function toMail($notifiable)
     {
-        return (new MailMessage)
-                    ->subject('Actualización de Solicitud de Vacaciones')
-                    ->greeting('Hola Recursos Humanos,')
-                    ->line('La solicitud de vacaciones del empleado ' . $this->vacationRequest->empleado->name . ' ha sido actualizada.')
-                    ->line('Fecha de Inicio: ' . Carbon::parse($this->vacationRequest->fecha_inicio)->format('d/m/Y'))
-                    ->line('Fecha de Fin: ' . Carbon::parse($this->vacationRequest->fecha_fin)->format('d/m/Y'))
-                    ->line('Fecha de Reincorporación: ' . Carbon::parse($this->vacationRequest->fecha_reincorporacion)->format('d/m/Y'))
-                    ->line('Gracias por utilizar nuestra aplicación.');
+        $mailMessage = new MailMessage;
+
+        if ($this->status === 'aprobada') {
+            $mailMessage->subject('Actualización de Solicitud de Vacaciones')
+                        ->greeting('Hola Recursos Humanos,')
+                        ->line('La solicitud de vacaciones del empleado ' . $this->vacationRequest->empleado->name . ' ha sido aprobada.')
+                        ->line('Fecha de Inicio: ' . Carbon::parse($this->vacationRequest->fecha_inicio)->format('d/m/Y'))
+                        ->line('Fecha de Fin: ' . Carbon::parse($this->vacationRequest->fecha_fin)->format('d/m/Y'))
+                        ->line('Fecha de Reincorporación: ' . Carbon::parse($this->vacationRequest->fecha_reincorporacion)->format('d/m/Y'))
+                        ->line('Gracias por utilizar nuestra aplicación.');
+        } else {
+            $mailMessage->subject('Actualización de Solicitud de Vacaciones')
+                        ->greeting('Hola Recursos Humanos,')
+                        ->line('La solicitud de vacaciones del empleado ' . $this->vacationRequest->empleado->name . ' ha sido rechazada.')
+                        ->line('Gracias por utilizar nuestra aplicación.');
+        }
+
+        return $mailMessage;
     }
 }

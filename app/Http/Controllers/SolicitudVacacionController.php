@@ -59,9 +59,10 @@ class SolicitudVacacionController extends Controller
 }
 public function show($id)
 {
-    $solicitud = SolicitudVacacion::findOrFail($id);
-    return view('vacaciones.show', compact('solicitud'));
+    $vacationRequest = SolicitudVacacion::with('empleado', 'departamento')->findOrFail($id);
+    return view('vacaciones.show', compact('vacationRequest'));
 }
+
 
 
 public function store(Request $request)
@@ -116,6 +117,11 @@ public function store(Request $request)
 
 public function approve($id)
 {
+    if (!auth()->check()) {
+        session(['url.intended' => route('vacaciones.aprobar', $id)]);
+        return redirect()->route('login');
+    }
+
     $vacationRequest = SolicitudVacacion::findOrFail($id);
     $vacationRequest->estado = 'aprobado';
     $vacationRequest->save();
@@ -132,9 +138,13 @@ public function approve($id)
     return redirect()->route('vacaciones.index')->with('success', 'Solicitud aprobada.');
 }
 
-// En la función reject
 public function reject($id)
 {
+    if (!auth()->check()) {
+        session(['url.intended' => route('vacaciones.rechazar', $id)]);
+        return redirect()->route('login');
+    }
+
     $vacationRequest = SolicitudVacacion::findOrFail($id);
     $vacationRequest->estado = 'rechazado';
     $vacationRequest->save();

@@ -26,7 +26,7 @@
                         <!-- Tabla de permisos -->
                         <table class="min-w-full bg-white border">
                             <thead class="bg-gray-50">
-                                <tr>
+                                <tr class="text-sm leading-normal text-gray-600 uppercase bg-gray-200">
                                     <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase border-b border-gray-200">
                                         Nombre del Empleado
                                     </th>
@@ -93,6 +93,10 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="mt-4">
+                        {{ $permissions->links() }}
+                    </div>
+                    
                 </div>
             </div>
         </div>

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-xl font-semibold leading-tight text-gray-800">
-            {{ __('Mis Solicitudes de Vacaciones') }}
+            {{ __('Solicitudes de Vacaciones') }}
         </h2>
     </x-slot>
 
@@ -14,20 +14,16 @@
                     </div>
                 @endif
                 <div class="p-6 bg-white border-b border-gray-200">
-                    <!-- Botón para crear un nuevo permiso -->
                     <div class="mb-4">
                         <a href="{{ route('vacaciones.create') }}" class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:border-blue-800 focus:ring focus:ring-blue-200 disabled:opacity-25">
                             {{ __('Solicitar Vacaciones') }}
                         </a>
                     </div>
-                    @if($solicitudes->isEmpty())
-                        <p class="text-gray-600">No tienes solicitudes de vacaciones registradas.</p>
-                    @else
-                        
                     <div class="overflow-x-auto">
                         <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow">
                             <thead>
                                 <tr class="text-sm leading-normal text-gray-600 uppercase bg-gray-200">
+                                    <th class="px-6 py-3 text-left">Empleado</th> <!-- Nueva columna -->
                                     <th class="px-6 py-3 text-left">Periodo Correspondiente</th>
                                     <th class="px-6 py-3 text-left">Fecha de Inicio</th>
                                     <th class="px-6 py-3 text-left">Fecha de Fin</th>
@@ -39,7 +35,11 @@
                             <tbody class="text-sm font-light text-gray-600">
                                 @foreach ($solicitudes as $solicitud)
                                     <tr class="border-b border-gray-200 hover:bg-gray-100">
+                                        <!-- Muestra el nombre del empleado -->
                                         <td class="px-6 py-3 text-left whitespace-nowrap">
+                                            {{ $solicitud->empleado->name }}
+                                        </td>
+                                        <td class="px-6 py-3 text-left">
                                             {{ $solicitud->periodo_correspondiente }}
                                         </td>
                                         <td class="px-6 py-3 text-left">
@@ -57,33 +57,27 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-3 text-center">
-                                            @if (auth()->user()->id == $solicitud->empleado->supervisor_id)
-                                                <div class="flex justify-center space-x-4">
-                                                    <a href="{{ route('vacaciones.show', $solicitud->id) }}" class="text-blue-600 hover:underline">
-                                                        Ver
-                                                    </a>
-                                                    <a href="{{ route('vacaciones.aprobar', $solicitud->id) }}" class="text-green-600 hover:underline">
+                                            <div class="flex justify-center space-x-2 item-center">
+                                                <a href="{{ route('vacaciones.show', $solicitud->id) }}" class="text-blue-500 hover:underline">
+                                                    Ver
+                                                </a>
+                                                
+                                                @if ($solicitud->estado == 'pendiente')
+                                                    <a href="{{ route('vacaciones.aprobar', $solicitud->id) }}" class="text-green-500 hover:underline">
                                                         Aprobar
                                                     </a>
-                                                    <a href="{{ route('vacaciones.rechazar', $solicitud->id) }}" class="text-red-600 hover:underline">
+                                                    <a href="{{ route('vacaciones.rechazar', $solicitud->id) }}" class="text-red-500 hover:underline">
                                                         Rechazar
                                                     </a>
-                                                </div>
-                                            @else
-                                                <span class="text-sm text-gray-500">No autorizado</span>
-                                            @endif
-                                        </td>
+                                                @endif
+                                            </div>
+                                        </td>                                        
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
-                        
-                        
                     </div>
-                    <div class="mt-4">
-                        {{ $solicitudes->links() }}
-                    </div>
-                    @endif
+                    {{ $solicitudes->links() }} <!-- Agregar paginación -->
                 </div>
             </div>
         </div>
