@@ -18,33 +18,35 @@ use Maatwebsite\Excel\Facades\Excel;
 class SolicitudPermisoController extends Controller
 {
     public function index()
-{
-    $user = Auth::user();  // Obtener el usuario autenticado
-
-    // Definir el rango de la semana nominativa
-    $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY); // Inicio desde el miércoles de esta semana
-    $endOfWeek = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay(); // Fin hasta el martes de la siguiente semana
-
-    if ($user->hasRole('jefe')) {
-        // Si el usuario es jefe, muestra los permisos de los empleados que supervisa y los suyos propios
-        $solicitudes = SolicitudPermiso::whereHas('empleado', function ($query) use ($user) {
-                $query->where('supervisor_id', $user->id);  // Filtra los empleados supervisados
-            })
-            ->orWhere('empleado_id', $user->id)  // Muestra los permisos del propio jefe
-            ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek])  // Filtrar por la semana nominativa
-            ->with('empleado', 'departamento')  // Cargar las relaciones
-            ->get();
-    } else {
-        // Si es un empleado, solo muestra sus permisos
-        $solicitudes = SolicitudPermiso::where('empleado_id', $user->id)
-            ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek])  // Filtrar por la semana nominativa
-            ->with('empleado', 'departamento')
-            ->get();
+    {
+        $user = Auth::user(); // Obtener el usuario autenticado
+    
+        // Definir el rango de la semana nominativa
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY); // Inicio desde el miércoles de esta semana
+        $endOfWeek = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay(); // Fin hasta el martes de la siguiente semana
+    
+        if ($user->hasRole('jefe')) {
+            // Si el usuario es jefe, muestra los permisos de los empleados que supervisa y los suyos propios
+            $solicitudes = SolicitudPermiso::whereHas('empleado', function ($query) use ($user) {
+                    $query->where('supervisor_id', $user->id); // Filtra los empleados supervisados
+                })
+                ->orWhere('empleado_id', $user->id) // Muestra los permisos del propio jefe
+                ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]) // Filtrar por la semana nominativa
+                ->with('empleado', 'departamento') // Cargar las relaciones
+                ->orderBy('fecha_inicio', 'desc') // Ordenar por fecha de inicio
+                ->paginate(10); // Paginación de 10 elementos por página
+        } else {
+            // Si es un empleado, solo muestra sus permisos
+            $solicitudes = SolicitudPermiso::where('empleado_id', $user->id)
+                ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]) // Filtrar por la semana nominativa
+                ->with('empleado', 'departamento')
+                ->orderBy('fecha_inicio', 'desc')
+                ->paginate(10);
+        }
+    
+        // Retorna la vista con los permisos filtrados y paginados
+        return view('permisos.index', compact('solicitudes'));
     }
-
-    // Retorna la vista con los permisos filtrados por la semana nominativa
-    return view('permisos.index', compact('solicitudes'));
-}
 
     public function create()
     {

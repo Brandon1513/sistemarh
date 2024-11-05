@@ -64,26 +64,30 @@ class PermissionController extends Controller
 
 
 
-    public function index()
-    {
+public function index()
+{
     $user = auth()->user();
 
     // Si el usuario es un supervisor, muestra los permisos de sus empleados
     if ($user->hasRole('jefe')) {
         $permissions = Permission::whereHas('user', function ($query) use ($user) {
             $query->where('supervisor_id', $user->id);
-        })->orWhere('user_id', $user->id) // Además, muestra los permisos que el mismo supervisor ha solicitado
+        })
+        ->orWhere('user_id', $user->id) // Además, muestra los permisos que el mismo supervisor ha solicitado
         ->with('user', 'department')
-        ->get();
+        ->orderBy('date', 'desc') // Ordenar por fecha del permiso, ajusta si es necesario
+        ->paginate(10); // Paginación de 10 permisos por página
     } else {
         // Si es un empleado, muestra solo sus propios permisos
         $permissions = Permission::where('user_id', $user->id)
             ->with('user', 'department')
-            ->get();
+            ->orderBy('date', 'desc')
+            ->paginate(10); // Paginación de 10 permisos por página
     }
 
     return view('permissions.index', compact('permissions'));
-    }
+}
+
 
 
     public function show(Permission $permission)

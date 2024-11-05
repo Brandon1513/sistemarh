@@ -23,9 +23,9 @@
 
                     <!-- Contenedor para la tabla (para hacerla desplazable horizontalmente en pantallas pequeñas) -->
                     <div class="overflow-x-auto">
-                        <table class="min-w-full bg-white border">
+                        <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow">
                             <thead class="bg-gray-50">
-                                <tr>
+                                <tr class="text-sm leading-normal text-gray-600 uppercase bg-gray-200">
                                     <th class="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase border-b border-gray-200">
                                         Nombre del Empleado
                                     </th>
@@ -56,7 +56,7 @@
                                             {{ $solicitud->departamento->name }}
                                         </td>
                                         <td class="px-4 py-4 border-b border-gray-200 whitespace-nowrap">
-                                            {{ $solicitud->fecha_inicio }} - {{ $solicitud->fecha_termino }}
+                                            {{ \Carbon\Carbon::parse($solicitud->fecha_inicio)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($solicitud->fecha_termino)->format('d/m/Y') }}
                                         </td>
                                         <td class="px-4 py-4 border-b border-gray-200 whitespace-nowrap">
                                             {{ $solicitud->motivo }}
@@ -70,27 +70,29 @@
                                             </span>
                                         </td>
                                         <td class="px-4 py-4 border-b border-gray-200 whitespace-nowrap">
-                                            <!-- Botón Ver -->
+                                            <!-- Botón Ver siempre disponible -->
                                             <a href="{{ route('permisos.show', $solicitud->id) }}" class="text-blue-600 hover:text-blue-900">Ver</a>
 
-                                            <!-- Botones Aprobar y Rechazar, solo visibles para el jefe -->
-                                            @if(auth()->user()->hasRole('jefe'))
-                                                @if($solicitud->estado == 'pendiente')
-                                                    <form action="{{ route('permisos.aprobar', $solicitud->id) }}" method="POST" class="inline-block ml-2">
-                                                        @csrf
-                                                        <button type="submit" class="text-green-600 hover:text-green-900">Aprobar</button>
-                                                    </form>
-                                                    <form action="{{ route('permisos.rechazar', $solicitud->id) }}" method="POST" class="inline-block ml-2">
-                                                        @csrf
-                                                        <button type="submit" class="text-red-600 hover:text-red-900">Rechazar</button>
-                                                    </form>
-                                                @endif
+                                            <!-- Botones Aprobar y Rechazar, solo visibles para el jefe y si el estado es pendiente -->
+                                            @if(auth()->user()->hasRole('jefe') && $solicitud->estado == 'pendiente')
+                                                <form action="{{ route('permisos.aprobar', $solicitud->id) }}" method="POST" class="inline-block ml-2">
+                                                    @csrf
+                                                    <button type="submit" class="text-green-600 hover:text-green-900">Aprobar</button>
+                                                </form>
+                                                <form action="{{ route('permisos.rechazar', $solicitud->id) }}" method="POST" class="inline-block ml-2">
+                                                    @csrf
+                                                    <button type="submit" class="text-red-600 hover:text-red-900">Rechazar</button>
+                                                </form>
                                             @endif
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
+                    </div>
+                    <!-- Enlaces de paginación -->
+                    <div class="mt-4">
+                        {{ $solicitudes->links() }}
                     </div>
                 </div>
             </div>
