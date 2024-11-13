@@ -23,7 +23,7 @@
                         <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow">
                             <thead>
                                 <tr class="text-sm leading-normal text-gray-600 uppercase bg-gray-200">
-                                    <th class="px-6 py-3 text-left">Empleado</th> <!-- Nueva columna -->
+                                    <th class="px-6 py-3 text-left">Empleado</th>
                                     <th class="px-6 py-3 text-left">Periodo Correspondiente</th>
                                     <th class="px-6 py-3 text-left">Fecha de Inicio</th>
                                     <th class="px-6 py-3 text-left">Fecha de Fin</th>
@@ -35,7 +35,6 @@
                             <tbody class="text-sm font-light text-gray-600">
                                 @foreach ($solicitudes as $solicitud)
                                     <tr class="border-b border-gray-200 hover:bg-gray-100">
-                                        <!-- Muestra el nombre del empleado -->
                                         <td class="px-6 py-3 text-left whitespace-nowrap">
                                             {{ $solicitud->empleado->name }}
                                         </td>
@@ -62,7 +61,10 @@
                                                     Ver
                                                 </a>
                                                 
-                                                @if ($solicitud->estado == 'pendiente')
+                                                <!-- Check if the authenticated user is the creator of the request -->
+                                                @if ($solicitud->empleado_id == auth()->id())
+                                                    <span class="text-gray-500">No autorizado</span>
+                                                @elseif ($solicitud->estado == 'pendiente')
                                                     <a href="{{ route('vacaciones.aprobar', $solicitud->id) }}" class="text-green-500 hover:underline">
                                                         Aprobar
                                                     </a>

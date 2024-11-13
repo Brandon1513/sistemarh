@@ -54,6 +54,16 @@
                             <input type="file" name="supporting_document" id="supporting_document" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             <p class="mt-2 text-sm text-gray-500">Puedes subir una imagen o un archivo PDF.</p>
                         </div>
+                         <!-- Campo de Checkbox de Aviso de Privacidad -->
+                         <div class="mb-4">
+                            <label for="aviso_privacidad" class="flex items-center">
+                                <input id="aviso_privacidad" type="checkbox" name="aviso_privacidad" class="mr-2 border-gray-300 rounded shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
+                                <span class="text-sm text-gray-600">
+                                    He leído y acepto el 
+                                    <a href="https://dasavena.com/pages/terminos-condiciones/#aviso-privacidad" class="text-blue-500 underline hover:text-blue-700" target="_blank">Aviso de Privacidad</a>.
+                                </span>
+                            </label>
+                        </div>
                         <div id="preview" class="mt-4"></div> <!-- Aquí se mostrará la previsualización -->
                         <button type="submit" class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition bg-green-600 border border-transparent rounded-md hover:bg-green-700 active:bg-green-800 focus:outline-none focus:border-green-800 focus:ring focus:ring-green-200 disabled:opacity-25">
                             Solicitar Permiso
@@ -109,5 +119,5 @@
         };
     </script>
 
-
+    
 </x-app-layout>

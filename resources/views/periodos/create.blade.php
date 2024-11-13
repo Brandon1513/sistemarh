@@ -30,9 +30,9 @@
                             <!-- Lista de empleados con scroll -->
                             <div id="lista-empleados" class="h-64 overflow-y-auto border border-gray-300 rounded-md">
                                 @foreach($usuarios as $usuario)
-                                    <div class="empleado-item">
+                                    <div class="empleado-item" data-name="{{ $usuario->name }}" data-clave="{{ $usuario->clave_empleado }}" data-departamento="{{ $usuario->departamento->name ?? 'Sin departamento' }}">
                                         <input type="checkbox" name="empleado_id[]" value="{{ $usuario->id }}" class="empleado-checkbox">
-                                        <label>{{ $usuario->name }}</label>
+                                        <label>{{ $usuario->name }} - Clave: {{ $usuario->clave_empleado }} - Departamento: {{ $usuario->departamento->name ?? 'Sin departamento' }}</label>
                                     </div>
                                 @endforeach
                             </div>
@@ -116,31 +116,36 @@
 
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const busquedaEmpleado = document.getElementById('busqueda-empleado');
-        const listaEmpleados = document.getElementById('lista-empleados');
-        const seleccionarTodos = document.getElementById('seleccionar-todos');
-        const empleadosCheckboxes = document.querySelectorAll('.empleado-checkbox');
+   document.addEventListener('DOMContentLoaded', function () {
+    const busquedaEmpleado = document.getElementById('busqueda-empleado');
+    const listaEmpleados = document.getElementById('lista-empleados');
+    const seleccionarTodos = document.getElementById('seleccionar-todos');
+    const empleadosCheckboxes = document.querySelectorAll('.empleado-checkbox');
 
-        // Filtrar empleados en tiempo real
-        busquedaEmpleado.addEventListener('input', function () {
-            const filtro = busquedaEmpleado.value.toLowerCase();
-            document.querySelectorAll('.empleado-item').forEach(item => {
-                const nombreEmpleado = item.textContent.toLowerCase();
-                if (nombreEmpleado.includes(filtro)) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
+    // Filtrar empleados en tiempo real
+    busquedaEmpleado.addEventListener('input', function () {
+        const filtro = busquedaEmpleado.value.toLowerCase();
+        document.querySelectorAll('.empleado-item').forEach(item => {
+            const nombreEmpleado = item.getAttribute('data-name').toLowerCase();
+            const claveEmpleado = item.getAttribute('data-clave').toLowerCase();
+            const departamentoEmpleado = item.getAttribute('data-departamento').toLowerCase();
 
-        // Seleccionar o deseleccionar todos
-        seleccionarTodos.addEventListener('change', function () {
-            const isChecked = seleccionarTodos.checked;
-            empleadosCheckboxes.forEach(checkbox => {
-                checkbox.checked = isChecked;
-            });
+            // Compara el filtro con el nombre, clave y departamento
+            if (nombreEmpleado.includes(filtro) || claveEmpleado.includes(filtro) || departamentoEmpleado.includes(filtro)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
         });
     });
+
+    // Seleccionar o deseleccionar todos
+    seleccionarTodos.addEventListener('change', function () {
+        const isChecked = seleccionarTodos.checked;
+        empleadosCheckboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+    });
+});
+
 </script>

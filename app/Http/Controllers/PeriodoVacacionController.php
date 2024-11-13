@@ -15,14 +15,26 @@ class PeriodoVacacionController extends Controller
     /**
      * Muestra la lista de periodos de vacaciones para el usuario autenticado.
      */
-    public function index()
-    {
-        
-        $periodos = PeriodoVacacion::select('anio')->distinct()->orderBy('anio', 'asc')->get();
+    public function index(Request $request)
+{
+    // Iniciar una consulta sobre los periodos de vacaciones
+    $query = PeriodoVacacion::query();
 
-        return view('periodos.index', compact('periodos'));
-    
+    // Filtro de búsqueda por nombre o clave del empleado
+    if ($request->has('search')) {
+        $search = $request->input('search');
+        $query->whereHas('empleado', function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('clave_empleado', 'like', "%{$search}%");
+        });
     }
+
+    // Obtener los periodos de vacaciones con el empleado relacionado y aplicar paginación
+    $periodos = $query->with('empleado')->distinct('anio')->orderBy('anio', 'asc')->paginate(10);
+
+    return view('periodos.index', compact('periodos'));
+}
+
 
     /**
      * Muestra el formulario para crear una nueva solicitud de vacaciones.
@@ -74,43 +86,47 @@ private function calcularDiasCorrespondenSegunAntiguedad($empleadoId, $anio)
     /**
      * Muestra el formulario para editar una solicitud de vacaciones existente.
      */
-    public function edit(PeriodoVacacion $periodo)
+    public function edit($id)
     {
         $user = auth()->user();
-
-        // Verifica que el periodo pertenezca al usuario autenticado
-        if ($periodo->user_id !== $user->id) {
+        $periodo = PeriodoVacacion::findOrFail($id);
+    
+        // Permite la edición si el usuario es el propietario del periodo o si tiene los roles necesarios
+        if ($periodo->user_id !== $user->id && !$user->hasAnyRole(['administrador', 'recursos_humanos'])) {
             abort(403, 'No tienes permiso para editar esta solicitud.');
         }
 
-        return view('vacaciones.edit', compact('periodo'));
+        //dd($periodo);
+    
+        return view('periodos.edit', compact('periodo'));
     }
+    
+
 
     /**
      * Actualiza una solicitud de vacaciones existente.
      */
-    public function update(Request $request, PeriodoVacacion $periodo)
-    {
-        $request->validate([
-            'dias_corresponden' => 'required|integer',
-            'dias_solicitados' => 'required|integer',
-            'pendientes_disfrutar' => 'required|integer',
-            'periodo_correspondiente' => 'required|string',
-            'fecha_inicio_vacaciones' => 'required|date',
-            'fecha_termino_vacaciones' => 'required|date|after_or_equal:fecha_inicio_vacaciones',
-            'fecha_presentarse_trabajar' => 'required|date|after:fecha_termino_vacaciones',
-            'estado' => 'required|in:pendiente,aprobado,rechazado'
-        ]);
-
-        // Verifica que el periodo pertenezca al usuario autenticado
-        if ($periodo->user_id !== auth()->id()) {
-            abort(403, 'No tienes permiso para actualizar esta solicitud.');
-        }
-
-        $periodo->update($request->all());
-
-        return redirect()->route('vacaciones.index')->with('success', 'Solicitud de vacaciones actualizada exitosamente.');
+    public function update(Request $request, $id)
+{
+    $periodo = PeriodoVacacion::find($id);
+    if (!$periodo) {
+        return redirect()->route('periodos.index')->with('error', 'El periodo no fue encontrado.');
     }
+
+    $request->validate([
+        'dias_disponibles' => 'required|integer',
+    ]);
+
+    $periodo->dias_disponibles = $request->input('dias_disponibles');
+    $periodo->save();
+
+    return redirect()->route('periodos.index')->with('success', 'El periodo ha sido actualizado correctamente.');
+}
+
+
+
+    
+    
 
     /**
      * Elimina una solicitud de vacaciones.

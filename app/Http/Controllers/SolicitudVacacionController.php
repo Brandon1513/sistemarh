@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Notifications\VacationSecurityNotification;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Department;
@@ -135,7 +136,13 @@ public function approve($id)
     // Notificar al departamento de Recursos Humanos
     Notification::route('mail', $rhEmails)->notify(new VacationRHNotification($vacationRequest, 'aprobada'));
 
-    return redirect()->route('vacaciones.index')->with('success', 'Solicitud aprobada.');
+    // Notificar al personal de seguridad
+    $personalSeguridad = User::role('seguridad')->get(); // Suponiendo que tienes un rol 'seguridad'
+    foreach ($personalSeguridad as $persona) {
+        $persona->notify(new VacationSecurityNotification($vacationRequest));
+    }
+
+    return redirect()->route('vacaciones.index')->with('success', 'Solicitud aprobada y notificaciones enviadas.');
 }
 
 public function reject($id)
