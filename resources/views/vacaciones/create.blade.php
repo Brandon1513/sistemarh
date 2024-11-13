@@ -47,6 +47,21 @@
 
                         </div>
 
+                        <!-- Periodo correspondiente -->
+                        <div class="mb-4">
+                            <label for="periodo_correspondiente" class="block text-sm font-medium text-gray-700">
+                                {{ __('Periodo correspondiente') }}
+                            </label>
+                            <select id="periodo_correspondiente" name="periodo_correspondiente" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Selecciona un periodo</option>
+                                @foreach($periodos as $periodo)
+                                    <option value="{{ $periodo->anio }}" data-dias-disponibles="{{ $periodo->dias_disponibles }}">
+                                        {{ $periodo->anio }} - Días disponibles: {{ $periodo->dias_disponibles }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
                         <!-- Días que Correspondan -->
                         <div class="mb-4">
                             <label for="dias_corresponden" class="block text-sm font-medium text-gray-700">
@@ -54,6 +69,7 @@
                             </label>
                             <input type="number" name="dias_corresponden" id="dias_corresponden" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"  readonly>
                         </div>
+                        
 
                         <!-- Días Solicitados -->
                         <div class="mb-4">
@@ -70,26 +86,6 @@
                             </label>
                             <input type="number" name="pendientes_disfrutar" id="pendientes_disfrutar" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"  readonly>
                         </div>
-
-                        <!-- Periodo correspondiente -->
-                        <div class="mb-4">
-                            <label for="periodo_correspondiente" class="block text-sm font-medium text-gray-700">
-                                {{ __('Periodo correspondiente') }}
-                            </label>
-                            <select id="periodo_correspondiente" name="periodo_correspondiente" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                <option value="">Selecciona un periodo</option>
-                                @foreach($periodos as $periodo)
-                                    <option value="{{ $periodo->anio }}" data-dias-disponibles="{{ $periodo->dias_disponibles }}">
-                                        {{ $periodo->anio }} - Días disponibles: {{ $periodo->dias_disponibles }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-
-                
-
-
                         <!-- Fecha de Inicio de Vacaciones -->
                         <div class="mb-4">
                             <label for="fecha_inicio_vacaciones" class="block text-sm font-medium text-gray-700">
@@ -142,6 +138,52 @@
         {{ session('success') }}
     </div>
 @endif
+
+<!-- Modal de advertencia -->
+<div id="vacationModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
+    <div class="max-w-lg p-8 bg-white rounded-lg shadow-lg">
+        <h2 class="mb-4 text-lg font-semibold">Advertencia de Solicitud de Vacaciones</h2>
+        <p>Las solicitudes de vacaciones deben realizarse con un mínimo de 7 días de anticipación. Por favor, confirme que está de acuerdo para proceder con la solicitud.</p>
+        
+        <!-- Checkbox de aceptación -->
+        <div class="mt-4">
+            <input type="checkbox" id="acceptTerms" class="mr-2">
+            <label for="acceptTerms">Acepto los términos y condiciones</label>
+        </div>
+        
+        <!-- Botón para proceder -->
+        <div class="mt-6 text-right">
+            <button id="proceedButton" class="px-4 py-2 text-white bg-blue-500 rounded disabled:opacity-50" disabled>
+                Proceder
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para controlar el modal -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Mostrar el modal al cargar la página
+        const modal = document.getElementById('vacationModal');
+        modal.classList.remove('hidden');
+        
+        // Habilitar el botón "Proceder" cuando se marca el checkbox
+        const acceptCheckbox = document.getElementById('acceptTerms');
+        const proceedButton = document.getElementById('proceedButton');
+        
+        acceptCheckbox.addEventListener('change', function () {
+            proceedButton.disabled = !this.checked;
+        });
+        
+        // Ocultar el modal cuando se hace clic en "Proceder"
+        proceedButton.addEventListener('click', function () {
+            modal.classList.add('hidden');
+        });
+    });
+</script>
+
+
+
 </x-app-layout>
 
 
