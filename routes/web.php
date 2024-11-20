@@ -57,6 +57,8 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
     Route::get('/empleados/{id}/edit', [EmpleadoController::class, 'edit'])->name('empleados.edit');
     Route::put('/empleados/{id}', [EmpleadoController::class, 'update'])->name('empleados.update');
     Route::delete('/empleados/{id}', [EmpleadoController::class, 'destroy'])->name('empleados.destroy');
+    Route::patch('/empleados/{id}/toggle', [EmpleadoController::class, 'toggle'])->name('empleados.toggle');
+
 });
 
 Route::resource('supervisores', SupervisorController::class);
