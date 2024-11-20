@@ -7,6 +7,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
+use Illuminate\Database\Eloquent\Builder;
+
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasRoles; // Incluye el trait HasRoles de Spatie
@@ -15,6 +17,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'activo',
         'supervisor_id',
         'clave_empleado',   // Agrega este campo
         'fecha_ingreso',    // Agrega este campo
@@ -27,6 +30,15 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Agregar Global Scope para usuarios activos
+        static::addGlobalScope('activo', function (Builder $builder) {
+            $builder->where('activo', true);
+        });
+    }
 
     protected $casts = [
         'email_verified_at' => 'datetime',
