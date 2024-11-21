@@ -192,9 +192,14 @@
                             {{ __('Perfil') }}
                         </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('permissions.index')" :active="request()->routeIs('permissions.index')">
-                        {{ __('Permisos') }}
+                        {{ __('Pase de Salida') }}
                     </x-responsive-nav-link>
-                    
+                    <x-responsive-nav-link :href="route('permisos.index')" :active="request()->routeIs('permisos.index')">
+                        {{ __('Control de Ausencia') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('vacaciones.index')" :active="request()->routeIs('vacaciones.index')">
+                        {{ __('Solicitar Vacaciones') }}
+                    </x-responsive-nav-link>
                     
                     @if(Auth::user()->hasRole('administrador'))
                         <x-responsive-nav-link :href="route('empleados.index')" :active="request()->routeIs('empleados.index')">
