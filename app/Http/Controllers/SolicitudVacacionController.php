@@ -16,6 +16,7 @@ use App\Notifications\VacationRHNotification;
 use App\Notifications\VacationApprovedNotification;
 use App\Notifications\VacationRejectedNotification;
 use App\Models\VacationRequest;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class SolicitudVacacionController extends Controller
@@ -168,7 +169,49 @@ public function reject($id)
     return redirect()->route('vacaciones.index')->with('success', 'Solicitud rechazada.');
 }
 
+public function indexRH(Request $request)
+{
+    $query = SolicitudVacacion::with(['empleado', 'departamento'])
+        ->whereIn('estado', ['aprobado', 'rechazado', 'pendiente']);
 
+    // Filtrar por nombre de empleado si se proporciona
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->whereHas('empleado', function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%");
+        });
+    }
 
+    // Filtrar por rango de fechas si se proporciona
+    if ($request->filled('start_date') && $request->filled('end_date')) {
+        $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
+        $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+        $query->whereBetween('fecha_inicio', [$startDate, $endDate]);
+    }
+
+    // Si no se proporciona ni nombre ni rango de fechas, aplicar el filtro de la semana nominal
+    if (!$request->filled('search') && !$request->filled('start_date') && !$request->filled('end_date')) {
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY); // Inicio de la semana (miércoles)
+        $endOfWeek = $startOfWeek->copy()->addDays(6)->endOfDay();    // Fin de la semana (martes)
+        $query->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]);
+    }
+
+    $vacaciones = $query->get();
+
+    return view('solicitudes_vacaciones.index', ['vacations' => $vacaciones]);
+}
+public function showRH($id)
+{
+    $vacation = SolicitudVacacion::with(['empleado', 'departamento'])->findOrFail($id);
+    return view('solicitudes_vacaciones.show', compact('vacation'));
+}
+
+public function downloadPDF($id)
+{
+    $vacation = SolicitudVacacion::with(['empleado', 'departamento'])->findOrFail($id);
+    
+    $pdf = Pdf::loadView('solicitudes_vacaciones.pdf', compact('vacation'));
+    return $pdf->download('solicitud_vacaciones_' . $vacation->id . '.pdf');
+}
     
 }

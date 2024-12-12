@@ -9,6 +9,11 @@
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
+                    @if (session('success'))
+                        <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+                            {{ session('success') }}
+                        </div>
+                    @endif
                     <!-- Formulario de búsqueda con descarga de ZIP -->
                     <form method="GET" action="{{ route('solicitudes_permisos.index') }}">
                         <div class="flex mb-4 space-x-4">

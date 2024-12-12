@@ -107,8 +107,8 @@
                                     <x-dropdown-link :href="route('solicitudes_permisos.index')" :active="request()->routeIs('solicitudes_permisos.index')">
                                         {{ __('Control de ausencia') }}
                                     </x-dropdown-link>
-                                    <x-dropdown-link :href="route('dashboard')">
-                                        {{ __('Vacaciones Proximamente') }}
+                                    <x-dropdown-link :href="route('solicitudes_vacaciones.index')" :active="request()->routeIs('solicitudes_vacaciones.index')">
+                                        {{ __('Control de Vacaciones') }}
                                     </x-dropdown-link>
                                 </x-slot>
                             </x-dropdown>
@@ -232,8 +232,8 @@
                         <x-responsive-nav-link :href="route('solicitudes_permisos.index')" :active="request()->routeIs('solicitudes_permisos.index')">
                             {{ __('Control ausencias RH') }}
                         </x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('rh.index')" :active="request()->routeIs('rh.index')">
-                            {{ __('Vacaciones RH Proximamente') }}
+                        <x-responsive-nav-link :href="route('solicitudes_vacaciones.index')" :active="request()->routeIs('solicitudes_vacaciones.index')">
+                            {{ __('Control Vacaciones RH') }}
                         </x-responsive-nav-link>
                     @endif
                         <!-- Authentication -->

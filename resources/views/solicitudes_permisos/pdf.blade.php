@@ -64,7 +64,8 @@
     <table>
         <tr>
             <td rowspan="2" class="header" style="width: 15%; text-align: center;">
-                <img src="{{ public_path('images/logo.png') }}" class="logo" alt="Logo">
+                <img src="{{ asset('images/logo.png') }}" class="logo" alt="Logo">
+
             </td>
             <td colspan="3" class="header" style="text-align: center;">
                 <strong>Nombre del documento:</strong><br>Control de Ausencias del Personal
