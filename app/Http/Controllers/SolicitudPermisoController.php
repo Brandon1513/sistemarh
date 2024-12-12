@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\PermisosExport;
 use App\Models\User;
 use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use App\Exports\PermisosExport;
+use App\Jobs\ExportPermisosJob;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\SolicitudPermiso;
+use App\Jobs\ExportZipPermisosJob;
+use App\Jobs\ExportWeekPermisosJob;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\NotificacionSolicitudPermiso;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Mail\NotificacionSolicitudPermiso;
 
 class SolicitudPermisoController extends Controller
 {
@@ -105,40 +108,45 @@ class SolicitudPermisoController extends Controller
     }
 
     public function aprobar($id)
-    {
-        // Buscar la solicitud de permiso por su ID
-        $permiso = SolicitudPermiso::findOrFail($id);
+{
+    $permiso = SolicitudPermiso::findOrFail($id);
 
-        // Verificar si el permiso ya está aprobado o rechazado
-        if ($permiso->estado != 'pendiente') {
-            return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
-        }
-
-        // Cambiar el estado a "aprobado"
-        $permiso->estado = 'aprobado';
-        $permiso->save();
-
-        // Redirigir con mensaje de éxito
-        return redirect()->route('permisos.index')->with('success', 'Permiso aprobado con éxito.');
+    if ($permiso->estado != 'pendiente') {
+        return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
     }
 
-    public function rechazar($id)
-    {
-        // Buscar la solicitud de permiso por su ID
-        $permiso = SolicitudPermiso::findOrFail($id);
+    $permiso->estado = 'aprobado';
+    $permiso->save();
 
-        // Verificar si el permiso ya está aprobado o rechazado
-        if ($permiso->estado != 'pendiente') {
-            return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
-        }
-
-        // Cambiar el estado a "rechazado"
-        $permiso->estado = 'rechazado';
-        $permiso->save();
-
-        // Redirigir con mensaje de éxito
-        return redirect()->route('permisos.index')->with('success', 'Permiso rechazado con éxito.');
+    // Enviar notificación al usuario que solicitó el permiso
+    $empleado = $permiso->empleado;
+    if ($empleado) {
+        $empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('aprobado'));
     }
+
+    return redirect()->route('permisos.index')->with('success', 'Permiso aprobado con éxito.');
+}
+
+public function rechazar($id)
+{
+    $permiso = SolicitudPermiso::findOrFail($id);
+
+    if ($permiso->estado != 'pendiente') {
+        return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
+    }
+
+    $permiso->estado = 'rechazado';
+    $permiso->save();
+
+    // Enviar notificación al usuario que solicitó el permiso
+    $empleado = $permiso->empleado;
+    if ($empleado) {
+        $empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('rechazado'));
+    }
+
+    return redirect()->route('permisos.index')->with('success', 'Permiso rechazado con éxito.');
+}
+
 
     public function indexSolicitudesPermiso(Request $request)
 {
@@ -196,98 +204,47 @@ public function downloadPDF($id)
 
  //EXPORTAR LIBRO MAYO
  public function export(Request $request)
-{
-    // Construir la consulta base con las relaciones necesarias
-    $query = SolicitudPermiso::with('empleado', 'departamento');
+ {
+     $search = $request->input('search');
+     $startDate = $request->input('start_date');
+     $endDate = $request->input('end_date');
+ 
+     // Encolar el job para exportar en segundo plano
+     ExportPermisosJob::dispatch($search, $startDate, $endDate, auth()->id(), auth()->user()->email);
 
-    // **Filtro por nombre del empleado** si se proporciona
-    if ($request->filled('search')) {
-        $search = $request->input('search');
-        $query->whereHas('empleado', function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%");
-        });
-    }
 
-    // **Filtro por rango de fechas** si se proporciona
-    if ($request->filled('start_date') && $request->filled('end_date')) {
-        $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
-        $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
-        $query->whereBetween('fecha_inicio', [$startDate, $endDate]);
-    }
-
-    // Obtener los permisos filtrados
-    $solicitudes = $query->get();
-
-    // Descargar los permisos filtrados en un archivo Excel
-    return Excel::download(new PermisosExport($solicitudes), 'controlausencia.xlsx');
-}
+ 
+     return redirect()->back()->with('success', 'La exportación se está procesando. Recibirás una notificación cuando esté lista.');
+ }
+ 
 
 //Exporta por seman nominal miercoles a martes
-    public function exportWeek()
-    {
-        // Obtener el inicio y fin de la semana nominativa
-        $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY); // Desde miércoles de esta semana
-        $endOfWeek = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay(); // Hasta martes de la siguiente semana
+public function exportWeek()
+{
+    // Obtener el ID y el email del usuario autenticado
+    $userId = auth()->id();
+    $userEmail = auth()->user()->email;
 
-        // Filtrar las solicitudes de permisos en ese rango
-        $solicitudes = SolicitudPermiso::with('empleado', 'departamento')
-            ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek])
-            ->get();
+    // Encolar el Job para exportar en segundo plano
+    ExportWeekPermisosJob::dispatch($userId, $userEmail);
 
-        // Descargar los permisos de la semana nominativa en un archivo Excel
-        return Excel::download(new PermisosExport($solicitudes), 'permisos_semana_nominativa.xlsx');
-    }
+    // Redirigir con mensaje de éxito
+    return redirect()->back()->with('success', 'La exportación de la semana nominal se está procesando. Recibirás una notificación cuando esté lista.');
+}
+
 
     public function downloadSolicitudesZIP(Request $request)
 {
-    // Crear una nueva instancia de ZipArchive
-    $zip = new \ZipArchive();
-    $fileName = 'solicitudes_permisos.zip';
+    $search = $request->input('search');
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+    $userId = auth()->id();
+    $userEmail = auth()->user()->email;
 
-    // Ruta donde se almacenará el archivo ZIP temporalmente
-    $zipPath = public_path($fileName);
+    // Llamar al Job
+    ExportZipPermisosJob::dispatch($search, $startDate, $endDate, $userId, $userEmail);
 
-    if ($zip->open($zipPath, \ZipArchive::CREATE) === TRUE) {
-        // Construir la consulta base
-        $query = SolicitudPermiso::with('empleado', 'departamento')
-            ->whereIn('estado', ['aprobado', 'rechazado', 'pendiente']);
-
-        // Filtrar por nombre si se proporciona
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->whereHas('empleado', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            });
-        }
-
-        // Filtrar por rango de fechas si se proporciona
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
-            $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
-            $query->whereBetween('fecha_inicio', [$startDate, $endDate]);
-        }
-
-        // Obtener los permisos filtrados
-        $permisos = $query->get();
-
-        // Generar PDFs y agregarlos al ZIP
-        foreach ($permisos as $permiso) {
-            // Generar el PDF para el permiso y pasar la variable correctamente
-            $pdf = Pdf::loadView('solicitudes_permisos.pdf', ['permiso' => $permiso]);
-
-            // Guardar el contenido del PDF como una cadena
-            $pdfOutput = $pdf->output();
-
-            // Añadir el PDF al archivo ZIP (usa el ID del permiso para el nombre del archivo)
-            $zip->addFromString('permiso_'.$permiso->id.'.pdf', $pdfOutput);
-        }
-
-        // Cerrar el archivo ZIP después de agregar todos los PDFs
-        $zip->close();
-    }
-
-    // Retornar el archivo ZIP para descarga
-    return response()->download($zipPath)->deleteFileAfterSend(true);
+    return redirect()->back()->with('success', 'La exportación en ZIP se está procesando. Recibirás un correo cuando esté lista.');
 }
 
 

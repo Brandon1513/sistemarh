@@ -7,10 +7,10 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\SupervisorController;
-use App\Http\Controllers\RecursosHumanosController;
 use App\Http\Controllers\PeriodoVacacionController;
+use App\Http\Controllers\RecursosHumanosController;
 
-use App\Http\Controllers\SolicitudPermisoController;
+use App\Http\Controllers\VacationRequestController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -82,8 +82,6 @@ Route::middleware(['role:recursos_humanos'])->group(function () {
 });
 
 Route::get('/rh/{permission}/download', [PermissionController::class, 'downloadPDF'])->name('permissions.download');
-//Descagar zip
-//Route::post('/permissions/download-zip', [PermissionController::class, 'downloadPermissionsZip'])->name('permissions.download-zip');
 Route::post('/permissions/download-zip', [PermissionController::class, 'downloadPDFsAsZip'])->name('permissions.download-zip');
 
 
@@ -96,6 +94,7 @@ Route::middleware(['role:recursos_humanos'])->group(function () {
 
 //Control de ausencias del personal
 
+use App\Http\Controllers\SolicitudPermisoController;
 use App\Http\Controllers\SolicitudVacacionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 
@@ -145,6 +144,19 @@ Route::middleware(['auth'])->group(function(){
     Route::get('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'approve'])->name('vacaciones.aprobar');
     Route::get('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'reject'])->name('vacaciones.rechazar');
     
+});
+
+// Rutas para las solicitudes de vacaciones
+Route::middleware(['auth', 'role:recursos_humanos'])->prefix('solicitudes-vacaciones')->name('solicitudes_vacaciones.')->group(function () {
+    Route::get('/exportar', [SolicitudVacacionController::class, 'export'])->name('export');
+    Route::get('/exportar-semana', [SolicitudVacacionController::class, 'exportWeek'])->name('exportWeek');
+    Route::get('/descargar-zip', [SolicitudVacacionController::class, 'downloadZip'])->name('download-zip');
+});
+
+Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
+    Route::get('/solicitudes-vacaciones', [SolicitudVacacionController::class, 'indexRH'])->name('solicitudes_vacaciones.index');
+    Route::get('/solicitudes-vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
+    Route::get('/solicitudes-vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
 });
 
 //PERIODOS

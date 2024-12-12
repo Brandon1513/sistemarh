@@ -31,15 +31,21 @@ return [
     |
     |    The environment variables to set while running the wkhtmltopdf process.
     |
+    'binary'  => env('WKHTML_PDF_BINARY', '/usr/bin/wkhtmltopdf'),
+        'timeout' => false,
     */
     
     'pdf' => [
         'enabled' => true,
-        'binary'  => env('WKHTML_PDF_BINARY', '/usr/bin/wkhtmltopdf'),
+        'binary' => env('WKHTMLTOPDF_BINARY', '/usr/bin/wkhtmltopdf'),
         'timeout' => false,
-        'options' => [],
-        'env'     => [],
+        'options' => [
+            'enable-local-file-access' => true, // Importante para acceder a imágenes locales
+        ],
+        'env' => [],
     ],
+
+
     
     'image' => [
         'enabled' => true,

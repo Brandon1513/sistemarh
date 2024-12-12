@@ -49,5 +49,10 @@ class Permission extends Model
     {
         return $this->belongsTo(User::class, 'hr_id');
     }
+    public function empleado()
+{
+    return $this->belongsTo(User::class, 'user_id'); // Ajusta 'empleado_id' según el nombre de tu columna en la tabla de permisos
+}
+
 }
 

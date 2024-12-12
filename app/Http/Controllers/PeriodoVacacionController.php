@@ -16,24 +16,25 @@ class PeriodoVacacionController extends Controller
      * Muestra la lista de periodos de vacaciones para el usuario autenticado.
      */
     public function index(Request $request)
-{
-    // Iniciar una consulta sobre los periodos de vacaciones
-    $query = PeriodoVacacion::query();
-
-    // Filtro de búsqueda por nombre o clave del empleado
-    if ($request->has('search')) {
-        $search = $request->input('search');
-        $query->whereHas('empleado', function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('clave_empleado', 'like', "%{$search}%");
-        });
+    {
+        // Iniciar una consulta sobre los periodos de vacaciones
+        $query = PeriodoVacacion::query();
+    
+        // Filtro de búsqueda por nombre o clave del empleado
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->whereHas('empleado', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('clave_empleado', 'like', "%{$search}%");
+            });
+        }
+    
+        // Obtener los periodos de vacaciones con el empleado relacionado y aplicar paginación
+        $periodos = $query->with('empleado')->orderBy('anio', 'asc')->paginate(10);
+    
+        return view('periodos.index', compact('periodos'));
     }
-
-    // Obtener los periodos de vacaciones con el empleado relacionado y aplicar paginación
-    $periodos = $query->with('empleado')->distinct('anio')->orderBy('anio', 'asc')->paginate(10);
-
-    return view('periodos.index', compact('periodos'));
-}
+    
 
 
     /**
