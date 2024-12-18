@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Notifications\VacationSecurityNotification;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Department;
 use Illuminate\Http\Request;
 use App\Models\PeriodoVacacion;
+use App\Models\VacationRequest;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\SolicitudVacacion;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\VacationRequestNotification;
+use App\Jobs\ExportLibroMayorVacacionesJob;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\VacationRHNotification;
 use App\Notifications\VacationApprovedNotification;
 use App\Notifications\VacationRejectedNotification;
-use App\Models\VacationRequest;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Notifications\VacationSecurityNotification;
 
 
 class SolicitudVacacionController extends Controller
@@ -44,21 +45,21 @@ class SolicitudVacacionController extends Controller
     
 
     public function create()
-{
-    $user = auth()->user(); // Usuario autenticado
-    $periodos = PeriodoVacacion::where('empleado_id', $user->id)->get(); // Filtra los periodos solo del usuario autenticado
-    $departments = Department::all(); // Obtiene todos los departamentos
+    {
+        $user = auth()->user(); // Usuario autenticado
     
-
-    // Verifica que el usuario tenga un departamento asociado
-    if ($user->departamento) {
-        $departamentoNombre = $user->departamento->name;
-    } else {
-        $departamentoNombre = 'Sin departamento'; // Valor por defecto si el departamento es nulo
+        // Obtener solo los periodos activos del usuario autenticado
+        $periodos = PeriodoVacacion::where('empleado_id', $user->id)
+                                    ->where('activo', 1) // Filtra solo los periodos activos
+                                    ->get();
+    
+        $departments = Department::all(); // Obtiene todos los departamentos
+    
+        // Verifica que el usuario tenga un departamento asociado
+        $departamentoNombre = $user->departamento ? $user->departamento->name : 'Sin departamento';
+    
+        return view('vacaciones.create', compact('user', 'departments', 'departamentoNombre', 'periodos'));
     }
-
-    return view('vacaciones.create', compact('user', 'departments', 'departamentoNombre','periodos'));
-}
 public function show($id)
 {
     $vacationRequest = SolicitudVacacion::with('empleado', 'departamento')->findOrFail($id);
@@ -153,21 +154,39 @@ public function reject($id)
         return redirect()->route('login');
     }
 
+    // Encuentra la solicitud de vacaciones
     $vacationRequest = SolicitudVacacion::findOrFail($id);
+
+    // Si la solicitud ya está rechazada, no hacemos nada
+    if ($vacationRequest->estado === 'rechazado') {
+        return redirect()->route('vacaciones.index')->with('info', 'La solicitud ya está rechazada.');
+    }
+
+    // Devuelve los días solicitados al periodo correspondiente
+    $periodo = PeriodoVacacion::where('empleado_id', $vacationRequest->empleado_id)
+                            ->where('anio', $vacationRequest->periodo_correspondiente)
+                            ->first();
+
+    if ($periodo) {
+        $periodo->dias_disponibles += $vacationRequest->dias_solicitados;
+        $periodo->save();
+    }
+
+    // Actualiza el estado de la solicitud a 'rechazado'
     $vacationRequest->estado = 'rechazado';
     $vacationRequest->save();
 
-    $employee = $vacationRequest->empleado;
-    $rhEmails = User::role('recursos_humanos')->pluck('email')->toArray();
-
     // Notificar al empleado
+    $employee = $vacationRequest->empleado;
     $employee->notify(new VacationRejectedNotification($vacationRequest));
 
     // Notificar al departamento de Recursos Humanos
+    $rhEmails = User::role('recursos_humanos')->pluck('email')->toArray();
     Notification::route('mail', $rhEmails)->notify(new VacationRHNotification($vacationRequest, 'rechazada'));
 
-    return redirect()->route('vacaciones.index')->with('success', 'Solicitud rechazada.');
+    return redirect()->route('vacaciones.index')->with('success', 'Solicitud rechazada y días devueltos correctamente.');
 }
+
 
 public function indexRH(Request $request)
 {
@@ -212,6 +231,17 @@ public function downloadPDF($id)
     
     $pdf = Pdf::loadView('solicitudes_vacaciones.pdf', compact('vacation'));
     return $pdf->download('solicitud_vacaciones_' . $vacation->id . '.pdf');
+}
+public function export(Request $request)
+{
+    ExportLibroMayorVacacionesJob::dispatch(
+        $request->input('search'),
+        $request->input('start_date'),
+        $request->input('end_date'),
+        auth()->user()->email
+    );
+
+    return back()->with('success', 'El archivo está siendo procesado y será enviado por correo.');
 }
     
 }

@@ -14,6 +14,7 @@ class PeriodoVacacion extends Model
         'anio',
         'dias_corresponden',
         'dias_disponibles',
+        'activo', // Nuevo campo
     ];
 
     // Relación con el modelo User

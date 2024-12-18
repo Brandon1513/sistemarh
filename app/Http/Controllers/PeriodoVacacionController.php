@@ -183,4 +183,13 @@ private function calcularDiasCorresponden($antiguedad)
         elseif ($antiguedad >= 31 && $antiguedad <= 35) return 32;
         else return 32;
     }
+
+    public function toggleActivo($id)
+{
+    $periodo = PeriodoVacacion::findOrFail($id);
+    $periodo->activo = !$periodo->activo; // Cambia el estado de activo
+    $periodo->save();
+
+    return redirect()->back()->with('success', 'Estado del período actualizado correctamente.');
+}
 }
