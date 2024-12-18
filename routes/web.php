@@ -147,16 +147,17 @@ Route::middleware(['auth'])->group(function(){
 });
 
 // Rutas para las solicitudes de vacaciones
-Route::middleware(['auth', 'role:recursos_humanos'])->prefix('solicitudes-vacaciones')->name('solicitudes_vacaciones.')->group(function () {
-    Route::get('/exportar', [SolicitudVacacionController::class, 'export'])->name('export');
-    Route::get('/exportar-semana', [SolicitudVacacionController::class, 'exportWeek'])->name('exportWeek');
-    Route::get('/descargar-zip', [SolicitudVacacionController::class, 'downloadZip'])->name('download-zip');
-});
+
 
 Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
-    Route::get('/solicitudes-vacaciones', [SolicitudVacacionController::class, 'indexRH'])->name('solicitudes_vacaciones.index');
-    Route::get('/solicitudes-vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
-    Route::get('/solicitudes-vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
+    Route::get('/solicitudes_vacaciones', [SolicitudVacacionController::class, 'indexRH'])->name('solicitudes_vacaciones.index');
+    Route::get('/solicitudes_vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
+    Route::get('/solicitudes_vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
+    Route::get('/solicitudes_vacaciones/export', [SolicitudVacacionController::class, 'export'])->name('solicitudes_vacaciones.export');
+
+    Route::get('/solicitudes_vacaciones/exportWeek', [SolicitudVacacionController::class, 'exportWeek'])->name('solicitudes_vacaciones.exportWeek');
+    Route::get('/solicitudes_vacaciones/download-zip', [SolicitudVacacionController::class, 'download-zip'])->name('solicitudes_vacaciones.download-zip');
+    
 });
 
 //PERIODOS
@@ -171,6 +172,8 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
     Route::put('/periodos/{id}', [PeriodoVacacionController::class, 'update'])->name('periodos.update');
     // Eliminar un período de vacaciones
     Route::delete('/periodos/{id}', [PeriodoVacacionController::class, 'destroy'])->name('periodos.destroy');
+    Route::post('/periodos_vacaciones/{id}/toggle-activo', [PeriodoVacacionController::class, 'toggleActivo'])->name('periodos_vacaciones.toggle-activo');
+
 });
 
 require __DIR__.'/auth.php';

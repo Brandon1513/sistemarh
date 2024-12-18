@@ -48,7 +48,14 @@
                                         <td class="px-4 py-4 text-sm text-gray-700 border-b">{{ $periodo->anio }}</td>
                                         <td class="px-4 py-4 text-sm text-blue-600 border-b">
                                             <a href="{{ route('periodos.edit', $periodo->id) }}" class="hover:underline">Editar</a>
+                                            <form action="{{ route('periodos_vacaciones.toggle-activo', $periodo->id) }}" method="POST" style="display: inline;">
+                                                @csrf
+                                                <button type="submit" class="inline-flex items-center px-3 py-1 text-white rounded {{ $periodo->activo ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600' }}">
+                                                    {{ $periodo->activo ? 'Inactivar' : 'Activar' }}
+                                                </button>
+                                            </form>
                                         </td>
+                                       
                                     </tr>
                                 @empty
                                     <tr>
