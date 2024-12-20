@@ -9,6 +9,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\PeriodoVacacionController;
 use App\Http\Controllers\RecursosHumanosController;
+use App\Http\Controllers\ExportVacacionesController;
 
 use App\Http\Controllers\VacationRequestController;
 
@@ -153,12 +154,31 @@ Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
     Route::get('/solicitudes_vacaciones', [SolicitudVacacionController::class, 'indexRH'])->name('solicitudes_vacaciones.index');
     Route::get('/solicitudes_vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
     Route::get('/solicitudes_vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
-    Route::get('/solicitudes_vacaciones/export', [SolicitudVacacionController::class, 'export'])->name('solicitudes_vacaciones.export');
+    
 
-    Route::get('/solicitudes_vacaciones/exportWeek', [SolicitudVacacionController::class, 'exportWeek'])->name('solicitudes_vacaciones.exportWeek');
-    Route::get('/solicitudes_vacaciones/download-zip', [SolicitudVacacionController::class, 'download-zip'])->name('solicitudes_vacaciones.download-zip');
+
+    
+    
     
 });
+
+Route::get('/solicitudes_vacaciones/download-zip', function () {
+    \Log::info('Ruta /solicitudes_vacaciones/export alcanzada');
+    return app(ExportVacacionesController::class)->exportZip(request());
+})->name('solicitudes_vacaciones.download-zip');
+
+
+Route::get('/solicitudes-vacaciones/exportWeek', function(){
+    \Log::info('Ruta /solicitudes-vacaciones/exportWeek alcanzada');
+    return app(ExportVacacionesController::class)->exportWeek(request());
+})->name('solicitudes_vacaciones.exportWeek');
+
+
+Route::get('/solicitudes-vacaciones/export', function () {
+    \Log::info('Ruta /solicitudes-vacaciones/export alcanzada');
+    return app(ExportVacacionesController::class)->export(request());
+})->name('solicitudes_vacaciones.export');
+
 
 //PERIODOS
 Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function () {

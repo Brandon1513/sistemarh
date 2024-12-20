@@ -11,4 +11,9 @@ export default defineConfig({
             refresh: true,
         }),
     ],
+    server: {
+        host: '127.0.0.1', // Forzar IPv4
+        port: 5174, // Cambia al puerto que prefieras
+        strictPort: false, // Permite usar un puerto dinámico si 5173 está ocupado
+    },
 });

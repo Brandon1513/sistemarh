@@ -2,15 +2,17 @@
 
 namespace App\Jobs;
 
-use App\Exports\PermissionsExport;
-use App\Mail\ExportVacacionesMail;
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Support\Carbon;
+use App\Exports\PermisosExport;
+use App\Models\SolicitudPermiso;
+use App\Mail\PermisosExportadosMail;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Queue\InteractsWithQueue;
-
-use Illuminate\Foundation\Queue\Queueable;
-use App\Mail\PermisosExcelLMExportadosMail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 
@@ -19,20 +21,26 @@ class ExportLibroMayorVacacionesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $search;
-    protected $date;
+    protected $startDate;
+    protected $endDate;
+    protected $userId;
     protected $userEmail;
 
     /**
      * Create a new job instance.
      *
      * @param string|null $search
-     * @param string|null $date
+     * @param string|null $startDate
+     * @param string|null $endDate
+     * @param int $userId
      * @param string $userEmail
      */
-    public function __construct($search, $date, $userEmail)
+    public function __construct($search, $startDate, $endDate, $userId, $userEmail)
     {
         $this->search = $search;
-        $this->date = $date;
+        $this->startDate = $startDate;
+        $this->endDate = $endDate;
+        $this->userId = $userId;
         $this->userEmail = $userEmail;
     }
 
@@ -40,29 +48,33 @@ class ExportLibroMayorVacacionesJob implements ShouldQueue
      * Execute the job.
      */
     public function handle()
-    {
-        // Construir la consulta para obtener permisos filtrados
-        $query = \App\Models\Permission::with(['user', 'department']);
+{
+    $query = SolicitudPermiso::with('empleado', 'departamento');
 
-        if ($this->search) {
-            $query->whereHas('user', function ($q) {
-                $q->where('name', 'like', "%{$this->search}%");
-            });
-        }
-
-        if ($this->date) {
-            $query->whereDate('date', $this->date);
-        }
-
-        $permissions = $query->get();
-
-        // Generar el archivo Excel
-        $fileName = "permissions_filtered_" . now()->timestamp . ".xlsx";
-        $filePath = "exports/{$fileName}";
-        Excel::store(new PermissionsExport($permissions), $filePath, 'public');
-
-        // Enviar el correo con el enlace al archivo
-        $url = asset("storage/{$filePath}");
-        Mail::to($this->userEmail)->send(new ExportVacacionesMail($url));
+    // Aplicar filtro por nombre
+    if ($this->search) {
+        $query->whereHas('empleado', function ($q) {
+            $q->where('name', 'like', "%{$this->search}%");
+        });
     }
+
+    // Aplicar filtro por fechas
+    if ($this->startDate && $this->endDate) {
+        $startDate = Carbon::parse($this->startDate)->startOfDay();
+        $endDate = Carbon::parse($this->endDate)->endOfDay();
+        $query->whereBetween('fecha_inicio', [$startDate, $endDate]);
+    }
+
+    // Obtener los permisos filtrados
+    $solicitudes = $query->get();
+
+    // Generar el archivo Excel
+    $fileName = "controlausencia_{$this->userId}_" . now()->timestamp . ".xlsx";
+    $filePath = "exports/{$fileName}";
+    Excel::store(new PermisosExport($solicitudes), $filePath, 'public');
+
+
+    Mail::to($this->userEmail)->send(new PermisosExportadosMail($fileName));
+}
+
 }

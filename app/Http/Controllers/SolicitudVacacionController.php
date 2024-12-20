@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\PeriodoVacacion;
 use App\Models\VacationRequest;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Jobs\ExportVacacionesJob;
 use App\Models\SolicitudVacacion;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\VacationRequestNotification;
@@ -234,14 +235,34 @@ public function downloadPDF($id)
 }
 public function export(Request $request)
 {
-    ExportLibroMayorVacacionesJob::dispatch(
-        $request->input('search'),
-        $request->input('start_date'),
-        $request->input('end_date'),
-        auth()->user()->email
-    );
+    \Log::info('Export method called');
 
-    return back()->with('success', 'El archivo está siendo procesado y será enviado por correo.');
+    $search = $request->input('search');
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+
+    \Log::info('Search: ' . $search);
+    \Log::info('Start Date: ' . $startDate);
+    \Log::info('End Date: ' . $endDate);
+
+
+    ExportVacacionesJob::dispatch($search, $startDate, $endDate, auth()->id(), auth()->user()->email);
+
+    return redirect()->back()->with('success', 'La exportación de vacaciones está en proceso. Recibirás un correo cuando esté lista.');
 }
+
+public function exportWeek()
+    {
+        // Lógica para exportar las solicitudes de la semana
+    }
+
+    public function downloadZip(Request $request)
+    {
+        $search = $request->input('search');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        // Lógica para manejar la descarga del ZIP
+    }
     
 }

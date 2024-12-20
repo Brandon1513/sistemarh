@@ -1,10 +1,10 @@
 @component('mail::message')
-# Exportación Libro Mayor Completada
+# Exportación Libro Mayor Vacaciones Completada
 
-La exportación de Libro Mayor de vacaciones ha sido completada. Puedes descargar el archivo desde el siguiente enlace:
+La exportación de Libro Mayor de Vacaciones ha sido completada. Puedes descargar el archivo desde el siguiente enlace:
 
 @component('mail::button', ['url' => $url])
-Descargar Permisos Libro Mayor
+Descargar Permisos Libro Mayor Vacaciones
 @endcomponent
 
 Si no solicitaste esta exportación, por favor ignora este mensaje.

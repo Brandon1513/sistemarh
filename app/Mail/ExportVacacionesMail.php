@@ -10,19 +10,19 @@ class ExportVacacionesMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $filePath;
-    public $subjectLine;
+    public $fileName;
 
-    public function __construct($filePath, $subjectLine)
+    public function __construct($fileName)
     {
-        $this->filePath = $filePath;
-        $this->subjectLine = $subjectLine;
+        $this->fileName = $fileName;
     }
 
     public function build()
     {
-        return $this->subject($this->subjectLine)
+        $url = asset("storage/exports/{$this->fileName}");
+
+        return $this->subject('Exportación de Vacaciones Completada')
                     ->markdown('emails.export_libro_mayor_vacaciones')
-                    ->attachFromStorage($this->filePath);
+                    ->with(['url' => $url]);
     }
 }

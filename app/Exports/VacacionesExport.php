@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -6,23 +7,23 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class VacacionesExport implements FromCollection, WithHeadings
 {
-    protected $vacaciones;
+    protected $solicitudes;
 
-    public function __construct($vacaciones)
+    public function __construct($solicitudes)
     {
-        $this->vacaciones = $vacaciones;
+        $this->solicitudes = $solicitudes;
     }
 
     public function collection()
     {
-        return $this->vacaciones->map(function ($vacacion) {
+        return $this->solicitudes->map(function ($solicitud) {
             return [
-                'Empleado' => $vacacion->empleado->name,
-                'Departamento' => $vacacion->departamento->name,
-                'Fecha Inicio' => $vacacion->fecha_inicio,
-                'Fecha Fin' => $vacacion->fecha_fin,
-                'Días Solicitados' => $vacacion->dias_solicitados,
-                'Estado' => $vacacion->estado,
+                'Empleado' => $solicitud->empleado->name,
+                'Departamento' => $solicitud->departamento->name ?? 'Sin Departamento',
+                'Fecha Inicio' => $solicitud->fecha_inicio,
+                'Fecha Fin' => $solicitud->fecha_fin,
+                'Días Solicitados' => $solicitud->dias_solicitados,
+                'Estado' => ucfirst($solicitud->estado),
             ];
         });
     }

@@ -29,9 +29,10 @@
 
                     <!-- Botones de descarga -->
                     <div class="flex justify-between mb-4">
-                        <a href="{{ route('solicitudes_vacaciones.export', ['search' => request('search'), 'start_date' => request('start_date'), 'end_date' => request('end_date')]) }}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
-                            Descargar Libro Mayor
-                        </a>
+                        <a href="{{ route('solicitudes_vacaciones.export', ['search' => request('search'), 'start_date' => request('start_date'), 'end_date' => request('end_date')]) }}" 
+                            class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
+                             Descargar Libro Mayor
+                         </a>
                         <a href="{{ route('solicitudes_vacaciones.exportWeek') }}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600">
                             Descargar Solicitudes de la Semana
                         </a>
