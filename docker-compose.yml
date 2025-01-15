@@ -20,6 +20,7 @@ services:
             PHP_EXTENSIONS: zip
         volumes:
             - '.:/var/www/html'
+            - '/usr/bin/wkhtmltopdf:/usr/bin/wkhtmltopdf'
         networks:
             - sail
         depends_on:
