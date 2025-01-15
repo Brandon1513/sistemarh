@@ -69,19 +69,20 @@ class ExportZipPermisosJob implements ShouldQueue
         $zip = new ZipArchive();
         \Log::info("Creando el archivo ZIP en: {$zipFilePath}");
         \Log::info("Cantidad de permisos: " . count($permisos));
+
         if ($zip->open($zipFilePath, ZipArchive::CREATE) === true) {
             foreach ($permisos as $permiso) {
                 $pdf = PDF::loadView('solicitudes_permisos.pdf', ['permiso' => $permiso], [], [
                     'enable-local-file-access' => true, // Permitir acceso a archivos locales
-                ]);
-        
-                $pdfOutput = $pdf->output();
-        
-                $zip->addFromString("permiso_{$permiso->id}.pdf", $pdfOutput);
+                    'timeout' => 600, // Tiempo de espera configurado directamente
+                ])->output();
+
+                $zip->addFromString("permiso_{$permiso->id}.pdf", $pdf);
             }
-        
-            $zip->close(); // Importante cerrar el ZIP aquí
-        } else {
+
+            $zip->close(); // Cierra el ZIP después de añadir los archivos
+        }
+        else {
             \Log::error("No se pudo abrir el archivo ZIP");
             throw new \Exception("No se pudo crear el archivo ZIP en: {$zipFilePath}");
         }

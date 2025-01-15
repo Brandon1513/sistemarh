@@ -38,7 +38,7 @@ return [
     'pdf' => [
         'enabled' => true,
         'binary' => env('WKHTMLTOPDF_BINARY', '/usr/bin/wkhtmltopdf'),
-        'timeout' => false,
+        'timeout' => false, // Tiempo de espera en segundos
         'options' => [
             'enable-local-file-access' => true, // Importante para acceder a imágenes locales
         ],
