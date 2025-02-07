@@ -218,34 +218,46 @@
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const fechaInicioInput = document.getElementById('fecha_inicio_vacaciones');
-        const fechaTerminoInput = document.getElementById('fecha_termino_vacaciones');
-        const fechaPresentarseInput = document.getElementById('fecha_presentarse_trabajar');
-        const diasSolicitadosInput = document.getElementById('dias_solicitados');
+    const diasFestivos = [
+        '2025-01-01', '2025-02-03', '2025-03-17', '2025-04-18', '2025-04-19',
+        '2025-05-01', '2025-09-16','2025-10-12', '2025-11-17','2025-12-24', '2025-12-25','2025-12-31'
+    ];
 
-        // Función para actualizar las fechas en función de los días solicitados
-        function actualizarFechas() {
-            const diasSolicitados = parseInt(diasSolicitadosInput.value) || 0;
-            const fechaInicio = new Date(fechaInicioInput.value);
-
-            if (!isNaN(diasSolicitados) && !isNaN(fechaInicio.getTime()) && diasSolicitados > 0) {
-                // Fecha de Término de Vacaciones: fecha de inicio + días solicitados - 1
-                const fechaTermino = new Date(fechaInicio);
-                fechaTermino.setDate(fechaInicio.getDate() + diasSolicitados - 1);
-                fechaTerminoInput.value = fechaTermino.toISOString().split('T')[0];
-
-                // Fecha para Presentarse a Trabajar: día siguiente a la fecha de término
-                const fechaPresentarse = new Date(fechaTermino);
-                fechaPresentarse.setDate(fechaTermino.getDate() + 1);
-                fechaPresentarseInput.value = fechaPresentarse.toISOString().split('T')[0];
-            } else {
-                fechaTerminoInput.value = '';
-                fechaPresentarseInput.value = '';
+    flatpickr("#fecha_inicio_vacaciones", {
+        dateFormat: "Y-m-d",
+        disable: [
+            function (date) {
+                // Deshabilitar domingos
+                if (date.getDay() === 0) {
+                    return true;
+                }
+                // Deshabilitar días festivos
+                return diasFestivos.includes(date.toISOString().split('T')[0]);
             }
+        ],
+        locale: {
+            firstDayOfWeek: 1 // Comenzar la semana en lunes
         }
-
-        // Actualiza las fechas cuando cambian los días solicitados o la fecha de inicio
-        diasSolicitadosInput.addEventListener('input', actualizarFechas);
-        fechaInicioInput.addEventListener('input', actualizarFechas);
     });
+
+    flatpickr("#fecha_termino_vacaciones", {
+        dateFormat: "Y-m-d",
+        disable: [
+            function (date) {
+                return date.getDay() === 0 || diasFestivos.includes(date.toISOString().split('T')[0]);
+            }
+        ]
+    });
+
+    flatpickr("#fecha_presentarse_trabajar", {
+        dateFormat: "Y-m-d",
+        disable: [
+            function (date) {
+                return date.getDay() === 0 || diasFestivos.includes(date.toISOString().split('T')[0]);
+            }
+        ]
+    });
+});
+
+
 </script>
