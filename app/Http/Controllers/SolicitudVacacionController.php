@@ -90,7 +90,21 @@ public function store(Request $request)
         return redirect()->back()->withErrors('No tienes suficientes días disponibles para este período.');
     }
 
-    // Crear la solicitud de vacaciones y actualizar los días disponibles en el período
+    // Días festivos en México (puedes agregar más según sea necesario)
+    $diasFestivos = [
+        '2025-01-01', '2025-02-03', '2025-03-17', '2025-04-18', '2025-04-19',
+        '2025-05-01', '2025-09-16','2025-10-12', '2025-11-17','2025-12-24', '2025-12-25','2025-12-31'
+    ];
+
+    // Calcular la fecha de reincorporación
+    $fechaReincorporacion = Carbon::parse($request->fecha_termino_vacaciones)->addDay();
+
+    // Ajustar si la fecha de reincorporación es un domingo o día festivo
+    while ($fechaReincorporacion->isSunday() || in_array($fechaReincorporacion->toDateString(), $diasFestivos)) {
+        $fechaReincorporacion->addDay(); // Avanzar al siguiente día hábil
+    }
+
+    // Actualizar los días disponibles
     $periodo->dias_disponibles -= $request->dias_solicitados;
     $periodo->save();
 
@@ -105,7 +119,7 @@ public function store(Request $request)
         'periodo_correspondiente' => $periodo->anio,
         'fecha_inicio' => $request->fecha_inicio_vacaciones,
         'fecha_fin' => $request->fecha_termino_vacaciones,
-        'fecha_reincorporacion' => Carbon::parse($request->fecha_termino_vacaciones)->addDay(),
+        'fecha_reincorporacion' => $fechaReincorporacion, // Guardar la fecha ajustada
         'estado' => 'pendiente',
     ]);
 
@@ -117,6 +131,8 @@ public function store(Request $request)
 
     return redirect()->route('vacaciones.index')->with('success', 'Solicitud de vacaciones creada correctamente y notificación enviada al jefe directo.');
 }
+
+    
 
 public function approve($id)
 {
