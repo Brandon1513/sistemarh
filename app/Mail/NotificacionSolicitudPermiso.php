@@ -30,7 +30,7 @@ class NotificacionSolicitudPermiso extends Mailable
      */
     public function build()
     {
-        return $this->subject('Control de Ausenscias del Personal')
+        return $this->subject('Control de Ausencias del Personal')
                     ->markdown('emails.notificacion_solicitud_permiso');
     }
 }

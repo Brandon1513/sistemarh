@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Notifications\PaseSalidaActualizadoNotification;
 use ZipArchive;
 use Carbon\Carbon;
 use App\Models\Department;
@@ -10,18 +9,21 @@ use App\Models\Permission;
 use App\Jobs\GeneratePdfJob;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\SolicitudPermiso;
 use App\Exports\PermissionsExport;
 use App\Http\Controllers\Controller;
-use App\Jobs\ExportPaseSalidaExcelLibroMJob;
-use App\Jobs\ExportWeekPaseSalidaExcelJob;
 use App\Jobs\ExportZipPaseSalidaJob;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Storage;
+use App\Jobs\ExportWeekPaseSalidaExcelJob;
 use App\Notifications\PermissionRequested;
+use App\Jobs\ExportPaseSalidaExcelLibroMJob;
 use Illuminate\Support\Facades\Notification;
-
-use App\Models\SolicitudPermiso;
+use App\Notifications\NotificacionSeguridadPermiso;
+use App\Notifications\PaseSalidaActualizadoNotification;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class PermissionController extends Controller
 {
@@ -99,17 +101,59 @@ public function index()
         return view('permissions.show', compact('permission'));
     }
 
+    
+    
     public function approve(Permission $permission)
-    {
-        // Actualizar estado a 'aprobado'
-        $permission->update(['status' => 'aprobado']);
-    
-        // Notificar al empleado
-        $empleado = $permission->empleado; // Asegúrate de que exista la relación en el modelo
-        $empleado->notify(new PaseSalidaActualizadoNotification('aprobado'));
-    
-        return redirect()->route('permissions.index')->with('success', 'Permiso aprobado exitosamente.');
+{
+    // Actualizar estado a 'aprobado'
+    $permission->update(['status' => 'aprobado']);
+
+    // Obtener el empleado asociado al permiso
+    $empleado = $permission->empleado;
+    $empleado->notify(new PaseSalidaActualizadoNotification('aprobado'));
+
+    if (!$empleado) {
+        Log::error('El permiso no tiene un empleado asociado.');
+        return redirect()->route('permissions.index')->with('error', 'Error: el permiso no tiene un empleado asociado.');
     }
+
+    // Obtener el nombre del departamento si existe
+    $departamento = Department::find($empleado->department_id);
+    $nombreDepartamento = $departamento ? $departamento->name : 'No especificado';
+
+    // Datos del solicitante a enviar en la notificación
+    $data = [
+        'nombre_empleado' => $empleado->name ?? 'No disponible',
+        'puesto' => $empleado->puesto_empleado ?? 'No especificado',
+        'departamento' => $nombreDepartamento ?? 'No especificado',
+        'official_schedule' => $permission->official_schedule ?? 'No especificado',
+        'entry_exit_time' => $permission->entry_exit_time ?? 'No especificado',
+        'date' => $permission->date ?? 'No especificado',
+        'reason' => $permission->reason ?? 'No especificado',
+        'supporting_document' => $permission->supporting_document ?? 'No especificado',
+        'status' => 'aprobado',
+        'entry_exit_type' => $permission->entry_exit_type ?? 'No disponible',
+    ];
+
+    // Depuración: verificar si `$data` está bien
+    Log::info('Datos de la notificación: ', $data);
+
+    // Obtener usuarios con el rol de seguridad
+    $usuariosSeguridad = User::whereHas('roles', function ($query) {
+        $query->where('name', 'Seguridad');
+    })->get();
+
+    // Notificar a los usuarios de seguridad por correo
+    foreach ($usuariosSeguridad as $seguridad) {
+        $seguridad->notify(new NotificacionSeguridadPermiso($data));
+    }
+
+    return redirect()->route('permissions.index')->with('success', 'Permiso aprobado exitosamente.');
+}
+
+    
+
+
     
     public function reject(Permission $permission)
     {
