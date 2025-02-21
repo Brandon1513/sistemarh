@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\Department;
 use Illuminate\Http\Request;
 use App\Models\PeriodoVacacion;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PeriodosVacacionesExport;
 
 class PeriodoVacacionController extends Controller
 {
@@ -192,4 +194,10 @@ private function calcularDiasCorresponden($antiguedad)
 
     return redirect()->back()->with('success', 'Estado del período actualizado correctamente.');
 }
+
+    public function export()
+{
+    return Excel::download(new PeriodosVacacionesExport, 'periodos-vacaciones.xlsx');
+}
+
 }

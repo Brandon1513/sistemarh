@@ -29,6 +29,13 @@
                                 {{ __('Crear Nuevo Periodo') }}
                             </a>
                         </div>
+                        <div class="ml-4">
+                            <a href="{{ route('periodos.export') }}" 
+                               class="px-5 py-2 font-semibold text-white transition-colors duration-200 bg-green-600 rounded-lg shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                                Descargar Excel
+                            </a>
+                        </div>
+                        
                     </div>
 
                     <!-- Tabla de resultados -->

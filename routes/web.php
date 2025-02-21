@@ -174,6 +174,8 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
     Route::delete('/periodos/{id}', [PeriodoVacacionController::class, 'destroy'])->name('periodos.destroy');
     Route::post('/periodos_vacaciones/{id}/toggle-activo', [PeriodoVacacionController::class, 'toggleActivo'])->name('periodos_vacaciones.toggle-activo');
 
+    Route::get('/periodos/export', [PeriodoVacacionController::class, 'export'])->name('periodos.export');
+
 });
 
 require __DIR__.'/auth.php';
