@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use App\Models\PeriodoVacacion;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\PeriodosVacacionesExport;
+use Illuminate\Support\Facades\Log;
 
 class PeriodoVacacionController extends Controller
 {
@@ -198,6 +199,57 @@ private function calcularDiasCorresponden($antiguedad)
     public function export()
 {
     return Excel::download(new PeriodosVacacionesExport, 'periodos-vacaciones.xlsx');
+}
+
+public function activarPeriodosAutomáticamente()
+{
+    $hoy = Carbon::now();
+    Log::info("Hoy es: " . $hoy->toDateString());
+
+    // Obtener todos los empleados con fecha_ingreso
+    $empleados = User::whereNotNull('fecha_ingreso')->get();
+    Log::info("Empleados con fecha_ingreso encontrados: " . $empleados->count());
+
+    foreach ($empleados as $empleado) {
+        $fechaIngreso = Carbon::parse($empleado->fecha_ingreso);
+        Log::info("Empleado ID={$empleado->id}, Fecha de Ingreso: {$fechaIngreso->toDateString()}");
+
+        // Comparar solo día y mes
+        if ($fechaIngreso->day == $hoy->day && $fechaIngreso->month == $hoy->month) {
+            Log::info("El empleado {$empleado->id} cumple aniversario hoy.");
+
+            $anioActual = $hoy->year;
+            $periodo = PeriodoVacacion::where('empleado_id', $empleado->id)
+                ->where('anio', $anioActual)
+                ->first();
+
+            if ($periodo) {
+                if (!$periodo->activo) {
+                    $periodo->activo = 1;
+                    $periodo->save();
+                    Log::info("Periodo {$anioActual} ACTIVADO para el empleado {$empleado->id}.");
+                } else {
+                    Log::info("Periodo {$anioActual} ya estaba activo para el empleado {$empleado->id}.");
+                }
+            } else {
+                $antiguedad = $anioActual - $fechaIngreso->year;
+                $diasCorrespondientes = $this->calcularDiasCorresponden($antiguedad);
+
+                PeriodoVacacion::create([
+                    'empleado_id' => $empleado->id,
+                    'anio' => $anioActual,
+                    'dias_corresponden' => $diasCorrespondientes,
+                    'dias_disponibles' => $diasCorrespondientes,
+                    'activo' => 1,
+                ]);
+                Log::info("Nuevo periodo {$anioActual} CREADO y ACTIVADO para el empleado {$empleado->id}.");
+            }
+        } else {
+            Log::info("El empleado {$empleado->id} NO cumple aniversario hoy.");
+        }
+    }
+
+    return response()->json(['message' => 'Revisión y activación de periodos completada.']);
 }
 
 }
