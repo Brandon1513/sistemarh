@@ -2,7 +2,7 @@
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form method="POST" action="{{ route('login') }}" novalidate>
+    <form method="POST" action="{{ route('login') }}" novalidate >
         @csrf
 
         <!-- Email Address -->
@@ -33,7 +33,7 @@
         <!-- Forgot Password Link -->
         <div class="flex justify-between my-5">
             <a href="{{ route('password.request') }}" 
-               class="flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline">
+               class="flex items-center text-sm text-purple-600 hover:text-purple-800 hover:underline">
                 <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6 6m6 0l-6-6m-4 6h12" />
                 </svg>
@@ -43,8 +43,10 @@
         
 
         <!-- Login Button -->
-        <x-primary-button class="justify-center w-full">
+        <x-primary-button class="justify-center w-full py-3 font-semibold text-white bg-yellow-600 rounded-md hover:bg-yellow-700 focus:bg-yellow-800 active:bg-yellow-900">
             {{ __('Iniciar Sesión') }}
         </x-primary-button>
     </form>
 </x-guest-layout>
+
+
