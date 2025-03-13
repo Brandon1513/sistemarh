@@ -42,16 +42,21 @@ public function destroy($id)
 {
     $imagen = CarruselImage::findOrFail($id);
 
-    // Eliminar la imagen del almacenamiento
-    if (Storage::exists('public/' . $imagen->image)) {
-        Storage::delete('public/' . $imagen->image);
+    // Verificar si la imagen realmente existe en el storage
+    $rutaImagen = 'public/' . $imagen->image;
+
+    if (Storage::exists($rutaImagen)) {
+        Storage::delete($rutaImagen);
+    } else {
+        return response()->json(['success' => false, 'message' => 'Imagen no encontrada en el almacenamiento'], 404);
     }
 
     // Eliminar la imagen de la base de datos
     $imagen->delete();
 
-    return redirect()->back()->with('success', 'Imagen eliminada correctamente.');
+    return response()->json(['success' => true, 'message' => 'Imagen eliminada correctamente']);
 }
+
 public function update(Request $request, $id)
 {
     $request->validate([

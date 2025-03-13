@@ -208,7 +208,7 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
 
 
 Route::middleware(['auth', 'role:administrador'])->group(function () {
-    Route::resource('carrusel', CarruselController::class)->only(['index', 'create', 'store', 'destroy']);
+    Route::resource('carrusel', CarruselController::class)->only(['index', 'create', 'store']);
     Route::delete('/carrusel/{id}', [CarruselController::class, 'destroy'])->name('carrusel.destroy');
     Route::put('/carrusel/{id}', [CarruselController::class, 'update'])->name('carrusel.update');
 
