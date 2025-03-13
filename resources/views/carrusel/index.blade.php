@@ -97,5 +97,28 @@
         function closeEditModal() {
             document.getElementById('editModal').classList.add('hidden');
         }
+
+        function deleteImage(id) {
+    if (confirm("¿Seguro que deseas eliminar esta imagen?")) {
+        fetch(`/carrusel/${id}`, {
+            method: "DELETE",
+            headers: {
+                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("Imagen eliminada correctamente");
+                location.reload(); // Recargar la página para reflejar los cambios
+            } else {
+                alert("Error al eliminar la imagen");
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    }
+}
+
     </script>
+
 </x-app-layout>
