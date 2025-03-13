@@ -1,24 +1,33 @@
 <?php
 
+use App\Models\Noticia;
+use App\Models\CarruselImage;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\CheckAdminRole;
+use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CarruselController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\PeriodoVacacionController;
 use App\Http\Controllers\RecursosHumanosController;
-
-use App\Http\Controllers\VacationRequestController;
+use App\Http\Controllers\SolicitudPermisoController;
+use App\Http\Controllers\SolicitudVacacionController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
+
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $noticias = Noticia::where('activo', 1)->latest()->take(6)->get();
+    $carruselImages = CarruselImage::all();
+
+    return view('dashboard', compact('noticias', 'carruselImages'));
 })->middleware(['auth', 'verified'])->name('dashboard');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -94,9 +103,8 @@ Route::middleware(['role:recursos_humanos'])->group(function () {
 
 //Control de ausencias del personal
 
-use App\Http\Controllers\SolicitudPermisoController;
-use App\Http\Controllers\SolicitudVacacionController;
-use App\Http\Controllers\Auth\RegisteredUserController;
+
+
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/permisos', [SolicitudPermisoController::class, 'index'])->name('permisos.index');
@@ -177,5 +185,37 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
     Route::get('/periodos/export', [PeriodoVacacionController::class, 'export'])->name('periodos.export');
 
 });
+
+//Noticias
+
+Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function(){
+    Route::get('/noticias', [NoticiaController::class, 'index'])->name('noticias.index');
+    Route::patch('noticias/{noticia}/toggle', [NoticiaController::class, 'toggle'])->name('noticias.toggle');
+    Route::get('/noticias/create', [NoticiaController::class, 'create'])->name('noticias.create');
+    Route::post('/noticias', [NoticiaController::class, 'store'])->name('noticias.store');
+    Route::get('/noticias/{noticia}/edit', [NoticiaController::class, 'edit'])->name('noticias.edit');
+    Route::put('/noticias/{noticia}', [NoticiaController::class, 'update'])->name('noticias.update');
+    Route::delete('/noticias/{noticia}', [NoticiaController::class, 'destroy'])->name('noticias.destroy');
+    // Noticias públicas (accesibles sin autenticación)
+    Route::get('/noticias-publicas', [NoticiaController::class, 'publicIndex'])->name('noticias.public');
+
+// Ruta para ver una noticia específica en formato JSON
+    Route::get('/noticias/{noticia}', function (Noticia $noticia) {
+    return response()->json($noticia);
+    });
+});
+//Carrusel
+
+
+Route::middleware(['auth', 'role:administrador'])->group(function () {
+    Route::resource('carrusel', CarruselController::class)->only(['index', 'create', 'store', 'destroy']);
+    Route::delete('/carrusel/{id}', [CarruselController::class, 'destroy'])->name('carrusel.destroy');
+    Route::put('/carrusel/{id}', [CarruselController::class, 'update'])->name('carrusel.update');
+
+});
+
+
+
+
 
 require __DIR__.'/auth.php';

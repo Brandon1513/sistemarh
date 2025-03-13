@@ -110,6 +110,12 @@
                                     <x-dropdown-link :href="route('solicitudes_vacaciones.index')" :active="request()->routeIs('solicitudes_vacaciones.index')" class="text-gray-700 hover:bg-gray-200">
                                         {{ __('Control de Vacaciones') }}
                                     </x-dropdown-link>
+                                    <x-dropdown-link :href="route('noticias.index')" :active="request()->routeIs('noticias.index')" class="text-gray-700 hover:bg-gray-200">
+                                        {{ __('Noticias') }}
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('carrusel.index')" :active="request()->routeIs('carrusel.index')" class="text-gray-700 hover:bg-gray-200">
+                                        {{ __('Carrusel') }}
+                                    </x-dropdown-link>
                                 </x-slot>
                             </x-dropdown>
                         </div>
