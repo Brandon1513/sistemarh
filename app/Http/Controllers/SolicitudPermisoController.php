@@ -71,10 +71,11 @@ class SolicitudPermisoController extends Controller
             'fecha_regreso_laborar' => 'nullable|date|after_or_equal:fecha_termino',
             'tipo' => 'required|in:Permiso,Comisión,Suspensión',
             'dia_descanso' => 'nullable|string',
+            'archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048', // nueva validación
         ]);
-    
-        // Crear la solicitud de permiso
-        $permiso = SolicitudPermiso::create([
+
+        // Inicializar el array de datos
+        $data = [
             'empleado_id' => auth()->id(),
             'departamento_id' => $request->departamento_id,
             'fecha_inicio' => $request->fecha_inicio,
@@ -85,19 +86,29 @@ class SolicitudPermisoController extends Controller
             'fecha_regreso_laborar' => $request->fecha_regreso_laborar,
             'tipo' => $request->tipo,
             'dia_descanso' => $request->dia_descanso,
-        ]);
-    
+        ];
+
+        // Si se subió un archivo, guardarlo
+        if ($request->hasFile('archivo')) {
+            $archivo = $request->file('archivo')->store('archivos_permisos', 'public');
+            $data['archivo'] = $archivo;
+        }
+
+        // Crear la solicitud de permiso
+        $permiso = SolicitudPermiso::create($data);
+
         // Obtener al supervisor del empleado actual
         $supervisor = Auth::user()->supervisor;
-    
+
         // Verificar que el supervisor existe y enviar el correo
         if ($supervisor && $supervisor->email) {
             Mail::to($supervisor->email)->send(new NotificacionSolicitudPermiso($permiso));
         }
-    
+
         // Redirigir con mensaje de éxito
         return redirect()->route('permisos.index')->with('success', 'La solicitud de permiso ha sido enviada y notificada al supervisor.');
     }
+
     public function show($id)
     {
         // Buscar la solicitud de permiso por su ID
@@ -108,44 +119,53 @@ class SolicitudPermisoController extends Controller
     }
 
     public function aprobar($id)
-{
-    $permiso = SolicitudPermiso::findOrFail($id);
+    {
+        $permiso = SolicitudPermiso::with('empleado')->findOrFail($id);
 
-    if ($permiso->estado != 'pendiente') {
-        return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
+        // Validar si el jefe está intentando aprobar su propio permiso
+        if ($permiso->empleado_id === auth()->id()) {
+            return redirect()->back()->with('error', 'No está autorizado para aprobar su propio permiso.');
+        }
+
+        if ($permiso->estado != 'pendiente') {
+            return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
+        }
+
+        $permiso->estado = 'aprobado';
+        $permiso->save();
+
+        $empleado = $permiso->empleado;
+        if ($empleado) {
+            $empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('aprobado'));
+        }
+
+        return redirect()->route('permisos.index')->with('success', 'Permiso aprobado con éxito.');
     }
-
-    $permiso->estado = 'aprobado';
-    $permiso->save();
-
-    // Enviar notificación al usuario que solicitó el permiso
-    $empleado = $permiso->empleado;
-    if ($empleado) {
-        $empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('aprobado'));
-    }
-
-    return redirect()->route('permisos.index')->with('success', 'Permiso aprobado con éxito.');
-}
 
 public function rechazar($id)
-{
-    $permiso = SolicitudPermiso::findOrFail($id);
+    {
+        $permiso = SolicitudPermiso::with('empleado')->findOrFail($id);
 
-    if ($permiso->estado != 'pendiente') {
-        return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
+        // Validar si el jefe está intentando rechazar su propio permiso
+        if ($permiso->empleado_id === auth()->id()) {
+            return redirect()->back()->with('error', 'No está autorizado para rechazar su propio permiso.');
+        }
+
+        if ($permiso->estado != 'pendiente') {
+            return redirect()->back()->with('error', 'El permiso ya ha sido procesado.');
+        }
+
+        $permiso->estado = 'rechazado';
+        $permiso->save();
+
+        $empleado = $permiso->empleado;
+        if ($empleado) {
+            $empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('rechazado'));
+        }
+
+        return redirect()->route('permisos.index')->with('success', 'Permiso rechazado con éxito.');
     }
 
-    $permiso->estado = 'rechazado';
-    $permiso->save();
-
-    // Enviar notificación al usuario que solicitó el permiso
-    $empleado = $permiso->empleado;
-    if ($empleado) {
-        $empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('rechazado'));
-    }
-
-    return redirect()->route('permisos.index')->with('success', 'Permiso rechazado con éxito.');
-}
 
 
     public function indexSolicitudesPermiso(Request $request)

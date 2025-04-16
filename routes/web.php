@@ -188,7 +188,7 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
 
 //Noticias
 
-Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function(){
+Route::middleware(['auth', 'role:administrador|marketing'])->group(function(){
     Route::get('/noticias', [NoticiaController::class, 'index'])->name('noticias.index');
     Route::patch('noticias/{noticia}/toggle', [NoticiaController::class, 'toggle'])->name('noticias.toggle');
     Route::get('/noticias/create', [NoticiaController::class, 'create'])->name('noticias.create');
@@ -207,7 +207,7 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
 //Carrusel
 
 
-Route::middleware(['auth', 'role:administrador'])->group(function () {
+Route::middleware(['auth', 'role:administrador|marketing'])->group(function () {
     Route::resource('carrusel', CarruselController::class)->only(['index', 'create', 'store']);
     Route::delete('/carrusel/{id}', [CarruselController::class, 'destroy'])->name('carrusel.destroy');
     Route::put('/carrusel/{id}', [CarruselController::class, 'update'])->name('carrusel.update');

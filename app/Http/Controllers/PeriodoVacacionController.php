@@ -68,6 +68,7 @@ class PeriodoVacacionController extends Controller
             'anio' => $request->anio,
             'dias_corresponden' => $diasCorresponden,
             'dias_disponibles' => $diasCorresponden, // Inicia los días disponibles con el total de días correspondientes
+            'activo' => 1, // Activo por defecto
         ]);
     }
 

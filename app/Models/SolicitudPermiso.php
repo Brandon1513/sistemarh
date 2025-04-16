@@ -22,7 +22,7 @@ class SolicitudPermiso extends Model
         'fecha_regreso_laborar',
         'tipo',
         'dia_descanso',
-        
+        'archivo',
     ];
 
     // Relación con el empleado (usuario)

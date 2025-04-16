@@ -74,7 +74,7 @@
                                             <a href="{{ route('permisos.show', $solicitud->id) }}" class="text-blue-600 hover:text-blue-900">Ver</a>
 
                                             <!-- Botones Aprobar y Rechazar, solo visibles para el jefe y si el estado es pendiente -->
-                                            @if(auth()->user()->hasRole('jefe') && $solicitud->estado == 'pendiente')
+                                            @if(auth()->user()->hasRole('jefe') && $solicitud->estado == 'pendiente' && $solicitud->empleado_id !== auth()->id())
                                                 <form action="{{ route('permisos.aprobar', $solicitud->id) }}" method="POST" class="inline-block ml-2">
                                                     @csrf
                                                     <button type="submit" class="text-green-600 hover:text-green-900">Aprobar</button>

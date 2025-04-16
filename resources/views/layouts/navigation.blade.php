@@ -110,17 +110,37 @@
                                     <x-dropdown-link :href="route('solicitudes_vacaciones.index')" :active="request()->routeIs('solicitudes_vacaciones.index')" class="text-gray-700 hover:bg-gray-200">
                                         {{ __('Control de Vacaciones') }}
                                     </x-dropdown-link>
-                                    <x-dropdown-link :href="route('noticias.index')" :active="request()->routeIs('noticias.index')" class="text-gray-700 hover:bg-gray-200">
-                                        {{ __('Noticias') }}
-                                    </x-dropdown-link>
-                                    <x-dropdown-link :href="route('carrusel.index')" :active="request()->routeIs('carrusel.index')" class="text-gray-700 hover:bg-gray-200">
-                                        {{ __('Carrusel') }}
-                                    </x-dropdown-link>
+
                                 </x-slot>
                             </x-dropdown>
                         </div>
                         @endif
-                        
+                        @if (Auth::user()->hasAnyRole(['marketing', 'administrador']))
+                            <div class="relative">
+                                <x-dropdown align="left">
+                                    <x-slot name="trigger">
+                                        <button class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-white transition duration-150 ease-in-out bg-transparent border border-transparent rounded-md hover:text-gray-300 focus:outline-none">
+                                            <div>{{ __('Multimedia') }}</div>
+                                            <div class="ms-1">
+                                                <svg class="w-4 h-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        </button>
+                                    </x-slot>
+
+                                    <x-slot name="content">
+                                        <x-dropdown-link :href="route('noticias.index')" :active="request()->routeIs('noticias.index')" class="text-gray-700 hover:bg-gray-200">
+                                            {{ __('Noticias') }}
+                                        </x-dropdown-link>
+                                        <x-dropdown-link :href="route('carrusel.index')" :active="request()->routeIs('carrusel.index')" class="text-gray-700 hover:bg-gray-200">
+                                            {{ __('Carrusel') }}
+                                        </x-dropdown-link>
+                                    </x-slot>
+                                </x-dropdown>
+                            </div>
+                        @endif
+
                     </div>
                 @endif
             </div>
@@ -242,6 +262,15 @@
                             {{ __('Control Vacaciones RH') }}
                         </x-responsive-nav-link>
                     @endif
+                    @if (Auth::user()->hasRole('marketing'))
+                        <x-responsive-nav-link :href="route('noticias.index')" :active="request()->routeIs('noticias.index')" class="text-white">
+                            {{ __('Noticias') }}
+                        </x-responsive-nav-link>
+                        <x-responsive-nav-link :href="route('carrusel.index')" :active="request()->routeIs('carrusel.index')" class="text-white">
+                            {{ __('Carrusel') }}
+                        </x-responsive-nav-link>
+                    @endif
+
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
