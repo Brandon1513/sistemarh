@@ -51,6 +51,27 @@
                         @endif
                     </div>
 
+                    <!-- Galería de Imágenes (Nuevas) -->
+                    <div class="mt-4">
+                        <x-input-label for="galeria" :value="__('Galería de Imágenes (Se eliminarán las actuales si subes nuevas)')" />
+                        <input type="file" name="galeria[]" multiple class="block w-full mt-1">
+                    </div>
+
+                    <!-- Mostrar galería actual -->
+                    @if ($noticia->galerias && $noticia->galerias->count())
+                        <div class="mt-4">
+                            <p class="mb-2 font-semibold text-gray-700">Galería actual:</p>
+                            <div class="flex flex-wrap gap-4">
+                                @foreach ($noticia->galerias as $galeria)
+                                    <div class="w-24 h-24 overflow-hidden border border-gray-300 rounded">
+                                        <img src="{{ asset('storage/' . $galeria->imagen) }}" class="object-cover w-full h-full">
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+
                     <!-- Video -->
                     <div class="mt-4">
                         <x-input-label for="multimedia" :value="__('Video (Opcional)')" />

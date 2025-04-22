@@ -34,10 +34,17 @@
                         <textarea name="contenido" id="contenido" rows="5" class="w-full px-4 py-2 mt-1 border rounded-md" required></textarea>
                     </div>
 
-                    <!-- Imagen -->
+                    <!-- Imagen principal -->
                     <div class="mt-4">
-                        <label class="block font-medium text-gray-700">Imagen</label>
-                        <input type="file" name="imagen" accept="image/*" class="w-full px-4 py-2 border rounded-md">
+                        <label class="block font-medium text-gray-700">Imagen Principal (Portada)</label>
+                        <input type="file" name="imagen" accept="image/*" class="w-full px-4 py-2 border rounded-md" required>
+                    </div>
+
+                    <!-- Galería -->
+                    <div class="mt-4">
+                        <label class="block font-medium text-gray-700">Galería de Imágenes (Opcional)</label>
+                        <input type="file" name="galeria[]" accept="image/*" multiple class="w-full px-4 py-2 border rounded-md">
+                        <small class="text-sm text-gray-500">Puedes seleccionar múltiples imágenes.</small>
                     </div>
 
                     <!-- Video (URL de YouTube o repositorio) -->

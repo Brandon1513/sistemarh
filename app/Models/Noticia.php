@@ -19,4 +19,8 @@ class Noticia extends Model
         'multimedia',
         'tipo_multimedia',
     ];
+    public function galeria()
+    {
+        return $this->hasMany(NoticiaGaleria::class);
+    }
 }

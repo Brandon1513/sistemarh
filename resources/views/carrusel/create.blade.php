@@ -17,24 +17,24 @@
                     <form method="POST" action="{{ route('carrusel.store') }}" enctype="multipart/form-data">
                         @csrf
                         
-                        <!-- Imagen -->
+                        <!-- Imagen (Obligatoria) -->
                         <div class="mb-4">
                             <x-input-label for="image" :value="__('Imagen del Carrusel')" />
                             <input type="file" id="image" name="image" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                             <x-input-error :messages="$errors->get('image')" class="mt-2" />
                         </div>
 
-                        <!-- Título de la Imagen -->
+                        <!-- Título (Opcional) -->
                         <div class="mb-4">
                             <x-input-label for="titulo" :value="__('Título')" />
-                            <x-text-input id="titulo" class="block w-full mt-1" type="text" name="titulo" :value="old('titulo')" required />
+                            <x-text-input id="titulo" class="block w-full mt-1" type="text" name="titulo" :value="old('titulo')" />
                             <x-input-error :messages="$errors->get('titulo')" class="mt-2" />
                         </div>
 
-                        <!-- Descripción de la Imagen -->
+                        <!-- Descripción (Opcional) -->
                         <div class="mb-4">
                             <x-input-label for="descripcion" :value="__('Descripción')" />
-                            <textarea id="descripcion" name="descripcion" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>{{ old('descripcion') }}</textarea>
+                            <textarea id="descripcion" name="descripcion" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">{{ old('descripcion') }}</textarea>
                             <x-input-error :messages="$errors->get('descripcion')" class="mt-2" />
                         </div>
 
@@ -51,4 +51,3 @@
         </div>
     </div>
 </x-app-layout>
-

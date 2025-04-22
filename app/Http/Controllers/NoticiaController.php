@@ -26,6 +26,7 @@ class NoticiaController extends Controller
             'titulo' => 'required|string|max:255',
             'contenido' => 'required',
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'galeria.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'multimedia' => 'nullable|url',
             'autor' => 'required|string|max:255',
             'fecha' => 'required|date',
@@ -39,20 +40,30 @@ class NoticiaController extends Controller
         $noticia->fecha = $request->fecha;
         $noticia->activo = $request->activo;
     
-        // Almacenar imagen si se sube un archivo
         if ($request->hasFile('imagen')) {
             $noticia->imagen = $request->file('imagen')->store('noticias', 'public');
         }
     
-        // Almacenar enlace de video si se proporciona
         if ($request->multimedia) {
             $noticia->multimedia = $request->multimedia;
         }
     
         $noticia->save();
     
+        // Guardar imágenes de la galería
+        if ($request->hasFile('galeria')) {
+            foreach ($request->file('galeria') as $imagenGaleria) {
+                $ruta = $imagenGaleria->store('galeria_noticias', 'public');
+    
+                $noticia->galeria()->create([
+                    'imagen' => $ruta
+                ]);
+            }
+        }
+    
         return redirect()->route('noticias.index')->with('success', 'Noticia creada exitosamente.');
     }
+    
     
 
     public function edit(Noticia $noticia)
@@ -61,30 +72,46 @@ class NoticiaController extends Controller
     }
 
     public function update(Request $request, Noticia $noticia)
-{
-    $validatedData = $request->validate([
-        'titulo' => 'required|string|max:255',
-        'contenido' => 'required',
-        'imagen' => 'nullable|image|max:2048',
-        'multimedia' => 'nullable|url',
-        'autor' => 'required|string|max:255',
-        'fecha' => 'required|date',
-        'activo' => 'required|in:0,1', // 🔹 Acepta 0 o 1
-    ]);
+    {
+        $validatedData = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'contenido' => 'required',
+            'imagen' => 'nullable|image|max:2048',
+            'galeria.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'multimedia' => 'nullable|url',
+            'autor' => 'required|string|max:255',
+            'fecha' => 'required|date',
+            'activo' => 'required|in:0,1',
+        ]);
 
-    // Manejo de imagen
-    if ($request->hasFile('imagen')) {
-        if ($noticia->imagen && Storage::exists('public/' . $noticia->imagen)) {
-            Storage::delete('public/' . $noticia->imagen);
+        // Eliminar imagen principal si se actualiza
+        if ($request->hasFile('imagen')) {
+            if ($noticia->imagen && Storage::exists('public/' . $noticia->imagen)) {
+                Storage::delete('public/' . $noticia->imagen);
+            }
+            $validatedData['imagen'] = $request->file('imagen')->store('noticias', 'public');
         }
-        $path = $request->file('imagen')->store('noticias', 'public');
-        $validatedData['imagen'] = $path;
+
+        $noticia->update($validatedData);
+
+        // 🔥 Eliminar imágenes antiguas de galería
+        foreach ($noticia->galerias as $galeria) {
+            Storage::delete('public/' . $galeria->imagen);
+            $galeria->delete();
+        }
+
+        // 📤 Subir nuevas imágenes de galería
+        if ($request->hasFile('galeria')) {
+            foreach ($request->file('galeria') as $imagenGaleria) {
+                $ruta = $imagenGaleria->store('galeria_noticias', 'public');
+                $noticia->galerias()->create(['imagen' => $ruta]);
+            }
+        }
+
+        return redirect()->route('noticias.index')->with('success', 'Noticia actualizada con éxito.');
     }
 
-    $noticia->update($validatedData);
-
-    return redirect()->route('noticias.index')->with('success', 'Noticia actualizada con éxito.');
-}
+    
 
 
     public function destroy(Noticia $noticia)
@@ -107,7 +134,11 @@ class NoticiaController extends Controller
 
 public function publicIndex()
 {
-    $noticias = Noticia::where('activo', 1)->orderBy('fecha', 'desc')->paginate(8);
+    $noticias = Noticia::with('galeria') // ← cargamos la galería
+        ->where('activo', 1)
+        ->orderBy('fecha', 'desc')
+        ->paginate(8);
+
     $carruselImages = CarruselImage::all(); // Obtener imágenes del carrusel
 
     return view('noticias.public', compact('noticias', 'carruselImages'));
