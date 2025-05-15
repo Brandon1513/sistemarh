@@ -8,7 +8,9 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.0",
         "barryvdh/laravel-snappy": "^1.0",
+        "kreait/laravel-firebase": "^6.0",
         "laravel/framework": "^11.9",
+        "laravel/sanctum": "^4.1",
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
         "spatie/laravel-permission": "^6.9"

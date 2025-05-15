@@ -14,7 +14,7 @@
                     <h2 class="mb-6 text-lg font-bold text-gray-700">{{ __('Modificar información del usuario') }}</h2>
 
                     <!-- Formulario de Edición -->
-                    <form method="POST" action="{{ route('empleados.update', $user->id) }}">
+                    <form method="POST" action="{{ route('empleados.update', $user->id) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
                         
@@ -24,6 +24,23 @@
                             <x-text-input id="name" class="block w-full mt-1" type="text" name="name" value="{{ $user->name }}" required autofocus autocomplete="name" />
                             <x-input-error :messages="$errors->get('name')" class="mt-2" />
                         </div>
+                        <!-- Foto de Perfil Actual -->
+                        @if ($user->foto_perfil)
+                            <div class="mb-4">
+                                <x-input-label :value="__('Foto de perfil actual')" />
+                                <div class="mt-2">
+                                    <img src="{{ asset('storage/' . $user->foto_perfil) }}" alt="Foto de perfil" class="w-32 h-32 rounded-full object-cover border">
+                                </div>
+                            </div>
+                        @endif
+                        <!-- Subir Nueva Foto de Perfil -->
+                        <div class="mb-4">
+                            <x-input-label for="foto_perfil" :value="__('Actualizar Foto de perfil (Opcional)')" />
+                            <input id="foto_perfil" name="foto_perfil" type="file" accept="image/*"
+                                class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            <x-input-error :messages="$errors->get('foto_perfil')" class="mt-2" />
+                        </div>
+
 
                         <!-- Email -->
                         <div class="mb-4">

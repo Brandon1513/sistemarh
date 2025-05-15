@@ -14,7 +14,7 @@
                     <h2 class="mb-6 text-lg font-bold text-gray-700">{{ __('Nuevo Usuario') }}</h2>
 
                     <!-- Formulario de Registro -->
-                    <form method="POST" action="{{ route('empleados.store') }}">
+                    <form method="POST" action="{{ route('empleados.store') }}" enctype="multipart/form-data">
                         @csrf
                         
                         <!-- Nombre Completo -->
@@ -22,6 +22,13 @@
                             <x-input-label for="name" :value="__('Nombre Completo')" />
                             <x-text-input id="name" class="block w-full mt-1" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
                             <x-input-error :messages="$errors->get('name')" class="mt-2" />
+                        </div>
+                        <!-- Foto de Perfil -->
+                        <div class="mb-4">
+                            <x-input-label for="foto_perfil" :value="__('Foto de perfil (Opcional)')" />
+                            <input id="foto_perfil" name="foto_perfil" type="file" accept="image/*" 
+                                class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            <x-input-error :messages="$errors->get('foto_perfil')" class="mt-2" />
                         </div>
 
                         <!-- Email -->

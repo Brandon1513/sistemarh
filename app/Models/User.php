@@ -8,10 +8,11 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
 use Illuminate\Database\Eloquent\Builder;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles; // Incluye el trait HasRoles de Spatie
+    use HasFactory, Notifiable, HasRoles, HasApiTokens; // Incluye el trait HasRoles de Spatie
 
     protected $fillable = [
         'name',
@@ -23,6 +24,7 @@ class User extends Authenticatable
         'fecha_ingreso',    // Agrega este campo
         'puesto_empleado',  // Agrega este campo
         'departamento_id',
+        'foto_perfil',      // Agrega este campo
 
     ];
 
