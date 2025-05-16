@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Mail\NewUserCreated;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
+use Illuminate\Container\Container;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -139,10 +140,17 @@ class EmpleadoController extends Controller
                 \Storage::disk('public')->delete($user->foto_perfil);
             }
 
-            $image = $request->file('foto_perfil');
-            $imagePath = $image->store('fotos_perfil', 'public');
+            $imagePath = $request->file('foto_perfil')->store('fotos_perfil', 'public');
             $user->foto_perfil = $imagePath;
             $user->save();
+
+            // ✅ Enviar notificación por actualización de imagen
+            $notificationController = Container::getInstance()->make(NotificationController::class);
+            $notificationController->sendNotification(new \Illuminate\Http\Request([
+                'userId' => $user->id,
+                'title'  => 'Imagen de perfil actualizada',
+                'body'   => 'Tu imagen de perfil ha sido actualizada, revisa la app para verla.',
+            ]));
         }
 
         if ($request->has('roles')) {
