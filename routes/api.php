@@ -58,3 +58,5 @@ Route::post('/notifications/register-token', function (Request $request, Messagi
 
 
 Route::post('/notifications/send', [NotificationController::class, 'sendNotification']);
+
+Route::post('/save-device-token', [UserDeviceTokenController::class, 'store']);

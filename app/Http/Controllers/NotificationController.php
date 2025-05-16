@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Kreait\Firebase\Contract\Messaging;
+use App\Models\UserDeviceToken;
 
 class NotificationController extends Controller
 {
@@ -22,26 +23,31 @@ class NotificationController extends Controller
             'body'   => 'required|string',
         ]);
 
-        $user = \App\Models\User::find($request->userId);
+        $tokens = UserDeviceToken::where('user_id', $request->userId)->pluck('token');
 
-        if (!$user || !$user->fcm_token) {
-            return response()->json(['message' => 'Usuario o token no encontrado.'], 404);
+        if ($tokens->isEmpty()) {
+            return response()->json(['message' => 'No se encontraron tokens para este usuario.'], 404);
         }
 
-        $message = [
-            'token' => $user->fcm_token,
-            'notification' => [
-                'title' => $request->title,
-                'body'  => $request->body,
-            ],
-            'android' => [
-                'priority' => 'high',
-            ],
-        ];
+        $messages = $tokens->map(function ($token) use ($request) {
+            return [
+                'token' => $token,
+                'notification' => [
+                    'title' => $request->title,
+                    'body'  => $request->body,
+                ],
+                'android' => [
+                    'priority' => 'high',
+                ],
+            ];
+        })->toArray();
 
         try {
-            $this->messaging->send($message);
-            return response()->json(['message' => 'Notificación enviada correctamente.']);
+            foreach ($messages as $message) {
+                $this->messaging->send($message);
+            }
+
+            return response()->json(['message' => 'Notificaciones enviadas correctamente.']);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
