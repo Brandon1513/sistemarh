@@ -18,6 +18,7 @@ use App\Notifications\VacationRHNotification;
 use App\Notifications\VacationApprovedNotification;
 use App\Notifications\VacationRejectedNotification;
 use App\Notifications\VacationSecurityNotification;
+use Illuminate\Support\Str;
 
 
 class SolicitudVacacionController extends Controller
@@ -259,5 +260,33 @@ public function export(Request $request)
 
     return back()->with('success', 'El archivo está siendo procesado y será enviado por correo.');
 }
-    
+    public function destroy($id)
+    {
+        // 1. Buscar la solicitud
+        $vac = SolicitudVacacion::findOrFail($id);
+
+        // 2. Only pending
+        if (Str::lower($vac->estado) !== 'pendiente') {
+            return redirect()
+                ->route('vacaciones.index')
+                ->with('error', 'Solo puedes eliminar solicitudes pendientes.');
+        }
+
+        // 3. Devolver los días al periodo
+        $periodo = PeriodoVacacion::where('empleado_id', $vac->empleado_id)
+                                ->where('anio', $vac->periodo_correspondiente)
+                                ->first();
+
+        if ($periodo) {
+            $periodo->increment('dias_disponibles', $vac->dias_solicitados);
+        }
+
+        // 4. Borrar la solicitud
+        $vac->delete();
+
+        // 5. Redirigir con mensaje
+        return redirect()
+            ->route('vacaciones.index')
+            ->with('success', 'Solicitud eliminada y días recuperados.');
+    }
 }

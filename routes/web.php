@@ -151,6 +151,7 @@ Route::middleware(['auth'])->group(function(){
     
     Route::get('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'approve'])->name('vacaciones.aprobar');
     Route::get('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'reject'])->name('vacaciones.rechazar');
+    Route::delete('/vacaciones/{vacacione}', [SolicitudVacacionController::class, 'destroy'])->name('vacaciones.destroy');
     
 });
 
