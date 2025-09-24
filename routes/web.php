@@ -48,13 +48,10 @@ Route::middleware(['auth'])->group(function () {
 
 // rutas administrador
 Route::middleware(['auth', CheckRole::class . ':administrador'])->group(function () {
-    Route::resource('supervisores', \App\Http\Controllers\SupervisorController::class);
+    Route::resource('supervisores', SupervisorController::class)->parameters([
+        'supervisores' => 'supervisor',
+    ]);
 });
-
-Route::resource('supervisores', SupervisorController::class)->parameters([
-    'supervisores' => 'supervisor',
-]);
-
 //Gestionar usuarios
 
 
@@ -70,10 +67,7 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
 
 });
 
-Route::middleware(['auth', 'administrador'])->group(function () {
-    
-    Route::resource('supervisores', SupervisorController::class);
-});
+
 
 //REGISTRO RH
 
