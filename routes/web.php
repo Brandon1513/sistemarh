@@ -70,7 +70,10 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
 
 });
 
-Route::resource('supervisores', SupervisorController::class);
+Route::middleware(['auth', 'administrador'])->group(function () {
+    
+    Route::resource('supervisores', SupervisorController::class);
+});
 
 //REGISTRO RH
 
