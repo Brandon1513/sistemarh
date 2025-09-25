@@ -9,15 +9,16 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\UserDeviceTokenController;
 use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\NotificationController;
+
+use App\Http\Controllers\Api\V2\AssetController;
+use App\Http\Controllers\Api\V2\AssignmentController;
+use App\Http\Controllers\Api\V2\UserAssetsController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Aquí puedes registrar todas las rutas API de tu aplicación. Estas rutas
-| son automáticamente prefijadas con /api y cargadas a través del archivo
-| bootstrap/app.php, si has definido el registro correctamente.
-|
+
 */
 
 /**
@@ -60,3 +61,31 @@ Route::post('/notifications/register-token', function (Request $request, Messagi
 Route::post('/notifications/send', [NotificationController::class, 'sendNotification']);
 
 Route::post('/save-device-token', [UserDeviceTokenController::class, 'store']);
+
+
+
+/*
+|--------------------------------------------------------------------------
+| API Routes SISTEMAS V2
+|--------------------------------------------------------------------------
+
+*/
+
+Route::middleware(['auth:sanctum'])->group(function () {
+  // Activos
+  Route::get('/assets', [AssetController::class,'index']);
+  Route::post('/assets', [AssetController::class,'store']);
+  Route::get('/assets/{asset}', [AssetController::class,'show']);
+  Route::put('/assets/{asset}', [AssetController::class,'update']);
+
+  // Asignaciones
+  Route::post('/assignments', [AssignmentController::class,'assign']);
+  Route::post('/assignments/{assignment}/return', [AssignmentController::class,'return']);
+
+  // Activos actuales por usuario
+  Route::get('/users/{user}/assets', [UserAssetsController::class,'index']);
+});
+
+Route::middleware('auth:sanctum')->get('/asset-types', function () {
+    return \App\Models\AssetType::orderBy('name')->get();
+});
