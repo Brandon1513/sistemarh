@@ -81,6 +81,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
   // Asignaciones
   Route::post('/assignments', [AssignmentController::class,'assign']);
   Route::post('/assignments/{assignment}/return', [AssignmentController::class,'return']);
+  Route::get('/assignments', [AssignmentController::class,'index']); // ← nuevo
 
   // Activos actuales por usuario
   Route::get('/users/{user}/assets', [UserAssetsController::class,'index']);
@@ -93,4 +94,16 @@ Route::middleware('auth:sanctum')->get('/asset-types', function () {
 
 Route::middleware('auth:sanctum')->get('/me', function (Request $r) {
     return $r->user();
+});
+
+Route::middleware('auth:sanctum')->get('/users', function (Request $r) {
+    $q = $r->query('search');
+    return User::query()
+        ->when($q, fn($qq) => $qq->where(function($w) use ($q) {
+            $w->where('name','like',"%$q%")
+              ->orWhere('email','like',"%$q%");
+        }))
+        ->orderBy('name')
+        ->limit(20)
+        ->get(['id','name','email']);
 });
