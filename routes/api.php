@@ -89,3 +89,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::middleware('auth:sanctum')->get('/asset-types', function () {
     return \App\Models\AssetType::orderBy('name')->get();
 });
+
+
+Route::middleware('auth:sanctum')->get('/me', function (Request $r) {
+    return $r->user();
+});
