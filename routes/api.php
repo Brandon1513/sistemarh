@@ -13,6 +13,8 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Api\V2\AssetController;
 use App\Http\Controllers\Api\V2\AssignmentController;
 use App\Http\Controllers\Api\V2\UserAssetsController;
+use App\Http\Controllers\Api\V2\BrandController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -82,7 +84,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
   Route::post('/assignments', [AssignmentController::class,'assign']);
   Route::post('/assignments/{assignment}/return', [AssignmentController::class,'return']);
   Route::get('/assignments', [AssignmentController::class,'index']); // ← nuevo
-
+  Route::get('/brands', [BrandController::class,'index']);      // listado para el select
+  Route::post('/brands', [BrandController::class,'store']);     // opcional: crear desde UI
   // Activos actuales por usuario
   Route::get('/users/{user}/assets', [UserAssetsController::class,'index']);
 });
@@ -96,14 +99,16 @@ Route::middleware('auth:sanctum')->get('/me', function (Request $r) {
     return $r->user();
 });
 
-Route::middleware('auth:sanctum')->get('/users', function (Request $r) {
-    $q = $r->query('search');
-    return User::query()
+Route::get('/users', function (Request $r) {
+    $q      = $r->query('search');
+    $per    = (int) $r->query('per_page', 20);   // tamaño de página
+    $users  = User::query()
         ->when($q, fn($qq) => $qq->where(function($w) use ($q) {
-            $w->where('name','like',"%$q%")
-              ->orWhere('email','like',"%$q%");
+            $w->where('name','like',"%{$q}%")
+              ->orWhere('email','like',"%{$q}%");
         }))
         ->orderBy('name')
-        ->limit(20)
-        ->get(['id','name','email']);
+        ->paginate($per, ['id','name','email']); // ← paginate!
+
+    return response()->json($users);
 });
