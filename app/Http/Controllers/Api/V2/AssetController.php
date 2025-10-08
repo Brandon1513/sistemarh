@@ -12,23 +12,50 @@ use Illuminate\Support\Str;
 
 class AssetController extends Controller
 {
+    /**
+     * GET /api/v2/assets
+     * Soporta:
+     *  - ?q=texto (busca en tag/serie/modelo/marca y brandRef)
+     *  - ?status=in_stock|assigned|repair|retired
+     *  - ?type_id=ID
+     *  - ?per_page=30 (1..2000)
+     *  - ?page=2 (manejada por Laravel)
+     *  - ?paginate=0 (devuelve TODOS sin meta/links)
+     */
     public function index(Request $r)
     {
-        $rows = Asset::with(['type','brandRef','currentAssignment.user'])
-            ->when($r->status, fn($qq) => $qq->where('status', $r->status))
-            ->when($r->type_id, fn($qq) => $qq->where('type_id', $r->type_id))
+        // Control de paginación
+        $perPage  = (int) $r->query('per_page', 30);
+        $perPage  = max(1, min($perPage, 2000));      // límites sanos
+        $paginate = $r->boolean('paginate', true);    // ?paginate=0 desactiva paginación
+
+        $rowsQuery = Asset::with(['type','brandRef','currentAssignment.user'])
+            ->when($r->status, fn ($qq) => $qq->where('status', $r->status))
+            ->when($r->type_id, fn ($qq) => $qq->where('type_id', $r->type_id))
             ->when($r->q, function ($qq) use ($r) {
-                $q = $r->q;
+                $q = trim($r->q);
                 $qq->where(function ($w) use ($q) {
-                    $w->where('asset_tag','like',"%{$q}%")
-                      ->orWhere('serial_number','like',"%{$q}%")
-                      ->orWhere('model','like',"%{$q}%");
+                    $w->where('asset_tag', 'like', "%{$q}%")
+                      ->orWhere('serial_number', 'like', "%{$q}%")
+                      ->orWhere('model', 'like', "%{$q}%")
+                      ->orWhere('brand', 'like', "%{$q}%")
+                      ->orWhereHas('brandRef', fn($b) => $b->where('name', 'like', "%{$q}%"));
                 });
             })
-            ->orderByDesc('created_at')
-            ->paginate(20);
+            ->orderByDesc('created_at');
 
-        // Adjuntamos depreciación calculada para cada item
+        if (!$paginate) {
+            // Sin paginar (para dashboards)
+            $items = $rowsQuery->get();
+            $items->transform(function ($asset) {
+                $asset->depreciation = $this->calcDepreciationArray($asset);
+                return $asset;
+            });
+            return response()->json($items);
+        }
+
+        // Paginado (respeta per_page/page)
+        $rows = $rowsQuery->paginate($perPage);
         $rows->getCollection()->transform(function ($asset) {
             $asset->depreciation = $this->calcDepreciationArray($asset);
             return $asset;
@@ -37,6 +64,9 @@ class AssetController extends Controller
         return response()->json($rows);
     }
 
+    /**
+     * POST /api/v2/assets
+     */
     public function store(AssetStoreRequest $req)
     {
         $data = $req->validated();
@@ -63,6 +93,9 @@ class AssetController extends Controller
         return response()->json($asset, 201);
     }
 
+    /**
+     * GET /api/v2/assets/{asset}
+     */
     public function show(Asset $asset)
     {
         $asset->load(['type','brandRef','assignments.user','currentAssignment.user']);
@@ -70,13 +103,15 @@ class AssetController extends Controller
         return response()->json($asset);
     }
 
+    /**
+     * PUT /api/v2/assets/{asset}
+     */
     public function update(AssetUpdateRequest $req, Asset $asset)
     {
         $data = $req->validated();
 
         // reemplazo de factura si se envía una nueva
         if ($req->hasFile('invoice')) {
-            // limpiar antigua si existía
             if ($asset->invoice_path) {
                 Storage::disk('public')->delete($asset->invoice_path);
             }
@@ -110,11 +145,11 @@ class AssetController extends Controller
             ];
         }
 
-        $now = now();
+        $now    = now();
         $months = max(0, ($now->year - $date->year) * 12 + ($now->month - $date->month));
-        $years = $months / 12;
-        $rate = 0.10;                       // 10% anual (igual para todos)
-        $factor = max(0, 1 - ($rate * $years));  // sin valor de rescate
+        $years  = $months / 12;
+        $rate   = 0.10; // 10% anual
+        $factor = max(0, 1 - ($rate * $years)); // sin valor de rescate
 
         return [
             'years'   => round($years, 2),
