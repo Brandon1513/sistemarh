@@ -39,6 +39,8 @@ class AssetController extends Controller
                       ->orWhere('serial_number', 'like', "%{$q}%")
                       ->orWhere('model', 'like', "%{$q}%")
                       ->orWhere('brand', 'like', "%{$q}%")
+                      ->orWhere('phone_number','like',"%{$q}%")
+                      ->orWhere('carrier','like',"%{$q}%")
                       ->orWhereHas('brandRef', fn($b) => $b->where('name', 'like', "%{$q}%"));
                 });
             })

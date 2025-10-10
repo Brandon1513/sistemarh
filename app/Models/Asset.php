@@ -19,11 +19,15 @@ class Asset extends Model
         'purchase_date',
         'purchase_cost',
         'invoice_path',
+        'phone_number',
+        'carrier',
+        'is_unlocked',
         'created_by',
     ];
 
     protected $casts = [
         'purchase_date' => 'date',
+        'is_unlocked'   => 'boolean',
     ];
 
     public function type()

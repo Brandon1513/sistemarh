@@ -21,6 +21,9 @@ class AssetUpdateRequest extends FormRequest {
         'purchase_date'  => 'sometimes|nullable|date',
         'purchase_cost'  => 'sometimes|nullable|numeric|min:0|max:99999999.99',
         'invoice'        => 'sometimes|nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        'phone_number' => ['sometimes','nullable','regex:/^\+?[0-9]{7,15}$/'],
+        'carrier'      => 'sometimes|nullable|string|max:50',
+        'is_unlocked'  => 'sometimes|nullable|boolean',
     ];
 }
 

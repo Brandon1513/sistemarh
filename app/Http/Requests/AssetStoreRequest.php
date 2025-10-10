@@ -20,6 +20,9 @@ class AssetStoreRequest extends FormRequest {
           'purchase_date'  => 'nullable|date',
           'purchase_cost'  => 'nullable|numeric|min:0|max:99999999.99',
           'invoice'        => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB
+          'phone_number'   => 'nullable|string|max:20',
+          'carrier'        => 'nullable|string|max:50',
+          'is_unlocked'    => 'nullable|boolean',
       ];
   }
 }
