@@ -4,16 +4,17 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
+use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\UserDeviceTokenController;
-use Kreait\Firebase\Contract\Messaging;
-use App\Http\Controllers\NotificationController;
-
 use App\Http\Controllers\Api\V2\AssetController;
+
+use App\Http\Controllers\Api\V2\BrandController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UserDeviceTokenController;
 use App\Http\Controllers\Api\V2\AssignmentController;
 use App\Http\Controllers\Api\V2\UserAssetsController;
-use App\Http\Controllers\Api\V2\BrandController;
+use App\Http\Controllers\Api\V2\PublicAssetController;
 
 
 /*
@@ -90,6 +91,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
   Route::get('/users/{user}/assets', [UserAssetsController::class,'index']);
 });
 
+//ruta para el qr vista publica
+  Route::get('public/assets/{id}', [PublicAssetController::class, 'show'])
+     ->withoutMiddleware('auth:sanctum');
+
 Route::middleware('auth:sanctum')->get('/asset-types', function () {
     return \App\Models\AssetType::orderBy('name')->get();
 });
@@ -112,3 +117,4 @@ Route::get('/users', function (Request $r) {
 
     return response()->json($users);
 });
+
