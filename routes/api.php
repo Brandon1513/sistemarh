@@ -2,7 +2,6 @@
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\Api\AuthController;
@@ -15,6 +14,9 @@ use App\Http\Controllers\UserDeviceTokenController;
 use App\Http\Controllers\Api\V2\AssignmentController;
 use App\Http\Controllers\Api\V2\UserAssetsController;
 use App\Http\Controllers\Api\V2\PublicAssetController;
+
+
+
 
 
 /*
@@ -80,6 +82,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
   Route::post('/assets', [AssetController::class,'store']);
   Route::get('/assets/{asset}', [AssetController::class,'show']);
   Route::put('/assets/{asset}', [AssetController::class,'update']);
+  
 
   // Asignaciones
   Route::post('/assignments', [AssignmentController::class,'assign']);
@@ -117,4 +120,3 @@ Route::get('/users', function (Request $r) {
 
     return response()->json($users);
 });
-

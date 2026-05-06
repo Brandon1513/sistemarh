@@ -49,4 +49,11 @@ class Asset extends Model
     {
         return $this->hasOne(\App\Models\AssetAssignment::class)->whereNull('returned_at');
     }
+    public function current_assignment()
+{
+    return $this->hasOne(\App\Models\AssetAssignment::class, 'asset_id')
+        ->whereNull('returned_at')
+        ->latestOfMany();
+}
+
 }

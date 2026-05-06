@@ -4,18 +4,14 @@ use App\Models\Noticia;
 use App\Models\CarruselImage;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
-use App\Http\Middleware\CheckAdminRole;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CarruselController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\PeriodoVacacionController;
-use App\Http\Controllers\RecursosHumanosController;
 use App\Http\Controllers\SolicitudPermisoController;
 use App\Http\Controllers\SolicitudVacacionController;
-
 Route::get('/', function () {
     return view('welcome');
 });
@@ -46,12 +42,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('permissions/{permission}/reject', [PermissionController::class, 'reject'])->name('permissions.reject');
 });
 
-// rutas administrador
-Route::middleware(['auth', CheckRole::class . ':administrador'])->group(function () {
-    Route::resource('supervisores', SupervisorController::class)->parameters([
-        'supervisores' => 'supervisor',
-    ]);
-});
+
 //Gestionar usuarios
 
 
@@ -69,18 +60,9 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
 
 
 
-//REGISTRO RH
 
-Route::middleware(['auth', CheckRole::class . ':administrador'])->group(function () {
-    Route::resource('recursoshumanos', RecursosHumanosController::class)->parameters([
-        'recursoshumanos' => 'recursoshumano'
-    ]);
-});
 
-Route::middleware(['role:administrador'])->group(function () {
-    Route::get('/recursoshumanos/create', [RecursosHumanosController::class, 'create'])->name('recursoshumanos.create');
-    Route::post('/recursoshumanos', [RecursosHumanosController::class, 'store'])->name('recursoshumanos.store');
-});
+
 
 //Vista de rh para los permisos
 Route::middleware(['role:recursos_humanos'])->group(function () {
@@ -152,6 +134,11 @@ Route::middleware(['auth'])->group(function(){
     
 });
 
+Route::delete('solicitudes-vacaciones/{id}/admin-destroy',
+    [SolicitudVacacionController::class, 'destroyAdmin'])
+    ->name('solicitudes_vacaciones.admin-destroy')
+    ->middleware('role:administrador');
+
 // Rutas para las solicitudes de vacaciones
 
 
@@ -211,9 +198,4 @@ Route::middleware(['auth', 'role:administrador|marketing'])->group(function () {
     Route::put('/carrusel/{id}', [CarruselController::class, 'update'])->name('carrusel.update');
 
 });
-
-
-
-
-
 require __DIR__.'/auth.php';

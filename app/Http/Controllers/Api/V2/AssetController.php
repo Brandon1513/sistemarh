@@ -9,6 +9,8 @@ use App\Models\Asset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
 
 class AssetController extends Controller
 {
@@ -161,4 +163,50 @@ class AssetController extends Controller
             'current' => round($cost * $factor, 2),
         ];
     }
+    public function searchLite(Request $r)
+    {
+        $q     = trim((string) $r->query('q', ''));
+        $limit = min(max((int) $r->query('limit', 12), 1), 50);
+
+        // Ajustado a tus tablas/columnas reales
+        $query = DB::table('assets')
+            ->leftJoin('asset_assignments as a', function ($j) {
+                $j->on('a.asset_id', '=', 'assets.id')
+                  ->whereNull('a.returned_at'); // solo la asignación vigente
+            })
+            ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
+            ->select([
+                'assets.id',
+                'assets.asset_tag',
+                'assets.model',
+                DB::raw('u.id as user_id'),
+                DB::raw('u.name as user_name'),
+                DB::raw('u.email as user_email'),
+            ]);
+
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('assets.asset_tag', 'like', "%{$q}%")
+                  ->orWhere('assets.model', 'like', "%{$q}%");
+            });
+        }
+
+        $rows = $query->orderBy('assets.asset_tag')->limit($limit)->get();
+
+        $items = $rows->map(function ($r) {
+            return [
+                'id'        => $r->id,
+                'asset_tag' => $r->asset_tag,
+                'model'     => $r->model,
+                'assigned_to' => [
+                    'id'    => $r->user_id,
+                    'name'  => $r->user_name,
+                    'email' => $r->user_email,
+                ],
+            ];
+        });
+
+        return response()->json(['items' => $items], 200);
+    }
+
 }

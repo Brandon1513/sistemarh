@@ -289,4 +289,34 @@ public function export(Request $request)
             ->route('vacaciones.index')
             ->with('success', 'Solicitud eliminada y días recuperados.');
     }
+
+     
+    public function destroyAdmin($id)
+    {
+        // Solo administradores pueden usar este método
+        if (!auth()->user()->hasRole('administrador')) {
+            abort(403, 'No tienes permiso para realizar esta acción.');
+        }
+    
+        $vacation = SolicitudVacacion::with('empleado')->findOrFail($id);
+    
+        // Devolver los días al período si la solicitud estaba aprobada o pendiente
+        if (in_array($vacation->estado, ['aprobado', 'pendiente'])) {
+            $periodo = PeriodoVacacion::where('empleado_id', $vacation->empleado_id)
+                ->where('anio', $vacation->periodo_correspondiente)
+                ->first();
+    
+            if ($periodo) {
+                $periodo->increment('dias_disponibles', $vacation->dias_solicitados);
+            }
+        }
+    
+        $nombreEmpleado = $vacation->empleado->name ?? 'N/A';
+        $vacation->delete();
+    
+        return redirect()
+            ->route('solicitudes_vacaciones.index')
+            ->with('success', "Solicitud de {$nombreEmpleado} eliminada correctamente. Los días fueron devueltos al período.");
+    }
+
 }
