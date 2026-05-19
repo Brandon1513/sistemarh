@@ -2,7 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Exports\PermissionsExport;
+use App\Exports\VacacionesExport;
+use App\Models\SolicitudVacacion;
 use App\Mail\ExportVacacionesMail;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
@@ -40,29 +41,27 @@ class ExportLibroMayorVacacionesJob implements ShouldQueue
      * Execute the job.
      */
     public function handle()
-    {
-        // Construir la consulta para obtener permisos filtrados
-        $query = \App\Models\Permission::with(['user', 'department']);
-
-        if ($this->search) {
-            $query->whereHas('user', function ($q) {
-                $q->where('name', 'like', "%{$this->search}%");
-            });
-        }
-
-        if ($this->date) {
-            $query->whereDate('date', $this->date);
-        }
-
-        $permissions = $query->get();
-
-        // Generar el archivo Excel
-        $fileName = "permissions_filtered_" . now()->timestamp . ".xlsx";
-        $filePath = "exports/{$fileName}";
-        Excel::store(new PermissionsExport($permissions), $filePath, 'public');
-
-        // Enviar el correo con el enlace al archivo
-        $url = asset("storage/{$filePath}");
-        Mail::to($this->userEmail)->send(new ExportVacacionesMail($url));
+{
+    $query = SolicitudVacacion::with(['empleado', 'departamento']);
+ 
+    if ($this->search) {
+        $query->whereHas('empleado', function ($q) {
+            $q->where('name', 'like', "%{$this->search}%");
+        });
     }
+ 
+    if ($this->date) {
+        $query->whereDate('fecha_inicio', $this->date);
+    }
+ 
+    $vacaciones = $query->get();
+ 
+    $fileName = "vacaciones_libro_mayor_" . now()->timestamp . ".xlsx";
+    $filePath = "exports/{$fileName}";
+ 
+    Excel::store(new VacacionesExport($vacaciones), $filePath, 'public');
+ 
+    Mail::to($this->userEmail)->send(new ExportVacacionesMail($filePath, 'Libro Mayor de Vacaciones'));
+}
+
 }

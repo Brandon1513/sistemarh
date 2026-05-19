@@ -18,6 +18,7 @@ use App\Notifications\VacationRHNotification;
 use App\Notifications\VacationApprovedNotification;
 use App\Notifications\VacationRejectedNotification;
 use App\Notifications\VacationSecurityNotification;
+use App\Jobs\ExportWeekVacacionesJob;
 use Illuminate\Support\Str;
 
 
@@ -260,6 +261,13 @@ public function export(Request $request)
 
     return back()->with('success', 'El archivo está siendo procesado y será enviado por correo.');
 }
+public function exportWeek()
+{
+    ExportWeekVacacionesJob::dispatch(auth()->user()->email);
+ 
+    return back()->with('success', 'La exportación de semana nominal está siendo procesada y será enviada por correo.');
+}
+
     public function destroy($id)
     {
         // 1. Buscar la solicitud

@@ -58,12 +58,6 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
 
 });
 
-
-
-
-
-
-
 //Vista de rh para los permisos
 Route::middleware(['role:recursos_humanos'])->group(function () {
     Route::get('/rh', [PermissionController::class, 'indexRH'])->name('rh.index');
@@ -82,9 +76,6 @@ Route::middleware(['role:recursos_humanos'])->group(function () {
 
 //Control de ausencias del personal
 
-
-
-
 Route::middleware(['auth'])->group(function () {
     Route::get('/permisos', [SolicitudPermisoController::class, 'index'])->name('permisos.index');
     Route::get('permisos/create', [SolicitudPermisoController::class, 'create'])->name('permisos.create');
@@ -93,20 +84,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/permisos/{id}/aprobar', [SolicitudPermisoController::class, 'aprobar'])->name('permisos.aprobar');
     Route::post('/permisos/{id}/rechazar', [SolicitudPermisoController::class, 'rechazar'])->name('permisos.rechazar');
 
-    
-
 });
-
 
 Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function () {
     Route::get('/solicitudes_permisos', [SolicitudPermisoController::class, 'indexSolicitudesPermiso'])->name('solicitudes_permisos.index');
-    Route::get('/solicitudes_permisos/export', [SolicitudPermisoController::class, 'export'])->name('solicitudes_permisos.export');
-    Route::get('/solicitudes_permisos/exportWeek', [SolicitudPermisoController::class, 'exportWeek'])->name('solicitudes_permisos.exportWeek');
-    Route::get('/solicitudes_permisos/download-zip', [SolicitudPermisoController::class, 'downloadSolicitudesZIP'])->name('solicitudes_permisos.download-zip');
+    Route::get('/solicitudes-permisos/export', [SolicitudPermisoController::class, 'export'])->name('solicitudes_permisos.export');
+    Route::get('/solicitudes-permisos/exportWeek', [SolicitudPermisoController::class, 'exportWeek'])->name('solicitudes_permisos.exportWeek');
+    Route::get('/solicitudes-permisos/download-zip', [SolicitudPermisoController::class, 'downloadSolicitudesZIP'])->name('solicitudes_permisos.download-zip');
     // Ruta para mostrar un permiso individual
-    Route::get('/solicitudes_permisos/{id}', [SolicitudPermisoController::class, 'show'])->name('solicitudes_permisos.show');
+    Route::get('/solicitudes-permisos/{id}', [SolicitudPermisoController::class, 'show'])->name('solicitudes_permisos.show');
     // Ruta para descargar el PDF de un permiso individual
-    Route::get('/solicitudes_permisos/{id}/download', [SolicitudPermisoController::class, 'downloadPDF'])
+    Route::get('/solicitudes-permisos/{id}/download', [SolicitudPermisoController::class, 'downloadPDF'])
     ->name('solicitudes_permisos.download');
 
 
@@ -149,8 +137,8 @@ Route::delete('solicitudes-vacaciones/{id}/admin-destroy',
 
 Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
     Route::get('/solicitudes_vacaciones', [SolicitudVacacionController::class, 'indexRH'])->name('solicitudes_vacaciones.index');
-    Route::get('/solicitudes_vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
-    Route::get('/solicitudes_vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
+    Route::get('/solicitudes-vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
+    Route::get('/solicitudes-vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
     Route::get('/solicitudes-vacaciones/export', [SolicitudVacacionController::class, 'export'])->name('solicitudes_vacaciones.export');
     Route::get('/solicitudes-vacaciones/exportWeek', [SolicitudVacacionController::class, 'exportWeek'])->name('solicitudes_vacaciones.exportWeek');
     Route::get('/solicitudes-vacaciones/download-zip', [SolicitudVacacionController::class, 'downloadZip'])->name('solicitudes_vacaciones.download-zip');
