@@ -17,15 +17,15 @@ class PermissionsExport implements FromCollection, WithHeadings
     {
         return $this->permissions->map(function ($permission) {
             return [
-                'Empleado' => $permission->user->name,
-                'Jefe' => $permission->user->supervisor ? $permission->user->supervisor->name : 'Sin Jefe',
-                'Departamento' => $permission->department->name,
-                'Entrada o Salida' => $permission->entry_exit_type,
-                'Horario Oficial' => $permission->official_schedule,
-                'Hora de Entrada/Salida' => $permission->entry_exit_time,
-                'Fecha del Permiso' => $permission->date,
-                'Motivo' => $permission->reason,
-                'Estado' => ucfirst($permission->status),
+                'Empleado'              => $permission->user?->name ?? 'N/A',
+                'Jefe'                  => $permission->user?->supervisor?->name ?? 'Sin Jefe',
+                'Departamento'          => $permission->department?->name ?? 'N/A',
+                'Entrada o Salida'      => $permission->entry_exit_type,
+                'Horario Oficial'       => $permission->official_schedule,
+                'Hora de Entrada/Salida'=> $permission->entry_exit_time,
+                'Fecha del Permiso'     => $permission->date,
+                'Motivo'                => $permission->reason,
+                'Estado'                => ucfirst($permission->status),
             ];
         });
     }

@@ -334,6 +334,7 @@ public function createEspontanea()
     foreach ($empleados as $emp) {
         $periodos = PeriodoVacacion::where('empleado_id', $emp->id)
             ->where('dias_disponibles', '>', 0)
+            ->where('activo', 1) // Solo períodos activos
             ->orderBy('anio', 'desc')
             ->get(['anio', 'dias_corresponden', 'dias_disponibles'])
             ->toArray();

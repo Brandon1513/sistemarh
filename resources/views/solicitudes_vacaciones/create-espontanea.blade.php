@@ -4,7 +4,7 @@
             <a href="{{ route('solicitudes_vacaciones.index') }}" style="color:#BBA4C0;" onmouseover="this.style.color='#6A2C75'" onmouseout="this.style.color='#BBA4C0'">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </a>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">Registrar Vacación Espontánea</h2>
+            <h2 class="text-xl font-semibold leading-tight text-gray-800">Registrar Vacaciones Esporádicas</h2>
         </div>
     </x-slot>
 
