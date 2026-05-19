@@ -31,7 +31,7 @@ class PermisosExcelLMExportadosMail extends Mailable
     public function build()
     {
         return $this->subject('Exportación de Permisos Completada')
-                    ->markdown('emails.permisos_libro_mayor')
+                    ->view('emails.permisos_libro_mayor')
                     ->with(['url' => $this->url]);
     }
 }

@@ -111,6 +111,11 @@ Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
 
 
     Route::get('/rh/permisos', [SolicitudPermisoController::class, 'indexRH'])->name('rh.permisos.index');
+
+    // Vacaciones espontáneas — registradas por RH en nombre del empleado
+    Route::get('/vacaciones-espontaneas/create',  [SolicitudVacacionController::class, 'createEspontanea'])->name('vacaciones.espontanea.create');
+    Route::post('/vacaciones-espontaneas',        [SolicitudVacacionController::class, 'storeEspontanea'])->name('vacaciones.espontanea.store');
+
 });
 
 

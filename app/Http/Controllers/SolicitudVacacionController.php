@@ -319,4 +319,91 @@ public function export(Request $request)
             ->with('success', "Solicitud de {$nombreEmpleado} eliminada correctamente. Los días fueron devueltos al período.");
     }
 
+    /**
+ * Formulario RH para registrar una vacación espontánea en nombre de un empleado.
+ */
+public function createEspontanea()
+{
+    // Todos los empleados activos con sus períodos disponibles
+    $empleados = User::whereNotNull('fecha_ingreso')
+        ->orderBy('name')
+        ->get();
+ 
+    // Períodos agrupados por empleado_id para el JS
+    $periodosPorEmpleado = [];
+    foreach ($empleados as $emp) {
+        $periodos = PeriodoVacacion::where('empleado_id', $emp->id)
+            ->where('dias_disponibles', '>', 0)
+            ->orderBy('anio', 'desc')
+            ->get(['anio', 'dias_corresponden', 'dias_disponibles'])
+            ->toArray();
+ 
+        if (!empty($periodos)) {
+            $periodosPorEmpleado[$emp->id] = $periodos;
+        }
+    }
+ 
+    return view('solicitudes_vacaciones.create-espontanea', compact('empleados', 'periodosPorEmpleado'));
+}
+ 
+/**
+ * Guarda la vacación espontánea registrada por RH.
+ */
+public function storeEspontanea(Request $request)
+{
+    $request->validate([
+        'empleado_id'              => 'required|exists:users,id',
+        'dias_solicitados'         => 'required|integer|min:1',
+        'fecha_inicio_vacaciones'  => 'required|date',
+        'fecha_termino_vacaciones' => 'required|date|after_or_equal:fecha_inicio_vacaciones',
+        'periodo_correspondiente'  => 'required|integer',
+        'fecha_presentarse_trabajar' => 'required|date',
+    ]);
+ 
+    $empleadoId = $request->empleado_id;
+    $empleado   = User::findOrFail($empleadoId);
+ 
+    // Verificar período
+    $periodo = PeriodoVacacion::where('empleado_id', $empleadoId)
+        ->where('anio', $request->periodo_correspondiente)
+        ->first();
+ 
+    if (!$periodo || $periodo->dias_disponibles < $request->dias_solicitados) {
+        return redirect()->back()
+            ->withErrors(['dias_solicitados' => 'El empleado no tiene suficientes días disponibles en este período.'])
+            ->withInput();
+    }
+ 
+    // Descontar días del período
+    $periodo->dias_disponibles -= $request->dias_solicitados;
+    $periodo->save();
+ 
+    // Crear solicitud en nombre del empleado
+    $vacacion = SolicitudVacacion::create([
+        'empleado_id'            => $empleadoId,
+        'departamento_id'        => $empleado->departamento_id,
+        'fecha_solicitud'        => now(),
+        'dias_corresponden'      => $periodo->dias_corresponden,
+        'dias_solicitados'       => $request->dias_solicitados,
+        'dias_pendientes'        => $periodo->dias_disponibles,
+        'periodo_correspondiente'=> $periodo->anio,
+        'fecha_inicio'           => $request->fecha_inicio_vacaciones,
+        'fecha_fin'              => $request->fecha_termino_vacaciones,
+        'fecha_reincorporacion'  => $request->fecha_presentarse_trabajar,
+        'estado'                 => 'pendiente',
+        'tipo'                   => 'espontanea',
+        'creado_por'             => auth()->id(),
+    ]);
+ 
+    // Notificar al supervisor del empleado
+    $supervisor = $empleado->supervisor;
+    if ($supervisor && $supervisor->email) {
+        Mail::to($supervisor->email)->send(new VacationRequestNotification($empleado, $vacacion));
+    }
+ 
+    return redirect()->route('solicitudes_vacaciones.index')
+        ->with('success', "Vacación espontánea registrada para {$empleado->name}. El jefe directo recibirá notificación.");
+}
+
+
 }

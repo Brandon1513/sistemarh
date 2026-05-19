@@ -28,7 +28,7 @@ class ExportWeekPermisosMail extends Mailable
         $url = asset("storage/exports/{$this->fileName}");
 
         return $this->subject('Exportación de Permisos de la Semana Nominal')
-            ->markdown('emails.export_week_permisos')
+            ->view('emails.export_week_permisos')
             ->with(['url' => $url]);
 
     }

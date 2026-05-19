@@ -331,6 +331,11 @@
                             <div class="panel-item-icon" style="background:#e8f5ee;">🏖️</div>
                             Control de Vacaciones
                         </a>
+                        <a href="{{ route('vacaciones.espontanea.create') }}" class="panel-item {{ request()->routeIs('vacaciones.espontanea.*') ? 'active' : '' }}">
+                            <div class="panel-item-icon" style="background:#faf3e0;">📋</div>
+                            Registrar Vacación Espontánea
+                        </a>
+
                     </div>
                 </div>
             @endif
@@ -485,6 +490,10 @@
                     <a href="{{ route('solicitudes_vacaciones.index') }}" class="mob-link {{ request()->routeIs('solicitudes_vacaciones.*') ? 'active' : '' }}">
                         <span class="mob-icon">🏖️</span> Control de Vacaciones
                     </a>
+                    <a href="{{ route('vacaciones.espontanea.create') }}" class="mob-link {{ request()->routeIs('vacaciones.espontanea.*') ? 'active' : '' }}">
+                        <span class="mob-icon">📋</span> Vacación Espontánea
+                    </a>
+
                 </div>
             @endif
 

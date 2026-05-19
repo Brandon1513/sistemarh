@@ -22,7 +22,7 @@ class ExportVacacionesMail extends Mailable
     public function build()
     {
         return $this->subject($this->subjectLine)
-                    ->markdown('emails.export_libro_mayor_vacaciones')
+                    ->view('emails.export_libro_mayor_vacaciones')
                     ->attachFromStorage($this->filePath);
     }
 }
