@@ -200,7 +200,7 @@
                         </div>
 
                         {{-- Eliminar — solo administrador, cualquier estado --}}
-                        @if(auth()->user()->hasRole('administrador'))
+                        @if(auth()->user()->hasAnyRole(['administrador', 'recursos_humanos']))
                             <form action="{{ route('solicitudes_vacaciones.admin-destroy', $vacation->id) }}" method="POST"
                                 onsubmit="return confirmDelete('{{ addslashes($vacation->empleado->name ?? '') }}', '{{ $vacation->estado }}')">
                                 @csrf

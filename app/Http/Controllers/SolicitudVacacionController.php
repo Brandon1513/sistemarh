@@ -301,8 +301,8 @@ public function exportWeek()
      
     public function destroyAdmin($id)
     {
-        // Solo administradores pueden usar este método
-        if (!auth()->user()->hasRole('administrador')) {
+        // Solo administradores y RH pueden usar este método
+        if (!auth()->user()->hasAnyRole(['administrador', 'recursos_humanos'])) {
             abort(403, 'No tienes permiso para realizar esta acción.');
         }
     

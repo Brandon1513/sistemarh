@@ -130,7 +130,7 @@ Route::middleware(['auth'])->group(function(){
 Route::delete('solicitudes-vacaciones/{id}/admin-destroy',
     [SolicitudVacacionController::class, 'destroyAdmin'])
     ->name('solicitudes_vacaciones.admin-destroy')
-    ->middleware('role:administrador');
+    ->middleware('role:administrador|recursos_humanos');
 
 // Rutas para las solicitudes de vacaciones
 
