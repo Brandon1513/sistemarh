@@ -1,179 +1,133 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitud de Permiso</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
-        }
+@php
+    $employee   = $permission->user;
+    $supervisor = $employee?->supervisor;
+    $isEntry    = $permission->entry_exit_type === 'entrada';
+    $isExit     = $permission->entry_exit_type === 'salida';
 
-        .header-table, .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-        }
+    $fmtDate = fn ($d) => $d ? \Carbon\Carbon::parse($d)->locale('es')->translatedFormat('l d \d\e F \d\e Y') : '—';
+    $fmtTime = fn ($t) => $t ? \Carbon\Carbon::parse($t)->format('h:i A') : '—';
 
-        .header-table td, .info-table td {
-            border: 1px solid black;
-            padding: 8px;
-            
-            vertical-align: top;
-        }
-        table.info-table th {
-        border: 1px solid black;
-        padding: 8px;
-        text-align: left;
-        vertical-align: top;
-    }
+    $status = $permission->status;
+@endphp
 
-        .header-table {
-            margin-bottom: 20px;
-            max-width: 100%;
-        }
+@extends('pdf.layout', [
+    'docTitle'    => 'Pase de Entrada / Salida',
+    'docSubtitle' => 'Autorización para entrar o salir fuera del horario oficial',
+    'docCode'     => 'F-REH-02',
+    'docRevision' => '05',
+    'docIssued'   => '17-jun-2024',
+    'folio'       => 'PS-' . str_pad($permission->id, 6, '0', STR_PAD_LEFT),
+    'status'      => $status,
+    'requestedAt' => $permission->created_at,
+])
 
-        .logo {
-            width: 80px;
-            
-            
-        }
+@section('content')
 
-        .header-title {
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .signature {
-            margin-top: 30px;
-        }
-
-        .signature-line {
-            border-top: 1px solid black;
-            width: 200px;
-            text-align: center;
-            margin-top: 5px;
-        }
-
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-            
-    </style>
-</head>
-<body>
-
-    <!-- Header con logo y detalles del documento -->
-    <table class="header-table">
-        <tr>
-            <td rowspan="2" style="width: 10%; border: 1px solid black; text-align: center;">
-                <img src="{{ public_path('images/logo.png') }}" class="logo" alt="Logo" style="max-width: 100px;" >
-            </td>
-            <td colspan="3" class="header-title" style="width: 90%; border: 1px solid black; text-align: center;" ><strong>Nombre del documento:</strong><br>
-                Permiso de Pase de Salida 
-            </td>
-        </tr>
-        <tr>
-            <td class="header-title"> Fecha de Emisión:<br>
-                17-jun-2024
-            </td>
-             <td class="header-title">Revisión:<br>
-                05
-            </td>    
-                <td class="header-title">
-                    Código: <br>
-                    F-REH-02
+    {{-- Tipo de pase --}}
+    <div class="section">
+        <div class="section-title">Tipo de pase</div>
+        <table class="options">
+            <tr>
+                <td class="{{ $isEntry ? 'on' : '' }}" style="width:50%;">
+                    <span class="box {{ $isEntry ? 'checked' : '' }}"></span> Pase de entrada
                 </td>
+                <td class="{{ $isExit ? 'on' : '' }}" style="width:50%;">
+                    <span class="box {{ $isExit ? 'checked' : '' }}"></span> Pase de salida
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- Datos del colaborador --}}
+    <div class="section">
+        <div class="section-title">Datos del colaborador</div>
+        <table class="fields">
+            <tr>
+                <td class="label">Nombre</td>
+                <td class="value">{{ $employee?->name ?? '—' }}</td>
+                <td class="label">No. de empleado</td>
+                <td class="value">{{ $employee?->clave_empleado ?: '—' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Puesto</td>
+                <td class="value">{{ $permission->position ?: ($employee?->puesto_empleado ?: '—') }}</td>
+                <td class="label">Departamento</td>
+                <td class="value">{{ $permission->department?->name ?? '—' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Jefe inmediato</td>
+                <td class="value">{{ $supervisor?->name ?? '—' }}</td>
+                <td class="label">Correo</td>
+                <td class="value" style="font-weight:normal;">{{ $employee?->email ?? '—' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- Detalle del pase --}}
+    <div class="section">
+        <div class="section-title">Detalle del pase</div>
+        <table class="fields">
+            <tr>
+                <td class="label">Fecha del pase</td>
+                <td class="value" colspan="3">{{ ucfirst($fmtDate($permission->date)) }}</td>
+            </tr>
+            <tr>
+                <td class="label">Horario oficial</td>
+                <td class="value">{{ $fmtTime($permission->official_schedule) }}</td>
+                <td class="label">Hora de {{ $isEntry ? 'entrada' : ($isExit ? 'salida' : 'entrada / salida') }}</td>
+                <td class="value">{{ $fmtTime($permission->entry_exit_time) }}</td>
+            </tr>
+            <tr>
+                <td class="label">Documento soporte</td>
+                <td class="value" colspan="3">{{ $permission->supporting_document ? 'Sí, adjunto en la Intranet' : 'No se adjuntó documento' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- Motivo --}}
+    <div class="section">
+        <div class="section-title">Motivo</div>
+        <div class="note">{{ $permission->reason ?: 'Sin motivo registrado.' }}</div>
+    </div>
+
+    {{-- Seguimiento --}}
+    <div class="section">
+        <div class="section-title">Seguimiento</div>
+        <table class="fields">
+            <tr>
+                <td class="label">Autorizó</td>
+                <td class="value">{{ $permission->approver?->name ?? 'Pendiente' }}</td>
+                <td class="label">Recursos Humanos</td>
+                <td class="value">{{ $permission->hr?->name ?? 'Pendiente' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- Firmas --}}
+    <table class="signatures">
+        <tr>
+            <td>
+                <div class="sign-status">&nbsp;</div>
+                <div class="sign-line">
+                    <div class="sign-name">{{ $employee?->name ?? '' }}</div>
+                    <div class="sign-role">Firma del colaborador</div>
+                </div>
+            </td>
+            <td>
+                <div class="sign-status muted">{{ ucfirst($status ?? 'pendiente') }}</div>
+                <div class="sign-line">
+                    <div class="sign-name">{{ $permission->approver?->name ?? $supervisor?->name ?? '' }}</div>
+                    <div class="sign-role">Jefe inmediato</div>
+                </div>
+            </td>
+            <td>
+                <div class="sign-status">&nbsp;</div>
+                <div class="sign-line">
+                    <div class="sign-name">{{ $permission->hr?->name ?? '' }}</div>
+                    <div class="sign-role">Recursos Humanos</div>
+                </div>
+            </td>
         </tr>
     </table>
 
-    <!-- Información del permiso -->
-    <table class="info-table">
-        <tr>
-            <td>Pase de Entrada: @if($permission->entry_exit_type == 'entrada') (X) @else ( ) @endif</td>
-            <td colspan="3">Pase de Salida: @if($permission->entry_exit_type == 'salida') (X) @else ( ) @endif</td>
-         </tr>
-        <tr>
-            <td>Nombre:</td>
-            <td colspan="3">{{ $permission->user->name }}</td>
-        </tr>
-        <tr>
-            <td>Puesto:</td>
-            <td colspan="3">{{ $permission->position }}</td>
-        </tr>
-        <tr>
-            <td>Departamento:</td>
-            <td colspan="3">{{ $permission->department->name }}</td>
-        </tr>
-        <tr>
-            <td>Horario Oficial:</td>
-            <td colspan="3">{{ \Carbon\Carbon::parse($permission->official_schedule)->format('h:i A') }} </td>
-        </tr>
-        <tr>
-            <td>Hora de Entrada/Salida:</td>
-            <td  colspan="3">{{ \Carbon\Carbon::parse($permission->entry_exit_time)->format('h:i A') }} </td>
-        </tr>
-        <tr>
-            <td>Fecha del Permiso:</td>
-            <td colspan="3">{{ $permission->date }}</td>
-        </tr>
-        <tr>
-            <td>Motivo:</td>
-            <td colspan="3">{{ $permission->reason }}</td>
-        </tr>
-    </table>
-
-    <!-- Firmas -->
-    <table style="width: 100%; margin-top: 50px;">
-        <tr>
-            <td style="text-align: center;">
-                ____________________________
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align: center;">
-                Firma del Empleado
-            </td>
-        </tr>
-    </table>
-    
-    <table style="width: 100%; margin-top: 100px;">
-        <tr>
-            <td style="text-align: center; width: 50%;">
-                @if($permission->status == 'pendiente')
-                    Pendiente
-                @elseif($permission->status == 'aprobado')
-                    Aprobado
-                @else
-                    Rechazado
-                @endif
-            </td>
-            <td style="text-align: center; width: 50%;">
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align: center; width: 50%;">
-                ____________________________
-            </td>
-            <td style="text-align: center; width: 50%;">
-                ____________________________
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align: center;">
-                Firma del Jefe Inmediato
-            </td>
-            <td style="text-align: center;">
-                Firma de Recursos Humanos
-            </td>
-        </tr>
-    </table>
-    
-
-</body>
-</html>
+@endsection

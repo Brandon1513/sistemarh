@@ -7,10 +7,10 @@
                 </svg>
                 RH — Control de Ausencias
             </h2>
-            @if(!request()->hasAny(['search','start_date','end_date']))
-                <span class="px-3 py-1 text-xs font-semibold rounded-full" style="background:#f3eef5; color:#6A2C75;">
-                    📅 Semana nominal actual
-                </span>
+            @if($pendientes > 0)
+                <a href="{{ route('solicitudes_permisos.index', ['vista' => 'pendientes']) }}" class="px-3 py-1 text-xs font-semibold rounded-full" style="background:#fdf3d7; color:#8a6100; text-decoration:none;">
+                    ⏳ {{ $pendientes }} {{ $pendientes === 1 ? 'pendiente' : 'pendientes' }} por atender
+                </a>
             @endif
         </div>
     </x-slot>
@@ -29,8 +29,14 @@
 
             <div class="rh-card">
 
+                {{-- Vistas rápidas: Semana nominal / Pendientes / Todas --}}
+                @include('permisos._vistas', ['ruta' => 'solicitudes_permisos.index'])
+
                 {{-- Filtros --}}
                 <form method="GET" action="{{ route('solicitudes_permisos.index') }}">
+                    @if($vista !== 'rango')
+                        <input type="hidden" name="vista" value="{{ $vista }}">
+                    @endif
                     <div class="rh-filter-bar">
                         <div class="rh-filter-group" style="flex:2; min-width:200px;">
                             <span class="rh-filter-label">Buscar empleado</span>
@@ -90,7 +96,10 @@
                     @if($permisos->isEmpty())
                         <div class="rh-empty">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            <p>No hay solicitudes para mostrar con los filtros aplicados.</p>
+                            <p>No hay solicitudes para mostrar en esta vista.</p>
+                            @if($vista !== 'todas')
+                                <a href="{{ route('solicitudes_permisos.index', ['vista' => 'todas']) }}" class="rh-btn rh-btn-outline" style="margin-top:12px;">Ver todas las solicitudes</a>
+                            @endif
                         </div>
                     @else
                         <table class="rh-table">
@@ -166,7 +175,16 @@
                 </div>
 
                 <div class="rh-footer">
-                    <p style="font-size:13px; color:var(--muted);">{{ count($permisos) }} registro(s) encontrados</p>
+                    <p style="font-size:13px; color:var(--muted);">
+                        @if($permisos->total() > 0)
+                            Mostrando {{ $permisos->firstItem() }}–{{ $permisos->lastItem() }} de {{ $permisos->total() }} registro(s)
+                        @else
+                            0 registros encontrados
+                        @endif
+                    </p>
+                    @if($permisos->hasPages())
+                        <div style="margin-top:10px;">{{ $permisos->links() }}</div>
+                    @endif
                 </div>
             </div>
         </div>

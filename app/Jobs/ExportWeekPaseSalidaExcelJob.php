@@ -39,14 +39,16 @@ class ExportWeekPaseSalidaExcelJob implements ShouldQueue
         $endOfWeek = $startOfWeek->copy()->addDays(6); // Martes de la próxima semana
 
         // Filtrar los permisos dentro del rango de fechas
-        $permissions = Permission::with(['user', 'department'])
+        $permissions = Permission::with(['user.supervisor', 'department', 'approver'])
             ->whereBetween('date', [$startOfWeek, $endOfWeek])
+            ->orderBy('date')
             ->get();
 
         // Generar el archivo Excel
         $fileName = "permissions_week_" . now()->timestamp . ".xlsx";
         $filePath = "exports/{$fileName}";
-        Excel::store(new PermissionsExport($permissions), $filePath, 'public');
+        $subtitle = PermissionsExport::weekSubtitle($startOfWeek, $endOfWeek);
+        Excel::store(new PermissionsExport($permissions, $subtitle), $filePath, 'public');
 
         // Crear el enlace de descarga
         $downloadUrl = asset("storage/{$filePath}");

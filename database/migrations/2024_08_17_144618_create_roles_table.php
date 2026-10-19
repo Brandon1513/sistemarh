@@ -1,29 +1,22 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
+/**
+ * Migración obsoleta: creaba una tabla `roles` propia, reemplazada por la de
+ * Spatie (create_permission_tables).
+ * Se deja vacía para que la base pueda migrarse desde cero; en producción ya está
+ * registrada y no se vuelve a ejecutar.
+ */
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('roles', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique(); // Ejemplo: 'empleado', 'jefe', 'administrador'
-            $table->timestamps();
-
-        });
+        //
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('roles');
+        //
     }
 };

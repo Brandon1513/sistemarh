@@ -1,47 +1,37 @@
 <?php
+
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
+use App\Exports\Concerns\BrandedExport;
 
-class PermissionsExport implements FromCollection, WithHeadings
+/**
+ * Pases de entrada / salida (employee_permissions).
+ */
+class PermissionsExport extends BrandedExport
 {
-    protected $permissions;
-
-    public function __construct($permissions)
+    protected function reportTitle(): string
     {
-        $this->permissions = $permissions;
+        return 'Pases de Entrada / Salida';
     }
 
-    public function collection()
-    {
-        return $this->permissions->map(function ($permission) {
-            return [
-                'Empleado' => $permission->user->name,
-                'Jefe' => $permission->user->supervisor ? $permission->user->supervisor->name : 'Sin Jefe',
-                'Departamento' => $permission->department->name,
-                'Entrada o Salida' => $permission->entry_exit_type,
-                'Horario Oficial' => $permission->official_schedule,
-                'Hora de Entrada/Salida' => $permission->entry_exit_time,
-                'Fecha del Permiso' => $permission->date,
-                'Motivo' => $permission->reason,
-                'Estado' => ucfirst($permission->status),
-            ];
-        });
-    }
-
-    public function headings(): array
+    protected function columns(): array
     {
         return [
-            'Empleado',
-            'Jefe',
-            'Departamento',
-            'Entrada o Salida',
-            'Horario Oficial',
-            'Hora de Entrada/Salida',
-            'Fecha del Permiso',
-            'Motivo',
-            'Estado',
+            'Folio'              => ['width' => 13, 'bold' => true, 'value' => fn ($p) => self::folio('PS', $p->id)],
+            'Fecha'              => ['width' => 12, 'type' => 'date', 'value' => fn ($p) => $p->date],
+            'Tipo'               => ['width' => 10, 'value' => fn ($p) => $p->entry_exit_type ? ucfirst($p->entry_exit_type) : null],
+            'No. empleado'       => ['width' => 12, 'value' => fn ($p) => $p->user?->clave_empleado],
+            'Empleado'           => ['width' => 30, 'value' => fn ($p) => $p->user?->name],
+            'Puesto'             => ['width' => 22, 'value' => fn ($p) => $p->position ?: $p->user?->puesto_empleado],
+            'Departamento'       => ['width' => 20, 'value' => fn ($p) => $p->department?->name],
+            'Jefe inmediato'     => ['width' => 26, 'value' => fn ($p) => $p->user?->supervisor?->name],
+            'Horario oficial'    => ['width' => 12, 'type' => 'time', 'value' => fn ($p) => $p->official_schedule],
+            'Hora entrada/salida'=> ['width' => 13, 'type' => 'time', 'value' => fn ($p) => $p->entry_exit_time],
+            'Motivo'             => ['width' => 40, 'type' => 'long', 'value' => fn ($p) => $p->reason],
+            'Documento'          => ['width' => 11, 'value' => fn ($p) => $p->supporting_document ? 'Sí' : 'No'],
+            'Estado'             => ['width' => 12, 'type' => 'status', 'value' => fn ($p) => $p->status],
+            'Autorizó'           => ['width' => 26, 'value' => fn ($p) => $p->approver?->name],
+            'Solicitado el'      => ['width' => 13, 'type' => 'date', 'value' => fn ($p) => $p->created_at],
         ];
     }
 }

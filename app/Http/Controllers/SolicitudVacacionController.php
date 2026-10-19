@@ -19,6 +19,8 @@ use App\Notifications\VacationApprovedNotification;
 use App\Notifications\VacationRejectedNotification;
 use App\Notifications\VacationSecurityNotification;
 use Illuminate\Support\Str;
+use App\Support\CalendarioLaboral;
+use Illuminate\Support\Facades\DB;
 
 
 class SolicitudVacacionController extends Controller
@@ -58,8 +60,11 @@ class SolicitudVacacionController extends Controller
     
         // Verifica que el usuario tenga un departamento asociado
         $departamentoNombre = $user->departamento ? $user->departamento->name : 'Sin departamento';
-    
-        return view('vacaciones.create', compact('user', 'departments', 'departamentoNombre', 'periodos'));
+
+        // Festivos para bloquear y descontar días en el calendario del formulario
+        $festivos = CalendarioLaboral::festivosEntre(now()->year, now()->year + 1);
+
+        return view('vacaciones.create', compact('user', 'departments', 'departamentoNombre', 'periodos', 'festivos'));
     }
 public function show($id)
 {
@@ -76,53 +81,91 @@ public function store(Request $request)
     // Validación de los datos
     $request->validate([
         'dias_solicitados' => 'required|integer|min:1',
-        'fecha_inicio_vacaciones' => 'required|date',
+        'fecha_inicio_vacaciones' => 'required|date|after_or_equal:today',
         'fecha_termino_vacaciones' => 'required|date|after_or_equal:fecha_inicio_vacaciones',
         'periodo_correspondiente' => 'required|integer',
+    ], [
+        'fecha_inicio_vacaciones.after_or_equal' => 'La fecha de inicio no puede ser anterior a hoy.',
+        'fecha_termino_vacaciones.after_or_equal' => 'La fecha de término no puede ser anterior a la de inicio.',
     ]);
 
-    // Buscar el periodo seleccionado
-    $periodo = PeriodoVacacion::where('empleado_id', $user->id)
-                               ->where('anio', $request->periodo_correspondiente)
-                               ->first();
+    $diasSolicitados = (int) $request->dias_solicitados;
+    $inicio = Carbon::parse($request->fecha_inicio_vacaciones)->startOfDay();
+    $fin    = Carbon::parse($request->fecha_termino_vacaciones)->startOfDay();
 
-    // Verificar si el empleado tiene suficientes días disponibles en el período seleccionado
-    if (!$periodo || $periodo->dias_disponibles < $request->dias_solicitados) {
-        return redirect()->back()->withErrors('No tienes suficientes días disponibles para este período.');
+    // Las vacaciones deben empezar y terminar en día hábil
+    if (!CalendarioLaboral::esHabil($inicio)) {
+        return back()->withInput()->withErrors(['fecha_inicio_vacaciones' => 'La fecha de inicio cae en domingo o día festivo.']);
+    }
+    if (!CalendarioLaboral::esHabil($fin)) {
+        return back()->withInput()->withErrors(['fecha_termino_vacaciones' => 'La fecha de término cae en domingo o día festivo.']);
     }
 
-    // Días festivos en México (puedes agregar más según sea necesario)
-    $diasFestivos = [
-        '2025-01-01', '2025-02-03', '2025-03-17', '2025-04-18', '2025-04-19',
-        '2025-05-01', '2025-09-16','2025-10-12', '2025-11-17','2025-12-24', '2025-12-25','2025-12-31'
-    ];
-
-    // Calcular la fecha de reincorporación
-    $fechaReincorporacion = Carbon::parse($request->fecha_termino_vacaciones)->addDay();
-
-    // Ajustar si la fecha de reincorporación es un domingo o día festivo
-    while ($fechaReincorporacion->isSunday() || in_array($fechaReincorporacion->toDateString(), $diasFestivos)) {
-        $fechaReincorporacion->addDay(); // Avanzar al siguiente día hábil
+    // Las fechas deben cubrir exactamente los días solicitados (sin domingos ni festivos)
+    $diasHabiles = CalendarioLaboral::diasHabiles($inicio, $fin);
+    if ($diasHabiles !== $diasSolicitados) {
+        return back()->withInput()->withErrors([
+            'fecha_termino_vacaciones' => "Del {$inicio->format('d/m/Y')} al {$fin->format('d/m/Y')} hay {$diasHabiles} días hábiles, pero solicitaste {$diasSolicitados}.",
+        ]);
     }
 
-    // Actualizar los días disponibles
-    $periodo->dias_disponibles -= $request->dias_solicitados;
-    $periodo->save();
+    // No puede encimarse con otra solicitud pendiente o aprobada
+    $traslape = SolicitudVacacion::where('empleado_id', $user->id)
+        ->whereIn('estado', ['pendiente', 'aprobado'])
+        ->whereDate('fecha_inicio', '<=', $fin)
+        ->whereDate('fecha_fin', '>=', $inicio)
+        ->first();
+    if ($traslape) {
+        return back()->withInput()->withErrors([
+            'fecha_inicio_vacaciones' => 'Ya tienes una solicitud ' . $traslape->estado . ' del '
+                . Carbon::parse($traslape->fecha_inicio)->format('d/m/Y') . ' al '
+                . Carbon::parse($traslape->fecha_fin)->format('d/m/Y') . ' que se cruza con estas fechas.',
+        ]);
+    }
 
-    // Crear la solicitud de vacaciones en la base de datos
-    $vacationRequest = SolicitudVacacion::create([
-        'empleado_id' => $user->id,
-        'departamento_id' => $user->departamento_id,
-        'fecha_solicitud' => now(),
-        'dias_corresponden' => $periodo->dias_corresponden,
-        'dias_solicitados' => $request->dias_solicitados,
-        'dias_pendientes' => $periodo->dias_disponibles,
-        'periodo_correspondiente' => $periodo->anio,
-        'fecha_inicio' => $request->fecha_inicio_vacaciones,
-        'fecha_fin' => $request->fecha_termino_vacaciones,
-        'fecha_reincorporacion' => $fechaReincorporacion, // Guardar la fecha ajustada
-        'estado' => 'pendiente',
-    ]);
+    $fechaReincorporacion = CalendarioLaboral::siguienteHabil($fin);
+
+    // Descontar los días y crear la solicitud en una transacción, bloqueando el periodo
+    // para que dos envíos simultáneos no descuenten dos veces del mismo saldo.
+    $vacationRequest = DB::transaction(function () use ($user, $request, $diasSolicitados, $inicio, $fin, $fechaReincorporacion) {
+        $periodo = PeriodoVacacion::where('empleado_id', $user->id)
+                                   ->where('anio', $request->periodo_correspondiente)
+                                   ->where('activo', 1)
+                                   ->lockForUpdate()
+                                   ->first();
+
+        if (!$periodo) {
+            return null;
+        }
+
+        if ($periodo->dias_disponibles < $diasSolicitados) {
+            return false;
+        }
+
+        $periodo->dias_disponibles -= $diasSolicitados;
+        $periodo->save();
+
+        return SolicitudVacacion::create([
+            'empleado_id' => $user->id,
+            'departamento_id' => $user->departamento_id,
+            'fecha_solicitud' => now(),
+            'dias_corresponden' => $periodo->dias_corresponden,
+            'dias_solicitados' => $diasSolicitados,
+            'dias_pendientes' => $periodo->dias_disponibles,
+            'periodo_correspondiente' => $periodo->anio,
+            'fecha_inicio' => $inicio->toDateString(),
+            'fecha_fin' => $fin->toDateString(),
+            'fecha_reincorporacion' => $fechaReincorporacion->toDateString(),
+            'estado' => 'pendiente',
+        ]);
+    });
+
+    if ($vacationRequest === null) {
+        return back()->withInput()->withErrors(['periodo_correspondiente' => 'El periodo seleccionado no existe o no está activo.']);
+    }
+    if ($vacationRequest === false) {
+        return back()->withInput()->withErrors(['dias_solicitados' => 'No tienes suficientes días disponibles para este período.']);
+    }
 
     // Enviar correo al jefe directo
     $supervisor = $user->supervisor; // Asegúrate de que existe una relación 'supervisor' en el modelo User

@@ -1,41 +1,37 @@
 <?php
+
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
+use App\Exports\Concerns\BrandedExport;
 
-class VacacionesExport implements FromCollection, WithHeadings
+/**
+ * Libro mayor de solicitudes de vacaciones (solicitudes_vacaciones).
+ */
+class VacacionesExport extends BrandedExport
 {
-    protected $vacaciones;
-
-    public function __construct($vacaciones)
+    protected function reportTitle(): string
     {
-        $this->vacaciones = $vacaciones;
+        return 'Solicitudes de Vacaciones';
     }
 
-    public function collection()
-    {
-        return $this->vacaciones->map(function ($vacacion) {
-            return [
-                'Empleado' => $vacacion->empleado->name,
-                'Departamento' => $vacacion->departamento->name,
-                'Fecha Inicio' => $vacacion->fecha_inicio,
-                'Fecha Fin' => $vacacion->fecha_fin,
-                'Días Solicitados' => $vacacion->dias_solicitados,
-                'Estado' => $vacacion->estado,
-            ];
-        });
-    }
-
-    public function headings(): array
+    protected function columns(): array
     {
         return [
-            'Empleado',
-            'Departamento',
-            'Fecha Inicio',
-            'Fecha Fin',
-            'Días Solicitados',
-            'Estado',
+            'Folio'              => ['width' => 13, 'bold' => true, 'value' => fn ($v) => self::folio('VAC', $v->id)],
+            'No. empleado'       => ['width' => 12, 'value' => fn ($v) => $v->empleado?->clave_empleado],
+            'Empleado'           => ['width' => 30, 'value' => fn ($v) => $v->empleado?->name],
+            'Puesto'             => ['width' => 22, 'value' => fn ($v) => $v->empleado?->puesto_empleado],
+            'Departamento'       => ['width' => 20, 'value' => fn ($v) => $v->departamento?->name],
+            'Jefe inmediato'     => ['width' => 26, 'value' => fn ($v) => $v->empleado?->supervisor?->name],
+            'Periodo'            => ['width' => 11, 'value' => fn ($v) => $v->periodo_correspondiente],
+            'Fecha solicitud'    => ['width' => 13, 'type' => 'date', 'value' => fn ($v) => $v->fecha_solicitud ?? $v->created_at],
+            'Días corresponden'  => ['width' => 12, 'type' => 'number', 'value' => fn ($v) => $v->dias_corresponden],
+            'Días solicitados'   => ['width' => 12, 'type' => 'number', 'sum' => true, 'value' => fn ($v) => $v->dias_solicitados],
+            'Días pendientes'    => ['width' => 12, 'type' => 'number', 'value' => fn ($v) => $v->dias_pendientes],
+            'Inicio'             => ['width' => 12, 'type' => 'date', 'value' => fn ($v) => $v->fecha_inicio],
+            'Fin'                => ['width' => 12, 'type' => 'date', 'value' => fn ($v) => $v->fecha_fin],
+            'Reincorporación'    => ['width' => 14, 'type' => 'date', 'value' => fn ($v) => $v->fecha_reincorporacion],
+            'Estado'             => ['width' => 12, 'type' => 'status', 'value' => fn ($v) => $v->estado],
         ];
     }
 }

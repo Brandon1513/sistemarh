@@ -119,16 +119,14 @@
 
             <div class="card">
 
-                {{-- Indicador semana nominal --}}
-                @if(!request()->hasAny(['search','estado','tipo','start_date','end_date']))
-                    <div class="week-banner">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        Mostrando semana nominal actual (miércoles–martes)
-                    </div>
-                @endif
+                {{-- Vistas rápidas: Todas / Pendientes / Esta semana --}}
+                @include('permisos._vistas', ['ruta' => 'permisos.index'])
 
                 {{-- Filtros --}}
                 <form method="GET" action="{{ route('permisos.index') }}">
+                    @if($vista !== 'rango')
+                        <input type="hidden" name="vista" value="{{ $vista }}">
+                    @endif
                     <div class="filter-bar">
                         <div class="filter-group" style="flex:2; min-width:200px;">
                             <span class="filter-label">Buscar empleado</span>
@@ -292,8 +290,14 @@
                                     <div class="empty-state">
                                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                         <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:4px;">Sin solicitudes</p>
-                                        <p style="font-size:13px;">No se encontraron permisos con los filtros aplicados.</p>
-                                        <a href="{{ route('permisos.index') }}" class="btn btn-outline" style="margin-top:16px;">Limpiar filtros</a>
+                                        <p style="font-size:13px;">
+                                            @if($vista === 'todas')
+                                                No se encontraron permisos con los filtros aplicados.
+                                            @else
+                                                No hay permisos en esta vista ({{ $vistas[$vista] ?? 'rango de fechas' }}).
+                                            @endif
+                                        </p>
+                                        <a href="{{ route('permisos.index', ['vista' => 'todas']) }}" class="btn btn-outline" style="margin-top:16px;">Ver todas las solicitudes</a>
                                     </div>
                                 </td></tr>
                             @endforelse

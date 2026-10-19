@@ -104,6 +104,50 @@
         .btn-primary:disabled { opacity:.45; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
         .btn-ghost { background:transparent; color:var(--muted); border:1.5px solid var(--border); }
         .btn-ghost:hover { border-color:var(--brand-mid); color:var(--brand); }
+
+        /* ── Calendario visible ─────────────────────────────── */
+        .cal-ayuda { display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:10px 14px; background:var(--gold-pale, #faf3e0); border:1px solid var(--gold-light, #EED39B); border-radius:9px; font-size:13px; color:#6b4e00; }
+        .cal-ayuda.listo { background:var(--brand-light); border-color:var(--border); color:var(--brand); }
+        .cal-wrap { display:flex; justify-content:safe center; overflow-x:auto; }
+        .cal-wrap > input.flatpickr-input { display:none !important; }
+        /* Tamaño del día calculado en JS (--dia) para que el calendario quepa en el formulario */
+        .cal-wrap { --dia:38px; }
+        .cal-wrap .flatpickr-day { width:var(--dia); max-width:var(--dia); height:calc(var(--dia) - 2px); line-height:calc(var(--dia) - 2px); }
+        .cal-wrap .dayContainer { width:calc(var(--dia) * 7); min-width:calc(var(--dia) * 7); max-width:calc(var(--dia) * 7); }
+        .cal-wrap .flatpickr-calendar,
+        .cal-wrap .flatpickr-days { width:auto !important; }
+        .cal-wrap .flatpickr-calendar.inline { box-shadow:none; border:1.5px solid var(--border); border-radius:12px; margin:0 auto; }
+        .cal-wrap .flatpickr-months { padding:6px 0; }
+        .cal-wrap .flatpickr-current-month { font-size:15px; color:var(--brand); }
+        .cal-wrap .flatpickr-weekday { color:var(--muted); font-weight:700; }
+        .cal-wrap .flatpickr-day { position:relative; }
+
+        /* Días del rango */
+        .flatpickr-day.vac-dia      { background:var(--brand-light) !important; border-color:var(--brand-mid) !important; color:var(--brand) !important; font-weight:700; }
+        .flatpickr-day.vac-fin,
+        .flatpickr-day.selected     { background:var(--brand) !important; border-color:var(--brand) !important; color:#fff !important; font-weight:700; }
+        .flatpickr-day.vac-excluido { background:var(--gold-pale, #faf3e0) !important; border-color:var(--gold-light, #EED39B) !important; color:#8a6100 !important; text-decoration:line-through; }
+        .flatpickr-day.vac-regreso  { box-shadow:inset 0 0 0 2px #2d7a4f !important; color:#2d7a4f !important; font-weight:700; }
+        .flatpickr-day.vac-preview  { opacity:.7; border-style:dashed !important; }
+        .flatpickr-day.vac-festivo::after { content:''; position:absolute; bottom:3px; left:50%; width:5px; height:5px; margin-left:-2.5px; border-radius:50%; background:var(--gold, #D6A644); }
+
+        /* Leyenda */
+        .cal-leyenda { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 16px; margin-top:12px; font-size:12px; color:var(--muted); }
+        .cal-leyenda span { display:inline-flex; align-items:center; gap:6px; }
+        .cal-leyenda i { display:inline-block; width:14px; height:14px; border-radius:4px; }
+
+        /* Tarjetas de fechas calculadas */
+        .fechas-cards { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:16px; }
+        .fecha-card { padding:10px 12px; border:1.5px solid var(--border); border-radius:10px; background:#fff; text-align:center; }
+        .fecha-card .lbl { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+        .fecha-card .val { margin-top:2px; font-size:13.5px; font-weight:700; color:var(--text); }
+        .fecha-card.regreso { border-color:#a9d6b8; background:#f1f9f4; }
+        .fecha-card.regreso .val { color:#1f6b3f; }
+        @media(max-width:520px){ .fechas-cards { grid-template-columns:1fr; } }
+        .rango-resumen { display:none; margin-top:16px; padding:14px 16px; background:var(--brand-light); border:1px solid var(--border); border-left:4px solid var(--brand); border-radius:10px; font-size:13px; color:var(--text); line-height:1.6; }
+        .rango-resumen strong { color:var(--brand); }
+        .rango-resumen .excluidos { margin-top:6px; font-size:12px; color:var(--muted); }
+        .rango-resumen .excluidos span { display:inline-block; margin:2px 6px 0 0; padding:1px 8px; background:#fff; border:1px solid var(--gold-light, #EED39B); border-radius:6px; }
     </style>
 
     {{-- Modal de aviso --}}
@@ -247,11 +291,13 @@
                         <div class="field">
                             <label class="field-label" for="dias_solicitados">Número de días <span class="req">*</span></label>
                             <input type="number" name="dias_solicitados" id="dias_solicitados" class="field-input"
-                                min="1" placeholder="Ej. 5" required>
+                                min="1" max="{{ $periodos->isNotEmpty() ? $periodos->first()->dias_disponibles : 0 }}"
+                                value="{{ old('dias_solicitados') }}" placeholder="Ej. 5" required>
                             <div class="dias-warning" id="dias-warning">
                                 ⚠ No puedes solicitar más días de los disponibles.
                             </div>
-                            <span class="field-hint">Ingresa el número de días hábiles que deseas tomar.</span>
+                            <span class="field-hint">Días hábiles que deseas tomar. Los domingos y días festivos no se cuentan.</span>
+                            @error('dias_solicitados')<span class="field-error">⚠ {{ $message }}</span>@enderror
                         </div>
                     </div>
 
@@ -261,25 +307,39 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             Fechas de Vacaciones
                         </p>
-                        <div class="form-grid">
-                            <div class="field">
-                                <label class="field-label" for="fecha_inicio_vacaciones">Fecha de Inicio <span class="req">*</span></label>
-                                <input type="text" name="fecha_inicio_vacaciones" id="fecha_inicio_vacaciones" class="field-input" placeholder="Selecciona fecha" required>
-                                <span class="field-hint">No incluye domingos ni días festivos.</span>
-                                @error('fecha_inicio_vacaciones')<span class="field-error">⚠ {{ $message }}</span>@enderror
-                            </div>
-                            <div class="field">
-                                <label class="field-label" for="fecha_termino_vacaciones">Fecha de Término <span class="req">*</span></label>
-                                <input type="text" name="fecha_termino_vacaciones" id="fecha_termino_vacaciones" class="field-input" placeholder="Selecciona fecha" required>
-                                @error('fecha_termino_vacaciones')<span class="field-error">⚠ {{ $message }}</span>@enderror
-                            </div>
-                            <div class="col-span-2 field">
-                                <label class="field-label" for="fecha_presentarse_trabajar">Fecha de Reincorporación <span class="req">*</span></label>
-                                <input type="text" name="fecha_presentarse_trabajar" id="fecha_presentarse_trabajar" class="field-input" placeholder="Selecciona fecha" required>
-                                <span class="field-hint">Día en que regresarás a laborar.</span>
-                                @error('fecha_presentarse_trabajar')<span class="field-error">⚠ {{ $message }}</span>@enderror
-                            </div>
+                        {{-- Instrucción según el paso en que va el empleado --}}
+                        <div class="cal-ayuda" id="cal-ayuda">
+                            <span>👆</span><span id="cal-ayuda-texto">Primero indica cuántos días quieres tomar.</span>
                         </div>
+
+                        {{-- Calendario siempre visible --}}
+                        <div class="cal-wrap">
+                            <input type="hidden" name="fecha_inicio_vacaciones" id="fecha_inicio_vacaciones">
+                            <div id="calendario"></div>
+                        </div>
+
+                        <div class="cal-leyenda">
+                            <span><i style="background:var(--brand);"></i>Inicio y fin</span>
+                            <span><i style="background:var(--brand-light); border:1px solid var(--brand-mid);"></i>Días de vacaciones</span>
+                            <span><i style="background:var(--gold-pale, #faf3e0); border:1px solid var(--gold-light, #EED39B);"></i>Domingo / festivo (no se descuenta)</span>
+                            <span><i style="box-shadow:inset 0 0 0 2px #2d7a4f;"></i>Regreso a laborar</span>
+                            <span><i style="width:6px; height:6px; border-radius:50%; background:var(--gold, #D6A644);"></i>Día festivo</span>
+                        </div>
+
+                        {{-- Fechas calculadas (se envían en campos ocultos) --}}
+                        <input type="hidden" name="fecha_termino_vacaciones" id="fecha_termino_vacaciones">
+                        <input type="hidden" name="fecha_presentarse_trabajar" id="fecha_presentarse_trabajar">
+                        <div class="fechas-cards">
+                            <div class="fecha-card"><div class="lbl">Inicio</div><div class="val" id="card-inicio">—</div></div>
+                            <div class="fecha-card"><div class="lbl">Término</div><div class="val" id="card-fin">—</div></div>
+                            <div class="fecha-card regreso"><div class="lbl">Regresas a laborar</div><div class="val" id="card-regreso">—</div></div>
+                        </div>
+
+                        @error('fecha_inicio_vacaciones')<span class="field-error" style="display:block; margin-top:8px;">⚠ {{ $message }}</span>@enderror
+                        @error('fecha_termino_vacaciones')<span class="field-error" style="display:block; margin-top:8px;">⚠ {{ $message }}</span>@enderror
+
+                        {{-- Resumen del rango calculado --}}
+                        <div class="rango-resumen" id="rango-resumen"></div>
                     </div>
 
                     {{-- Errores --}}
@@ -335,6 +395,7 @@
             document.getElementById('stat-corresponden').textContent = corr;
             document.getElementById('stat-disponibles').textContent  = disp;
             document.getElementById('hidden-corresponden').value = corr;
+            document.getElementById('dias_solicitados').max = disp;
             actualizarDias();
         }
 
@@ -358,28 +419,148 @@
             solInput.style.borderColor = invalid && sol > 0 ? 'var(--rose)' : 'var(--border)';
             solInput.style.background  = invalid && sol > 0 ? '#fce8ee' : '#fff';
 
-            btn.disabled = sol > diasDisponibles;
+            recalcularRango();
+        }
+
+        // ── Calendario laboral (mismas reglas que App\Support\CalendarioLaboral) ──
+        const festivos = @json($festivos); // { 'Y-m-d': 'Descripción' }
+
+        const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const esDomingo = d => d.getDay() === 0;
+        const esHabil   = d => !esDomingo(d) && !(ymd(d) in festivos);
+        const fechaLarga = d => d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const fechaCorta = d => d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+
+        // A partir de un inicio hábil, avanza hasta juntar `dias` hábiles
+        function calcularRango(inicio, dias) {
+            const fin = new Date(inicio);
+            const excluidos = [];
+            let contados = 1;
+            while (contados < dias) {
+                fin.setDate(fin.getDate() + 1);
+                if (esHabil(fin)) {
+                    contados++;
+                } else {
+                    excluidos.push({ fecha: new Date(fin), motivo: festivos[ymd(fin)] ?? 'Domingo' });
+                }
+            }
+            const reincorporacion = new Date(fin);
+            do { reincorporacion.setDate(reincorporacion.getDate() + 1); } while (!esHabil(reincorporacion));
+
+            return { inicio: new Date(inicio), fin, reincorporacion, excluidos };
+        }
+
+        let rango = null;
+
+        // Número de días válido capturado (0 si falta o excede los disponibles)
+        function diasValidos() {
+            const dias = parseInt(document.getElementById('dias_solicitados').value) || 0;
+            return dias >= 1 && dias <= diasDisponibles ? dias : 0;
+        }
+
+        // Pinta en el calendario el rango elegido, o una vista previa al pasar el mouse
+        function pintarCalendario(preview = null) {
+            const r = preview || rango;
+            fpInicio.calendarContainer.querySelectorAll('.flatpickr-day').forEach(el => {
+                el.classList.remove('vac-dia', 'vac-excluido', 'vac-fin', 'vac-regreso', 'vac-preview');
+                const d = el.dateObj;
+                if (!r || !d) return;
+                const t = d.getTime();
+                if (t >= r.inicio.getTime() && t <= r.fin.getTime()) {
+                    el.classList.add(esHabil(d) ? 'vac-dia' : 'vac-excluido');
+                    if (preview) el.classList.add('vac-preview');
+                }
+                if (t === r.fin.getTime()) el.classList.add('vac-fin');
+                if (t === r.reincorporacion.getTime()) el.classList.add('vac-regreso');
+            });
+        }
+
+        // Dos meses si caben con días de 38px; en pantallas angostas un mes con días más chicos
+        const calWrap  = document.querySelector('.cal-wrap');
+        const dosMeses = calWrap.clientWidth >= 540;
+        calWrap.style.setProperty('--dia', (dosMeses ? 38 : Math.max(30, Math.min(38, Math.floor((calWrap.clientWidth - 6) / 7)))) + 'px');
+
+        const fpInicio = flatpickr('#fecha_inicio_vacaciones', {
+            dateFormat: 'Y-m-d',
+            locale: 'es',
+            inline: true,
+            appendTo: document.getElementById('calendario'),
+            showMonths: dosMeses ? 2 : 1,
+            minDate: 'today',
+            defaultDate: @json(old('fecha_inicio_vacaciones')),
+            disable: [d => !esHabil(d)],
+            onChange: recalcularRango,
+            onMonthChange: () => requestAnimationFrame(() => pintarCalendario()),
+            onYearChange:  () => requestAnimationFrame(() => pintarCalendario()),
+            onReady(_, __, fp) {
+                fp.calendarContainer.addEventListener('mouseleave', () => pintarCalendario());
+            },
+            // Marca festivos y agrega la vista previa del rango al pasar el mouse
+            onDayCreate(_, __, ___, dayElem) {
+                const d = dayElem.dateObj;
+                const key = ymd(d);
+                if (key in festivos) {
+                    dayElem.classList.add('vac-festivo');
+                    dayElem.title = festivos[key];
+                } else if (esDomingo(d)) {
+                    dayElem.title = 'Domingo (descanso)';
+                }
+                dayElem.addEventListener('mouseenter', () => {
+                    const dias = diasValidos();
+                    if (!dias || dayElem.classList.contains('flatpickr-disabled')) return;
+                    pintarCalendario(calcularRango(d, dias));
+                });
+            },
+        });
+
+        function recalcularRango() {
+            const dias    = diasValidos();
+            const inicio  = fpInicio.selectedDates[0];
+            const resumen = document.getElementById('rango-resumen');
+            const btn     = document.getElementById('submit-btn');
+            const ayuda   = document.getElementById('cal-ayuda');
+            const ayudaTx = document.getElementById('cal-ayuda-texto');
+
+            rango = inicio && dias ? calcularRango(inicio, dias) : null;
+
+            // Instrucción del paso actual
+            if (!dias) {
+                ayudaTx.textContent = 'Primero indica cuántos días quieres tomar.';
+            } else if (!inicio) {
+                ayudaTx.textContent = `Haz clic en el día en que inicias. Pasa el mouse sobre el calendario para ver tus ${dias} ${dias === 1 ? 'día' : 'días'}.`;
+            } else {
+                ayudaTx.textContent = 'Así quedan tus vacaciones. Puedes elegir otro día de inicio si lo necesitas.';
+            }
+            ayuda.classList.toggle('listo', !!rango);
+
+            document.getElementById('fecha_termino_vacaciones').value   = rango ? ymd(rango.fin) : '';
+            document.getElementById('fecha_presentarse_trabajar').value = rango ? ymd(rango.reincorporacion) : '';
+            document.getElementById('card-inicio').textContent  = inicio ? fechaCorta(inicio) : '—';
+            document.getElementById('card-fin').textContent     = rango ? fechaCorta(rango.fin) : '—';
+            document.getElementById('card-regreso').textContent = rango ? fechaCorta(rango.reincorporacion) : '—';
+
+            if (rango) {
+                let html = `Tomarás <strong>${dias} ${dias === 1 ? 'día hábil' : 'días hábiles'}</strong>: `
+                    + `del <strong>${fechaLarga(rango.inicio)}</strong> al <strong>${fechaLarga(rango.fin)}</strong>.<br>`
+                    + `Regresas a laborar el <strong>${fechaLarga(rango.reincorporacion)}</strong>.`;
+                if (rango.excluidos.length) {
+                    html += '<div class="excluidos">No se descuentan: '
+                        + rango.excluidos.map(e => `<span>${fechaCorta(e.fecha)} · ${e.motivo}</span>`).join('')
+                        + '</div>';
+                }
+                resumen.innerHTML = html;
+                resumen.style.display = 'block';
+            } else {
+                resumen.style.display = 'none';
+            }
+
+            pintarCalendario();
+
+            btn.disabled = !rango;
             btn.style.opacity = btn.disabled ? '.45' : '1';
             btn.style.cursor  = btn.disabled ? 'not-allowed' : 'pointer';
         }
 
-        // ── Flatpickr ───────────────────────────────────────────────────────
-        const diasFestivos = [
-            '{{ date("Y") }}-01-01', '{{ date("Y") }}-02-03', '{{ date("Y") }}-03-17',
-            '{{ date("Y") }}-04-18', '{{ date("Y") }}-04-19', '{{ date("Y") }}-05-01',
-            '{{ date("Y") }}-09-16', '{{ date("Y") }}-10-12', '{{ date("Y") }}-11-17',
-            '{{ date("Y") }}-12-24', '{{ date("Y") }}-12-25', '{{ date("Y") }}-12-31'
-        ];
-
-        const fpConfig = {
-            dateFormat: 'Y-m-d',
-            locale: 'es',
-            minDate: 'today',
-            disable: [d => d.getDay() === 0 || diasFestivos.includes(d.toISOString().split('T')[0])],
-        };
-
-        flatpickr('#fecha_inicio_vacaciones',    { ...fpConfig });
-        flatpickr('#fecha_termino_vacaciones',   { ...fpConfig });
-        flatpickr('#fecha_presentarse_trabajar', { ...fpConfig });
+        actualizarDias();
     </script>
 </x-app-layout>

@@ -2,15 +2,16 @@
 
 namespace App\Jobs;
 
-use App\Exports\PermissionsExport;
+use App\Exports\VacacionesExport;
 use App\Mail\ExportVacacionesMail;
+use App\Models\SolicitudVacacion;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 
 use Illuminate\Foundation\Queue\Queueable;
-use App\Mail\PermisosExcelLMExportadosMail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 
@@ -19,20 +20,23 @@ class ExportLibroMayorVacacionesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $search;
-    protected $date;
+    protected $startDate;
+    protected $endDate;
     protected $userEmail;
 
     /**
      * Create a new job instance.
      *
      * @param string|null $search
-     * @param string|null $date
+     * @param string|null $startDate
+     * @param string|null $endDate
      * @param string $userEmail
      */
-    public function __construct($search, $date, $userEmail)
+    public function __construct($search, $startDate, $endDate, $userEmail)
     {
         $this->search = $search;
-        $this->date = $date;
+        $this->startDate = $startDate;
+        $this->endDate = $endDate;
         $this->userEmail = $userEmail;
     }
 
@@ -41,25 +45,29 @@ class ExportLibroMayorVacacionesJob implements ShouldQueue
      */
     public function handle()
     {
-        // Construir la consulta para obtener permisos filtrados
-        $query = \App\Models\Permission::with(['user', 'department']);
+        // Construir la consulta para obtener las solicitudes de vacaciones filtradas
+        $query = SolicitudVacacion::with(['empleado.supervisor', 'departamento'])->orderBy('fecha_inicio');
 
         if ($this->search) {
-            $query->whereHas('user', function ($q) {
+            $query->whereHas('empleado', function ($q) {
                 $q->where('name', 'like', "%{$this->search}%");
             });
         }
 
-        if ($this->date) {
-            $query->whereDate('date', $this->date);
+        if ($this->startDate && $this->endDate) {
+            $query->whereBetween('fecha_inicio', [
+                Carbon::parse($this->startDate)->startOfDay(),
+                Carbon::parse($this->endDate)->endOfDay(),
+            ]);
         }
 
-        $permissions = $query->get();
+        $vacaciones = $query->get();
 
         // Generar el archivo Excel
-        $fileName = "permissions_filtered_" . now()->timestamp . ".xlsx";
+        $fileName = "libro_mayor_vacaciones_" . now()->timestamp . ".xlsx";
         $filePath = "exports/{$fileName}";
-        Excel::store(new PermissionsExport($permissions), $filePath, 'public');
+        $subtitle = VacacionesExport::filtersSubtitle($this->search, $this->startDate, $this->endDate);
+        Excel::store(new VacacionesExport($vacaciones, $subtitle), $filePath, 'public');
 
         // Enviar el correo con el enlace al archivo
         $url = asset("storage/{$filePath}");

@@ -110,7 +110,8 @@ Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
     ->name('solicitudes_permisos.download');
 
 
-    Route::get('/rh/permisos', [SolicitudPermisoController::class, 'indexRH'])->name('rh.permisos.index');
+    // Apuntaba a un método inexistente (indexRH); se redirige a la lista de RH
+    Route::redirect('/rh/permisos', '/solicitudes_permisos')->name('rh.permisos.index');
 });
 
 

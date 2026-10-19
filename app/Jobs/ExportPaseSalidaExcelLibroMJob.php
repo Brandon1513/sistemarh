@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exports\PermissionsExport;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Queue\SerializesModels;
@@ -18,20 +19,23 @@ class ExportPaseSalidaExcelLibroMJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $search;
-    protected $date;
+    protected $startDate;
+    protected $endDate;
     protected $userEmail;
 
     /**
      * Create a new job instance.
      *
      * @param string|null $search
-     * @param string|null $date
+     * @param string|null $startDate
+     * @param string|null $endDate
      * @param string $userEmail
      */
-    public function __construct($search, $date, $userEmail)
+    public function __construct($search, $startDate, $endDate, $userEmail)
     {
         $this->search = $search;
-        $this->date = $date;
+        $this->startDate = $startDate;
+        $this->endDate = $endDate;
         $this->userEmail = $userEmail;
     }
 
@@ -41,7 +45,7 @@ class ExportPaseSalidaExcelLibroMJob implements ShouldQueue
     public function handle()
     {
         // Construir la consulta para obtener permisos filtrados
-        $query = \App\Models\Permission::with(['user', 'department']);
+        $query = \App\Models\Permission::with(['user.supervisor', 'department', 'approver'])->orderBy('date');
 
         if ($this->search) {
             $query->whereHas('user', function ($q) {
@@ -49,8 +53,11 @@ class ExportPaseSalidaExcelLibroMJob implements ShouldQueue
             });
         }
 
-        if ($this->date) {
-            $query->whereDate('date', $this->date);
+        if ($this->startDate && $this->endDate) {
+            $query->whereBetween('date', [
+                Carbon::parse($this->startDate)->toDateString(),
+                Carbon::parse($this->endDate)->toDateString(),
+            ]);
         }
 
         $permissions = $query->get();
@@ -58,7 +65,8 @@ class ExportPaseSalidaExcelLibroMJob implements ShouldQueue
         // Generar el archivo Excel
         $fileName = "permissions_filtered_" . now()->timestamp . ".xlsx";
         $filePath = "exports/{$fileName}";
-        Excel::store(new PermissionsExport($permissions), $filePath, 'public');
+        $subtitle = PermissionsExport::filtersSubtitle($this->search, $this->startDate, $this->endDate);
+        Excel::store(new PermissionsExport($permissions, $subtitle), $filePath, 'public');
 
         // Enviar el correo con el enlace al archivo
         $url = asset("storage/{$filePath}");

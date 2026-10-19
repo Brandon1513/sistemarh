@@ -49,7 +49,7 @@ class ExportPermisosJob implements ShouldQueue
      */
     public function handle()
 {
-    $query = SolicitudPermiso::with('empleado', 'departamento');
+    $query = SolicitudPermiso::with('empleado.supervisor', 'departamento')->orderBy('fecha_inicio');
 
     // Aplicar filtro por nombre
     if ($this->search) {
@@ -71,7 +71,8 @@ class ExportPermisosJob implements ShouldQueue
     // Generar el archivo Excel
     $fileName = "controlausencia_{$this->userId}_" . now()->timestamp . ".xlsx";
     $filePath = "exports/{$fileName}";
-    Excel::store(new PermisosExport($solicitudes), $filePath, 'public');
+    $subtitle = PermisosExport::filtersSubtitle($this->search, $this->startDate, $this->endDate);
+    Excel::store(new PermisosExport($solicitudes, $subtitle), $filePath, 'public');
 
 
     Mail::to($this->userEmail)->send(new PermisosExportadosMail($fileName));

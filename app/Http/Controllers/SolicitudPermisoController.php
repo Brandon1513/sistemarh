@@ -18,16 +18,22 @@ use App\Mail\NotificacionSolicitudPermiso;
 class SolicitudPermisoController extends Controller
 {
     /**
-     * Lista de solicitudes de permiso.
-     * Por defecto filtra la semana nominal actual (miércoles → martes).
-     * Acepta filtros: search, estado, tipo, start_date, end_date.
+     * Lista de solicitudes de permiso del empleado (o de su equipo si es jefe).
+     *
+     * Vistas rápidas (?vista=):
+     *   - todas              Todas las solicitudes (por defecto para empleados)
+     *   - pendientes         Solo pendientes, sin importar la fecha
+     *   - semana             Permisos con algún día en la semana nominal
+     *   - semana_pendientes  Semana nominal + todas las pendientes (por defecto para jefes)
+     * Filtros adicionales: search, estado, tipo, start_date, end_date.
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user   = Auth::user();
+        $esJefe = $user->hasRole('jefe');
 
         // Base query según rol
-        if ($user->hasRole('jefe')) {
+        if ($esJefe) {
             $query = SolicitudPermiso::with('empleado', 'departamento')
                 ->where(function ($q) use ($user) {
                     $q->whereHas('empleado', fn($sq) => $sq->where('supervisor_id', $user->id))
@@ -37,6 +43,8 @@ class SolicitudPermisoController extends Controller
             $query = SolicitudPermiso::with('empleado', 'departamento')
                 ->where('empleado_id', $user->id);
         }
+
+        $pendientes = (clone $query)->where('estado', 'pendiente')->count();
 
         // Filtro búsqueda por nombre
         if ($request->filled('search')) {
@@ -54,25 +62,70 @@ class SolicitudPermisoController extends Controller
             $query->where('tipo', $request->input('tipo'));
         }
 
-        // Filtro por rango de fechas — si no hay filtros aplica semana nominal
-        $hasDateFilter = $request->filled('start_date') && $request->filled('end_date');
-        $hasAnyFilter  = $request->filled('search') || $request->filled('estado') || $request->filled('tipo') || $hasDateFilter;
+        $vistas = $esJefe
+            ? ['semana_pendientes' => 'Esta semana y pendientes', 'pendientes' => 'Pendientes', 'todas' => 'Todas']
+            : ['todas' => 'Todas', 'pendientes' => 'Pendientes', 'semana' => 'Esta semana'];
 
-        if ($hasDateFilter) {
-            $query->whereBetween('fecha_inicio', [
+        $vista = $this->aplicarVistaOFechas($query, $request, $vistas, $esJefe ? 'semana_pendientes' : 'todas');
+
+        $solicitudes = $query->orderBy('fecha_inicio', $vista === 'pendientes' ? 'asc' : 'desc')
+            ->paginate(10)->withQueryString();
+
+        $semana = $this->semanaNominal();
+
+        return view('permisos.index', compact('solicitudes', 'vista', 'vistas', 'pendientes', 'semana'));
+    }
+
+    /**
+     * Semana nominal que contiene hoy: miércoles → martes.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function semanaNominal(): array
+    {
+        $inicio = Carbon::now()->startOfWeek(Carbon::WEDNESDAY);
+
+        return [$inicio, $inicio->copy()->addDays(6)->endOfDay()];
+    }
+
+    /**
+     * Permisos con al menos un día dentro del rango (no solo el día de inicio).
+     */
+    private function traslapaCon($query, $desde, $hasta)
+    {
+        return $query->whereDate('fecha_inicio', '<=', $hasta)
+                     ->whereDate('fecha_termino', '>=', $desde);
+    }
+
+    /**
+     * Aplica el rango de fechas del filtro o, si no hay, la vista rápida elegida.
+     * Devuelve la vista aplicada ('rango' cuando se filtró por fechas).
+     */
+    private function aplicarVistaOFechas($query, Request $request, array $vistas, string $porDefecto): string
+    {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $this->traslapaCon(
+                $query,
                 Carbon::parse($request->input('start_date'))->startOfDay(),
-                Carbon::parse($request->input('end_date'))->endOfDay(),
-            ]);
-        } elseif (!$hasAnyFilter) {
-            // Semana nominal: miércoles actual → martes siguiente
-            $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY);
-            $endOfWeek   = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay();
-            $query->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]);
+                Carbon::parse($request->input('end_date'))->endOfDay()
+            );
+
+            return 'rango';
         }
 
-        $solicitudes = $query->orderBy('fecha_inicio', 'desc')->paginate(10)->withQueryString();
+        $vista = array_key_exists($request->input('vista'), $vistas) ? $request->input('vista') : $porDefecto;
+        [$inicio, $fin] = $this->semanaNominal();
 
-        return view('permisos.index', compact('solicitudes'));
+        match ($vista) {
+            'semana'            => $this->traslapaCon($query, $inicio, $fin),
+            'pendientes'        => $query->where('estado', 'pendiente'),
+            'semana_pendientes' => $query->where(fn ($q) => $q
+                ->where('estado', 'pendiente')
+                ->orWhere(fn ($w) => $this->traslapaCon($w, $inicio, $fin))),
+            default             => null, // todas
+        };
+
+        return $vista;
     }
 
     /**
@@ -197,30 +250,23 @@ class SolicitudPermisoController extends Controller
         $query = SolicitudPermiso::with('empleado', 'departamento')
             ->whereIn('estado', ['aprobado', 'rechazado', 'pendiente']);
 
-        $hasFilters = $request->filled('search') ||
-            ($request->filled('start_date') && $request->filled('end_date'));
-
-        if (!$hasFilters) {
-            $startOfWeek = Carbon::now()->startOfWeek(Carbon::WEDNESDAY);
-            $endOfWeek   = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay();
-            $query->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek]);
-        }
+        $pendientes = (clone $query)->where('estado', 'pendiente')->count();
 
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->whereHas('empleado', fn($q) => $q->where('name', 'like', "%{$search}%"));
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('fecha_inicio', [
-                Carbon::parse($request->input('start_date'))->startOfDay(),
-                Carbon::parse($request->input('end_date'))->endOfDay(),
-            ]);
-        }
+        // RH conserva la semana nominal como vista por defecto (nómina)
+        $vistas = ['semana' => 'Semana nominal', 'pendientes' => 'Pendientes', 'todas' => 'Todas'];
+        $vista  = $this->aplicarVistaOFechas($query, $request, $vistas, 'semana');
 
-        $permisos = $query->orderBy('fecha_inicio', 'desc')->get();
+        $permisos = $query->orderBy('fecha_inicio', $vista === 'pendientes' ? 'asc' : 'desc')
+            ->paginate(25)->withQueryString();
 
-        return view('solicitudes_permisos.index', compact('permisos'));
+        $semana = $this->semanaNominal();
+
+        return view('solicitudes_permisos.index', compact('permisos', 'vista', 'vistas', 'pendientes', 'semana'));
     }
 
     // ─── Exportaciones ────────────────────────────────────────────────────────

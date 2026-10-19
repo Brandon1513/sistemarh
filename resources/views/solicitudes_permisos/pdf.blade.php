@@ -1,214 +1,159 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de ausencias del personal</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
-        }
+@php
+    $employee   = $permiso->empleado;
+    $supervisor = $employee?->supervisor;
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    $fmtDate = fn ($d) => $d ? \Carbon\Carbon::parse($d)->locale('es')->translatedFormat('d \d\e F \d\e Y') : '—';
+    $fmtDay  = fn ($d) => $d ? ucfirst(\Carbon\Carbon::parse($d)->locale('es')->translatedFormat('l')) : '';
 
-        th, td {
-            border: 1px solid black;
-            padding: 5px;
-            text-align: center;
-        }
+    // Días naturales que abarca la ausencia (incluye inicio y término)
+    $days = ($permiso->fecha_inicio && $permiso->fecha_termino)
+        ? (int) abs(\Carbon\Carbon::parse($permiso->fecha_inicio)->startOfDay()->diffInDays(\Carbon\Carbon::parse($permiso->fecha_termino)->startOfDay())) + 1
+        : null;
 
-        .header {
-            background-color: #D3A1D1;
-        }
+    $types    = ['Permiso', 'Comisión', 'Suspensión'];
+    $withPay  = $permiso->tipo_permiso === 'Con Goce de Sueldo';
+    $noPay    = $permiso->tipo_permiso === 'Sin Goce de Sueldo';
+@endphp
 
-        .logo {
-            max-width: 100px;
-        }
+@extends('pdf.layout', [
+    'docTitle'    => 'Control de Ausencias del Personal',
+    'docSubtitle' => 'Solicitud de permiso, comisión o suspensión',
+    'docCode'     => 'F-REH-36',
+    'docRevision' => '03',
+    'docIssued'   => '17-jun-2024',
+    'folio'       => 'AU-' . str_pad($permiso->id, 6, '0', STR_PAD_LEFT),
+    'status'      => $permiso->estado,
+    'requestedAt' => $permiso->created_at,
+])
 
-        .info {
-            background-color: #F0E0F6;
-            font-weight: bold;
-        }
+@section('content')
 
-        .signature {
-            border-top: 1px solid black;
-            width: 200px;
-            margin: 20px auto 0;
-            text-align: center;
-        }
+    {{-- Datos del colaborador --}}
+    <div class="section">
+        <div class="section-title">Datos del colaborador</div>
+        <table class="fields">
+            <tr>
+                <td class="label">Nombre completo</td>
+                <td class="value">{{ $employee?->name ?? '—' }}</td>
+                <td class="label">No. de empleado</td>
+                <td class="value">{{ $employee?->clave_empleado ?: '—' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Puesto</td>
+                <td class="value">{{ $employee?->puesto_empleado ?: '—' }}</td>
+                <td class="label">Departamento</td>
+                <td class="value">{{ $permiso->departamento?->name ?? '—' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Jefe inmediato</td>
+                <td class="value">{{ $supervisor?->name ?? '—' }}</td>
+                <td class="label">Fecha de ingreso</td>
+                <td class="value">{{ $employee?->fecha_ingreso ? $fmtDate($employee->fecha_ingreso) : '—' }}</td>
+            </tr>
+        </table>
+    </div>
 
-        .section-title {
-            background-color: #D3A1D1;
-            font-weight: bold;
-            text-align: left;
-            padding-left: 10px;
-        }
+    {{-- Tipo de ausencia --}}
+    <div class="section">
+        <div class="section-title">Tipo de ausencia</div>
+        <table class="options">
+            <tr>
+                @foreach ($types as $type)
+                    @php $on = $permiso->tipo === $type; @endphp
+                    <td class="{{ $on ? 'on' : '' }}" style="width:33.33%;">
+                        <span class="box {{ $on ? 'checked' : '' }}"></span> {{ $type }}
+                    </td>
+                @endforeach
+            </tr>
+        </table>
+        <table class="options" style="margin-top:-1px;">
+            <tr>
+                <td class="{{ $withPay ? 'on' : '' }}" style="width:50%;">
+                    <span class="box {{ $withPay ? 'checked' : '' }}"></span> Con goce de sueldo
+                </td>
+                <td class="{{ $noPay ? 'on' : '' }}" style="width:50%;">
+                    <span class="box {{ $noPay ? 'checked' : '' }}"></span> Sin goce de sueldo
+                </td>
+            </tr>
+        </table>
+    </div>
 
-        .checkbox {
-            width: 10px;
-            height: 10px;
-            border: 1px solid black;
-            display: inline-block;
-        }
+    {{-- Periodo --}}
+    <div class="section">
+        <div class="section-title">Periodo de ausencia</div>
+        <table class="stats" style="margin-bottom: 8px;">
+            <tr>
+                <td style="width:25%;">
+                    <div class="stat">
+                        <div class="cap">Inicio</div>
+                        <div style="font-weight:bold; font-size:10px; color:#6A2C75;">{{ $fmtDate($permiso->fecha_inicio) }}</div>
+                        <div class="cap">{{ $fmtDay($permiso->fecha_inicio) }}</div>
+                    </div>
+                </td>
+                <td style="width:25%;">
+                    <div class="stat">
+                        <div class="cap">Término</div>
+                        <div style="font-weight:bold; font-size:10px; color:#6A2C75;">{{ $fmtDate($permiso->fecha_termino) }}</div>
+                        <div class="cap">{{ $fmtDay($permiso->fecha_termino) }}</div>
+                    </div>
+                </td>
+                <td style="width:25%;">
+                    <div class="stat">
+                        <div class="cap">Regresa a laborar</div>
+                        <div style="font-weight:bold; font-size:10px; color:#6A2C75;">{{ $fmtDate($permiso->fecha_regreso_laborar) }}</div>
+                        <div class="cap">{{ $fmtDay($permiso->fecha_regreso_laborar) }}</div>
+                    </div>
+                </td>
+                <td style="width:25%;">
+                    <div class="stat gold">
+                        <div class="cap">Días naturales</div>
+                        <div class="num">{{ $days ?? '—' }}</div>
+                        <div class="cap">de ausencia</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <table class="fields">
+            <tr>
+                <td class="label">Día de descanso</td>
+                <td class="value">{{ $permiso->dia_descanso ?: '—' }}</td>
+                <td class="label">Documento soporte</td>
+                <td class="value">{{ $permiso->archivo ? 'Sí, adjunto en la Intranet' : 'No se adjuntó' }}</td>
+            </tr>
+        </table>
+    </div>
 
-    </style>
-</head>
-<body>
+    {{-- Observaciones --}}
+    <div class="section">
+        <div class="section-title">Motivo / Observaciones</div>
+        <div class="note">{{ $permiso->motivo ?: 'Sin observaciones.' }}</div>
+    </div>
 
-    <!-- Header con logo y detalles del documento -->
-    <table>
+    {{-- Firmas --}}
+    <table class="signatures">
         <tr>
-            <td rowspan="2" class="header" style="width: 15%; text-align: center;">
-                <img src="{{ asset('images/logo.png') }}" class="logo" alt="Logo">
-
+            <td>
+                <div class="sign-status">&nbsp;</div>
+                <div class="sign-line">
+                    <div class="sign-name">{{ $employee?->name ?? '' }}</div>
+                    <div class="sign-role">Colaborador (nombre y firma)</div>
+                </div>
             </td>
-            <td colspan="3" class="header" style="text-align: center;">
-                <strong>Nombre del documento:</strong><br>Control de Ausencias del Personal
+            <td>
+                <div class="sign-status muted">{{ ucfirst($permiso->estado ?? 'pendiente') }}</div>
+                <div class="sign-line">
+                    <div class="sign-name">{{ $supervisor?->name ?? '' }}</div>
+                    <div class="sign-role">Jefe inmediato</div>
+                </div>
             </td>
-        </tr>
-        <tr>
-            <td class="header">Fecha de Emisión:<br>17-jun-2024</td>
-            <td class="header">Revisión:<br>03</td>
-            <td class="header">Código:<br>F-REH-36</td>
+            <td>
+                <div class="sign-status">&nbsp;</div>
+                <div class="sign-line">
+                    <div class="sign-name">&nbsp;</div>
+                    <div class="sign-role">Recursos Humanos</div>
+                </div>
+            </td>
         </tr>
     </table>
 
-    <!-- Información del empleado -->
-    <table>
-        <tr>
-            <td class=" section-title" colspan="3">Fecha</td>
-            <td class="section-title" colspan="2">Nombre Completo (Apellido Paterno, Materno, Nombre(s))</td>
-            <td class="section-title">Departamento</td>
-        </tr>
-        <tr>
-            <td colspan="3">{{ date('d', strtotime($permiso->fecha_inicio)) }} {{ date('M', strtotime($permiso->fecha_inicio)) }} {{ date('Y', strtotime($permiso->fecha_inicio)) }}</td>
-            <td colspan="2">{{ $permiso->empleado->name }}</td>
-            <td>{{ $permiso->departamento->name }}</td>
-        </tr>
-    </table>
-
-    <!-- Detalles del permiso -->
-    <table>
-        <tr>
-            <td class="section-title" colspan="2">Permiso</td>
-            <td class="section-title" colspan="2">Comisión</td>
-            <td class="section-title" colspan="2">Suspensión</td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                @if ($permiso->tipo == 'Permiso')
-                    <div class="checkbox" style="background-color: black;"></div>
-                @else
-                    <div class="checkbox"></div>
-                @endif
-            </td>
-            <td colspan="2">
-                @if ($permiso->tipo == 'Comisión')
-                    <div class="checkbox" style="background-color: black;"></div>
-                @else
-                    <div class="checkbox"></div>
-                @endif
-            </td>
-            <td colspan="2">
-                @if ($permiso->tipo == 'Suspensión')
-                    <div class="checkbox" style="background-color: black;"></div>
-                @else
-                    <div class="checkbox"></div>
-                @endif
-            </td>
-        </tr>
-    </table>
-
-    <!-- Tipo de permiso -->
-    <table>
-        <tr>
-            <td class="section-title" colspan="3">Con Goce de Sueldo</td>
-            <td class="section-title" colspan="3">Sin Goce de Sueldo</td>
-        </tr>
-        <tr>
-            <td colspan="3">
-                @if ($permiso->tipo_permiso == 'Con Goce de Sueldo')
-                    <div class="checkbox" style="background-color: black;"></div>
-                @else
-                    <div class="checkbox"></div>
-                @endif
-            </td>
-            <td colspan="3">
-                @if ($permiso->tipo_permiso == 'Sin Goce de Sueldo')
-                    <div class="checkbox" style="background-color: black;"></div>
-                @else
-                    <div class="checkbox"></div>
-                @endif
-            </td>
-        </tr>
-    </table>
-
-    <!-- Fechas de inicio y término -->
-    <table>
-        <tr>
-            <td class="section-title">Fecha de Inicio</td>
-            <td class="section-title">Fecha de Término</td>
-            <td class="section-title">Regresa a Laborar</td>
-        </tr>
-        <tr>
-            <td>{{ date('d', strtotime($permiso->fecha_inicio)) }} {{ date('M', strtotime($permiso->fecha_inicio)) }} {{ date('Y', strtotime($permiso->fecha_inicio)) }}</td>
-            <td>{{ date('d', strtotime($permiso->fecha_termino)) }} {{ date('M', strtotime($permiso->fecha_termino)) }} {{ date('Y', strtotime($permiso->fecha_termino)) }}</td>
-            <td>{{ date('d', strtotime($permiso->fecha_regreso_laborar)) }} {{ date('M', strtotime($permiso->fecha_regreso_laborar)) }} {{ date('Y', strtotime($permiso->fecha_regreso_laborar)) }}</td>
-        </tr>
-    </table>
-
-    <!-- Día de descanso -->
-    <table>
-        <tr>
-            <td class="section-title">Día de Descanso</td>
-        </tr>
-        <tr>
-            <td>{{ $permiso->dia_descanso }}</td>
-        </tr>
-    </table>
-
-    <!-- Observaciones -->
-    <table>
-        <tr>
-            <td class="section-title">Observaciones</td>
-        </tr>
-        <tr>
-            <td>{{ $permiso->motivo ?? 'N/A' }}</td>
-        </tr>
-    </table>
-
-   <!-- Firmas -->
-<table>
-    <tr>
-        <td class="section-title">Empleado (Nombre y Firma)</td>
-        <td class="section-title">Jefe Inmediato</td>
-        <td class="section-title">Recursos Humanos</td>
-    </tr>
-    <tr>
-        <!-- Nombre del empleado -->
-        <td>{{ $permiso->empleado->name  }}</td>
-
-        <!-- Estado de aprobación/rechazo del jefe inmediato -->
-        <td>
-            @if($permiso->estado == 'aprobado')
-                <span class="badge bg-success">Aprobado</span>
-            @elseif($permiso->estado == 'rechazado')
-                <span class="badge bg-danger">Rechazado</span>
-            @else
-                <span class="badge bg-warning">Pendiente</span>
-            @endif
-        </td>
-
-        <!-- Espacio para Recursos Humanos (puedes añadir más lógica si es necesario) -->
-        <td><br></td>
-    </tr>
-</table>
-
-
-</body>
-</html>
+@endsection

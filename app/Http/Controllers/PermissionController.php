@@ -222,7 +222,8 @@ class PermissionController extends Controller
         $userEmail = auth()->user()->email;
         ExportPaseSalidaExcelLibroMJob::dispatch(
             $request->input('search'),
-            $request->input('date'),
+            $request->input('start_date'),
+            $request->input('end_date'),
             $userEmail
         );
         return back()->with('success', 'Exportación solicitada. Recibirás un correo cuando esté lista.');

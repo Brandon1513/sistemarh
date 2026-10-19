@@ -43,14 +43,16 @@ class ExportWeekPermisosJob implements ShouldQueue
         $endOfWeek = Carbon::now()->addWeek()->startOfWeek(Carbon::TUESDAY)->endOfDay();
 
         // Obtener permisos de la semana nominal
-        $solicitudes = SolicitudPermiso::with('empleado', 'departamento')
+        $solicitudes = SolicitudPermiso::with('empleado.supervisor', 'departamento')
             ->whereBetween('fecha_inicio', [$startOfWeek, $endOfWeek])
+            ->orderBy('fecha_inicio')
             ->get();
 
         // Generar archivo Excel
         $fileName = "permisos_semana_nominal_{$this->userId}_" . now()->timestamp . ".xlsx";
         $filePath = "exports/{$fileName}";
-        Excel::store(new PermisosExport($solicitudes), $filePath, 'public');
+        $subtitle = PermisosExport::weekSubtitle($startOfWeek, $endOfWeek);
+        Excel::store(new PermisosExport($solicitudes, $subtitle), $filePath, 'public');
 
         // Enviar correo con el enlace de descarga
         Mail::to($this->userEmail)->send(new ExportWeekPermisosMail($fileName));
