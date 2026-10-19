@@ -18,7 +18,7 @@ Route::get('/', function () {
 
 
 Route::get('/dashboard', function () {
-    $noticias = Noticia::where('activo', 1)->latest()->take(6)->get();
+    $noticias = Noticia::with('galeria')->where('activo', 1)->latest()->take(6)->get();
     $carruselImages = CarruselImage::all();
 
     return view('dashboard', compact('noticias', 'carruselImages'));
@@ -138,7 +138,7 @@ Route::middleware(['auth'])->group(function(){
 Route::delete('solicitudes-vacaciones/{id}/admin-destroy',
     [SolicitudVacacionController::class, 'destroyAdmin'])
     ->name('solicitudes_vacaciones.admin-destroy')
-    ->middleware('role:administrador');
+    ->middleware(['auth', 'role:administrador|recursos_humanos']);
 
 // Rutas para las solicitudes de vacaciones
 

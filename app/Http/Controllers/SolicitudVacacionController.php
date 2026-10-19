@@ -336,8 +336,8 @@ public function export(Request $request)
      
     public function destroyAdmin($id)
     {
-        // Solo administradores pueden usar este método
-        if (!auth()->user()->hasRole('administrador')) {
+        // Solo administradores y recursos humanos pueden usar este método
+        if (!auth()->user()->hasAnyRole(['administrador', 'recursos_humanos'])) {
             abort(403, 'No tienes permiso para realizar esta acción.');
         }
     
