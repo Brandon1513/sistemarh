@@ -200,3 +200,6 @@ Route::middleware(['auth', 'role:administrador|marketing'])->group(function () {
 
 });
 require __DIR__.'/auth.php';
+
+
+
