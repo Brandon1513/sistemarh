@@ -107,9 +107,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vacaciones', [SolicitudVacacionController::class, 'store'])->name('vacaciones.store');
     Route::get('/vacaciones/{id}', [SolicitudVacacionController::class, 'show'])->name('vacaciones.show');
 
-    // Pendiente (paso 2): cambiar a POST junto con los correos que reciben los jefes
-    Route::get('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'approve'])->name('vacaciones.aprobar');
-    Route::get('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'reject'])->name('vacaciones.rechazar');
+   
+    Route::post('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'approve'])->name('vacaciones.aprobar');
+    Route::post('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'reject'])->name('vacaciones.rechazar');
 
     Route::delete('/vacaciones/{vacacione}', [SolicitudVacacionController::class, 'destroy'])->name('vacaciones.destroy');
 });

@@ -21,6 +21,10 @@ class VacacionesService
 {
     use GestionaSolicitudes;
 
+    public function __construct(private AgendaEmpleado $agenda)
+    {
+    }
+
     /**
      * Crea una solicitud de vacaciones y descuenta los días del periodo.
      *
@@ -58,6 +62,7 @@ class VacacionesService
         }
 
         $this->validarSinEmpalme($empleado, $fechaInicio, $fechaFin);
+        $this->validarSinPermisos($empleado, $fechaInicio, $fechaFin);
 
         $solicitud = DB::transaction(function () use ($empleado, $anioPeriodo, $fechaInicio, $fechaFin, $dias) {
             $periodo = $this->bloquearPeriodo($empleado, $anioPeriodo);
@@ -116,6 +121,7 @@ class VacacionesService
         }
 
         $this->validarSinEmpalme($empleado, $fechaInicio, $fechaFin);
+        $this->validarSinPermisos($empleado, $fechaInicio, $fechaFin);
 
         $solicitud = DB::transaction(function () use ($empleado, $registradoPor, $anioPeriodo, $fechaInicio, $fechaFin, $dias, $fechaPresentarse) {
             $periodo = $this->bloquearPeriodo($empleado, $anioPeriodo);
@@ -228,6 +234,16 @@ class VacacionesService
                     . Carbon::parse($traslape->fecha_inicio)->format('d/m/Y') . ' al '
                     . Carbon::parse($traslape->fecha_fin)->format('d/m/Y') . ' que se cruza con estas fechas.'
             );
+        }
+    }
+
+    /**
+     * Unas vacaciones no pueden caer sobre un permiso de ausencia pendiente o aprobado.
+     */
+    private function validarSinPermisos(User $empleado, Carbon $inicio, Carbon $fin): void
+    {
+        if ($conflicto = $this->agenda->permisoEn($empleado, $inicio, $fin)) {
+            $this->error('fecha_inicio_vacaciones', $conflicto);
         }
     }
 

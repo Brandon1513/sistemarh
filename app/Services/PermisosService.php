@@ -7,6 +7,7 @@ use App\Models\SolicitudPermiso;
 use App\Models\User;
 use App\Notifications\EstadoPermisoActualizadoNotification;
 use App\Services\Concerns\GestionaSolicitudes;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -19,6 +20,10 @@ class PermisosService
 
     public const TIPOS = ['Permiso', 'Comisión', 'Suspensión'];
     public const GOCE = ['Con Goce de Sueldo', 'Sin Goce de Sueldo'];
+
+    public function __construct(private AgendaEmpleado $agenda)
+    {
+    }
 
     /**
      * Reglas compartidas por el formulario web y la API.
@@ -44,6 +49,30 @@ class PermisosService
 
         if (! $departamentoId) {
             $this->error('departamento_id', 'Tu usuario no tiene un departamento asignado. Contacta a Recursos Humanos.');
+        }
+
+        $inicio = Carbon::parse($datos['fecha_inicio']);
+        $fin = Carbon::parse($datos['fecha_termino']);
+
+        // No dos permisos que se crucen
+        $empalme = SolicitudPermiso::where('empleado_id', $empleado->id)
+            ->whereIn('estado', ['pendiente', 'aprobado'])
+            ->whereDate('fecha_inicio', '<=', $fin)
+            ->whereDate('fecha_termino', '>=', $inicio)
+            ->first();
+
+        if ($empalme) {
+            $this->error(
+                'fecha_inicio',
+                'Ya tienes un permiso ' . $empalme->estado . ' del '
+                    . Carbon::parse($empalme->fecha_inicio)->format('d/m/Y') . ' al '
+                    . Carbon::parse($empalme->fecha_termino)->format('d/m/Y') . ' que se cruza con estas fechas.'
+            );
+        }
+
+        // Ni un permiso en medio de unas vacaciones
+        if ($conflicto = $this->agenda->vacacionesEn($empleado, $inicio, $fin)) {
+            $this->error('fecha_inicio', $conflicto);
         }
 
         $ruta = $archivo?->store('archivos_permisos', 'public');

@@ -18,28 +18,38 @@ use App\Models\User;
 
 class SolicitudVacacionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
 
+        $query = SolicitudVacacion::with('empleado', 'departamento');
+
         if ($user->hasRole('jefe')) {
-            $solicitudes = SolicitudVacacion::where(function ($q) use ($user) {
-                    $q->whereHas('empleado', fn ($sq) => $sq->where('supervisor_id', $user->id))
-                      ->orWhere('empleado_id', $user->id);
-                })
-                ->with('empleado', 'departamento')
-                ->orderBy('created_at', 'desc')
-                ->paginate(10);
+            $query->where(function ($q) use ($user) {
+                $q->whereHas('empleado', fn ($sq) => $sq->where('supervisor_id', $user->id))
+                ->orWhere('empleado_id', $user->id);
+            });
         } else {
-            $solicitudes = SolicitudVacacion::where('empleado_id', $user->id)
-                ->with('empleado', 'departamento')
-                ->orderBy('created_at', 'desc')
-                ->paginate(10);
+            $query->where('empleado_id', $user->id);
         }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->whereHas('empleado', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->input('estado'));
+        }
+
+        if ($request->filled('periodo')) {
+            $query->where('periodo_correspondiente', (int) $request->input('periodo'));
+        }
+
+        $solicitudes = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         return view('vacaciones.index', compact('solicitudes'));
     }
-
     public function create()
     {
         $user = auth()->user();

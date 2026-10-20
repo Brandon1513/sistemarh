@@ -84,6 +84,9 @@
         .badge-aprobado  .badge-dot { background:#2d7a4f; }
         .badge-rechazado .badge-dot { background:var(--rose); }
 
+        /* Vacación espontánea registrada por RH */
+        .badge-espontanea { display:inline-flex; align-items:center; margin-left:6px; padding:1px 7px; border-radius:20px; font-size:10px; font-weight:700; background:var(--gold-pale); color:var(--brown); border:1px solid var(--gold-light); vertical-align:middle; }
+
         .alert { padding:12px 16px; border-radius:10px; font-size:13.5px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
         .alert-success { background:#e8f5ee; color:#1b6b38; border:1px solid #b3dfc3; }
         .alert-error   { background:#fce8ee; color:#7a2039; border:1px solid #f0b3c3; }
@@ -107,6 +110,16 @@
                 <div class="alert alert-error">
                     <svg class="flex-shrink-0 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
                     {{ session('error') }}
+                </div>
+            @endif
+            @if($errors->any())
+                <div class="alert alert-error">
+                    <svg class="flex-shrink-0 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <div>
+                        @foreach($errors->all() as $error)
+                            <p style="margin:0;">{{ $error }}</p>
+                        @endforeach
+                    </div>
                 </div>
             @endif
 
@@ -155,7 +168,7 @@
                 {{-- Sub-header --}}
                 <div style="padding:14px 24px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); background:#fff; flex-wrap:wrap; gap:10px;">
                     <p style="font-size:13px; color:var(--muted);">
-                        Mostrando <strong style="color:var(--text);">{{ $solicitudes->firstItem() }}–{{ $solicitudes->lastItem() }}</strong>
+                        Mostrando <strong style="color:var(--text);">{{ $solicitudes->firstItem() ?? 0 }}–{{ $solicitudes->lastItem() ?? 0 }}</strong>
                         de <strong style="color:var(--text);">{{ $solicitudes->total() }}</strong> resultados
                     </p>
                     <a href="{{ route('vacaciones.create') }}" class="btn btn-primary btn-sm">
@@ -195,7 +208,7 @@
                                             <div>
                                                 <p style="font-weight:600; font-size:13px; line-height:1.3;">
                                                     {{ $solicitud->empleado->name ?? 'N/A' }}
-                                                    @if(isset($solicitud->tipo) && $solicitud->tipo === 'espontanea')
+                                                    @if($solicitud->tipo === 'espontanea')
                                                         <span class="badge-espontanea">📋 RH</span>
                                                     @endif
                                                 </p>
@@ -219,7 +232,7 @@
 
                                     {{-- Días --}}
                                     <td class="hide-mobile">
-                                        <span class="days-pill {{ $daysClass }}">{{ $dias }} días</span>
+                                        <span class="days-pill {{ $daysClass }}">{{ $dias }} {{ $dias === 1 ? 'día' : 'días' }}</span>
                                     </td>
 
                                     {{-- Estado --}}
@@ -239,7 +252,8 @@
                                             </a>
 
                                             @if($solicitud->estado === 'pendiente')
-                                                @if($solicitud->empleado_id === auth()->id())
+
+                                                @can('delete', $solicitud)
                                                     <form action="{{ route('vacaciones.destroy', $solicitud->id) }}" method="POST" style="display:inline;"
                                                         onsubmit="return confirm('¿Seguro que deseas eliminar esta solicitud?')">
                                                         @csrf
@@ -249,16 +263,29 @@
                                                             Eliminar
                                                         </button>
                                                     </form>
-                                                @else
-                                                    <a href="{{ route('vacaciones.aprobar', $solicitud->id) }}" class="btn btn-green btn-sm">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                        Aprobar
-                                                    </a>
-                                                    <a href="{{ route('vacaciones.rechazar', $solicitud->id) }}" class="btn btn-rose btn-sm">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                        Rechazar
-                                                    </a>
-                                                @endif
+                                                @endcan
+
+                                                @can('approve', $solicitud)
+                                                    <form action="{{ route('vacaciones.aprobar', $solicitud->id) }}" method="POST" style="display:inline;">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-green btn-sm">
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                            Aprobar
+                                                        </button>
+                                                    </form>
+                                                @endcan
+
+                                                @can('reject', $solicitud)
+                                                    <form action="{{ route('vacaciones.rechazar', $solicitud->id) }}" method="POST" style="display:inline;"
+                                                        onsubmit="return confirm('¿Rechazar esta solicitud? Los días regresarán al periodo del empleado.')">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-rose btn-sm">
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                            Rechazar
+                                                        </button>
+                                                    </form>
+                                                @endcan
+
                                             @elseif($solicitud->estado === 'aprobado')
                                                 <span style="font-size:12px; color:var(--muted); padding:0 8px;">✓ Aprobado</span>
                                             @endif

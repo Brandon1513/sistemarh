@@ -8,6 +8,7 @@ use App\Notifications\NotificacionSeguridadPermiso;
 use App\Notifications\PaseSalidaActualizadoNotification;
 use App\Notifications\PermissionRequested;
 use App\Services\Concerns\GestionaSolicitudes;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -18,6 +19,10 @@ class PasesService
     use GestionaSolicitudes;
 
     public const TIPOS = ['entrada', 'salida'];
+
+    public function __construct(private AgendaEmpleado $agenda)
+    {
+    }
 
     /**
      * Reglas compartidas por el formulario web y la API.
@@ -47,6 +52,24 @@ class PasesService
 
         if (! $puesto) {
             $this->error('position', 'Tu usuario no tiene un puesto asignado. Contacta a Recursos Humanos.');
+        }
+
+        // No dos pases del mismo tipo el mismo día
+        $duplicado = Permission::where('user_id', $empleado->id)
+            ->whereIn('status', ['pendiente', 'aprobado'])
+            ->whereDate('date', $datos['date'])
+            ->where('entry_exit_type', $datos['entry_exit_type'])
+            ->exists();
+
+        if ($duplicado) {
+            $this->error('date', "Ya tienes un pase de {$datos['entry_exit_type']} pendiente o aprobado para ese día.");
+        }
+
+        // Un pase no tiene sentido en un día de vacaciones o de permiso de ausencia
+        $dia = Carbon::parse($datos['date']);
+
+        if ($conflicto = $this->agenda->vacacionesEn($empleado, $dia, $dia) ?? $this->agenda->permisoEn($empleado, $dia, $dia)) {
+            $this->error('date', $conflicto);
         }
 
         $ruta = $documento?->store('documents', 'public');

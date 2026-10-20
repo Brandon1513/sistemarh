@@ -24,6 +24,43 @@
         <meta name="theme-color" content="#6A2C75">
 
     </head>
+        <script>
+        // Evita envíos dobles: al enviar un formulario POST, deshabilita sus botones.
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+
+            // Si un confirm() del formulario canceló el envío, no hacemos nada
+            if (e.defaultPrevented) return;
+
+            // Los filtros (GET) se pueden enviar las veces que se quiera
+            if ((form.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+
+            // Ya se está enviando: ignorar el segundo clic
+            if (form.dataset.enviando === '1') {
+                e.preventDefault();
+                return;
+            }
+
+            form.dataset.enviando = '1';
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+                btn.dataset.textoOriginal = btn.innerHTML;
+                btn.innerHTML = 'Enviando…';
+                btn.disabled = true;
+            });
+        });
+
+        // Si el usuario regresa con el botón "Atrás", el navegador puede mostrar la página
+        // guardada con los botones deshabilitados. Aquí los reactivamos.
+        window.addEventListener('pageshow', function () {
+            document.querySelectorAll('form[data-enviando="1"]').forEach(function (form) {
+                form.dataset.enviando = '';
+                form.querySelectorAll('[data-texto-original]').forEach(function (btn) {
+                    btn.innerHTML = btn.dataset.textoOriginal;
+                    btn.disabled = false;
+                });
+            });
+        });
+    </script>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
             @include('layouts.navigation')

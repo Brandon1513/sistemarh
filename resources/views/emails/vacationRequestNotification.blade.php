@@ -122,40 +122,27 @@
                     </tr>
 
                     {{-- ── Botones ── --}}
-                    <tr>
-                        <td style="background:#fff; padding:24px 36px;">
-                            <table width="100%" cellpadding="0" cellspacing="0">
-                                <tr>
-                                    <td align="center" style="padding-bottom:10px;">
-                                        <a href="{{ route('vacaciones.show', $vacationRequest->id) }}"
-                                           style="display:inline-block; background:#6A2C75; color:#fff; text-decoration:none; font-size:14px; font-weight:700; padding:12px 28px; border-radius:9px; letter-spacing:.03em;">
-                                            Ver Solicitud Completa
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <table width="100%" cellpadding="0" cellspacing="0">
-                                            <tr>
-                                                <td align="center" style="padding-right:6px;">
-                                                    <a href="{{ route('vacaciones.aprobar', $vacationRequest->id) }}"
-                                                       style="display:inline-block; background:#2d7a4f; color:#fff; text-decoration:none; font-size:13px; font-weight:700; padding:10px 24px; border-radius:9px;">
-                                                        ✓ Aprobar
-                                                    </a>
-                                                </td>
-                                                <td align="center" style="padding-left:6px;">
-                                                    <a href="{{ route('vacaciones.rechazar', $vacationRequest->id) }}"
-                                                       style="display:inline-block; background:#AA4969; color:#fff; text-decoration:none; font-size:13px; font-weight:700; padding:10px 24px; border-radius:9px;">
-                                                        ✕ Rechazar
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td style="background:#fff; padding:24px 36px;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td align="center">
+                                            <a href="{{ route('vacaciones.show', $vacationRequest->id) }}"
+                                            style="display:inline-block; background:#6A2C75; color:#fff; text-decoration:none; font-size:14px; font-weight:700; padding:13px 32px; border-radius:9px; letter-spacing:.03em;">
+                                                Revisar y responder
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="center" style="padding-top:12px;">
+                                            <p style="margin:0; font-size:12px; color:#7a6682;">
+                                                Desde la solicitud podrás aprobarla o rechazarla.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
 
                     {{-- ── Footer ── --}}
                     <tr>

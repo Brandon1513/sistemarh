@@ -182,14 +182,24 @@
 
                 {{-- Acciones --}}
                 <div class="detail-section" style="background:var(--beige-light);">
+
+                    @if ($errors->any())
+                        <div style="margin-bottom:14px; padding:12px 14px; background:#fdecef; border:1px solid #f3c2cf; border-radius:9px; color:var(--rose); font-size:13px; font-weight:600;">
+                            @foreach ($errors->all() as $error)
+                                <p style="margin:0;">{{ $error }}</p>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                         <a href="{{ route('vacaciones.index') }}" class="btn btn-outline">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                             Volver
                         </a>
 
-                        @if($vacationRequest->estado === 'pendiente')
-                            @if($vacationRequest->empleado_id === auth()->id())
+                        @if ($vacationRequest->estado === 'pendiente')
+
+                            @can('delete', $vacationRequest)
                                 <form action="{{ route('vacaciones.destroy', $vacationRequest->id) }}" method="POST" style="display:inline;"
                                     onsubmit="return confirm('¿Seguro que deseas eliminar esta solicitud?')">
                                     @csrf
@@ -199,16 +209,29 @@
                                         Eliminar solicitud
                                     </button>
                                 </form>
-                            @else
-                                <a href="{{ route('vacaciones.aprobar', $vacationRequest->id) }}" class="btn btn-green">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    Aprobar
-                                </a>
-                                <a href="{{ route('vacaciones.rechazar', $vacationRequest->id) }}" class="btn btn-rose">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    Rechazar
-                                </a>
-                            @endif
+                            @endcan
+
+                            @can('approve', $vacationRequest)
+                                <form action="{{ route('vacaciones.aprobar', $vacationRequest->id) }}" method="POST" style="display:inline;">
+                                    @csrf
+                                    <button type="submit" class="btn btn-green">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        Aprobar
+                                    </button>
+                                </form>
+                            @endcan
+
+                            @can('reject', $vacationRequest)
+                                <form action="{{ route('vacaciones.rechazar', $vacationRequest->id) }}" method="POST" style="display:inline;"
+                                    onsubmit="return confirm('¿Seguro que deseas rechazar esta solicitud? Los días regresarán al periodo del empleado.')">
+                                    @csrf
+                                    <button type="submit" class="btn btn-rose">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        Rechazar
+                                    </button>
+                                </form>
+                            @endcan
+
                         @endif
                     </div>
                 </div>

@@ -342,19 +342,7 @@
                         <div class="rango-resumen" id="rango-resumen"></div>
                     </div>
 
-                    {{-- Errores --}}
-                    @if($errors->any())
-                        <div class="form-section">
-                            <div style="background:#fce8ee; border:1px solid #f0b3c3; border-radius:10px; padding:14px 16px;">
-                                <p style="font-size:13px; font-weight:700; color:var(--rose); margin-bottom:8px;">Por favor corrige los siguientes errores:</p>
-                                <ul>
-                                    @foreach($errors->all() as $error)
-                                        <li style="font-size:13px; color:#7a2039; margin-left:12px;">• {{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        </div>
-                    @endif
+                   
 
                     {{-- Footer --}}
                     <div class="form-section-footer">
@@ -367,6 +355,20 @@
                         </div>
                     </div>
                 </form>
+
+                 {{-- Errores --}}
+                    @if($errors->any())
+                        <div class="form-section">
+                            <div style="background:#fce8ee; border:1px solid #f0b3c3; border-radius:10px; padding:14px 16px;">
+                                <p style="font-size:13px; font-weight:700; color:var(--rose); margin-bottom:8px;">Por favor corrige los siguientes errores:</p>
+                                <ul>
+                                    @foreach($errors->all() as $error)
+                                        <li style="font-size:13px; color:#7a2039; margin-left:12px;">• {{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
             </div>
         </div>
     </div>
