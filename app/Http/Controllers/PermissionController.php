@@ -19,6 +19,7 @@ use App\Jobs\ExportPaseSalidaExcelLibroMJob;
 use App\Notifications\PermissionRequested;
 use App\Notifications\NotificacionSeguridadPermiso;
 use App\Notifications\PaseSalidaActualizadoNotification;
+use Illuminate\Support\Facades\Gate;
 use App\Models\User;
 
 class PermissionController extends Controller
@@ -121,8 +122,9 @@ class PermissionController extends Controller
     /**
      * Detalle de un permiso.
      */
-    public function show(Permission $permission)
+   public function show(Permission $permission)
     {
+        Gate::authorize('view', $permission);
         return view('permissions.show', compact('permission'));
     }
 
@@ -131,7 +133,8 @@ class PermissionController extends Controller
      */
     public function approve(Permission $permission)
     {
-        $permission->update(['status' => 'aprobado']);
+        Gate::authorize('approve', $permission);
+        $permission->update(['status' => 'aprobado', 'approved_by' => auth()->id()]);
 
         $empleado = $permission->user; // Usar relación correcta
 
@@ -172,7 +175,8 @@ class PermissionController extends Controller
      */
     public function reject(Permission $permission)
     {
-        $permission->update(['status' => 'rechazado']);
+       Gate::authorize('reject', $permission);
+        $permission->update(['status' => 'rechazado', 'approved_by' => auth()->id()]); $permission->update(['status' => 'rechazado']);
 
         $empleado = $permission->user;
         if ($empleado) {

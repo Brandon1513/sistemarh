@@ -14,6 +14,7 @@ use App\Jobs\ExportWeekPermisosJob;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\NotificacionSolicitudPermiso;
+use Illuminate\Support\Facades\Gate;
 
 class SolicitudPermisoController extends Controller
 {
@@ -191,6 +192,7 @@ class SolicitudPermisoController extends Controller
      */
     public function show($id)
     {
+        Gate::authorize('view', $solicitud);
         $solicitud = SolicitudPermiso::with('empleado', 'departamento')->findOrFail($id);
         return view('permisos.show', compact('solicitud'));
     }
@@ -200,6 +202,7 @@ class SolicitudPermisoController extends Controller
      */
     public function aprobar($id)
     {
+        Gate::authorize('approve', $permiso); 
         $permiso = SolicitudPermiso::with('empleado')->findOrFail($id);
 
         if ($permiso->empleado_id === auth()->id()) {
@@ -224,6 +227,7 @@ class SolicitudPermisoController extends Controller
      */
     public function rechazar($id)
     {
+        Gate::authorize('reject', $permiso);
         $permiso = SolicitudPermiso::with('empleado')->findOrFail($id);
 
         if ($permiso->empleado_id === auth()->id()) {
