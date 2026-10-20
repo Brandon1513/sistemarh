@@ -17,16 +17,16 @@ class SolicitudPermisoPolicy
 
     public function approve(User $user, SolicitudPermiso $solicitud): bool
     {
-        return $this->puedeResolver($user, $solicitud->empleado, $solicitud->estado);
+        return $this->puedeResolver($user, $solicitud->empleado);
     }
 
     public function reject(User $user, SolicitudPermiso $solicitud): bool
     {
-        return $this->puedeResolver($user, $solicitud->empleado, $solicitud->estado);
+        return $this->puedeResolver($user, $solicitud->empleado);
     }
 
     public function delete(User $user, SolicitudPermiso $solicitud): bool
     {
-        return $this->puedeCancelar($user, $solicitud->empleado_id, $solicitud->estado);
+        return $this->puedeCancelar($user, $solicitud->empleado_id);
     }
 }

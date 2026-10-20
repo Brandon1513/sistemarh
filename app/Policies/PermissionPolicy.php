@@ -17,16 +17,16 @@ class PermissionPolicy
 
     public function approve(User $user, Permission $pase): bool
     {
-        return $this->puedeResolver($user, $pase->user, $pase->status);
+        return $this->puedeResolver($user, $pase->user);
     }
 
     public function reject(User $user, Permission $pase): bool
     {
-        return $this->puedeResolver($user, $pase->user, $pase->status);
+        return $this->puedeResolver($user, $pase->user);
     }
 
     public function delete(User $user, Permission $pase): bool
     {
-        return $this->puedeCancelar($user, $pase->user_id, $pase->status);
+        return $this->puedeCancelar($user, $pase->user_id);
     }
 }

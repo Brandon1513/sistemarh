@@ -33,7 +33,7 @@
                                             <tr>
                                                 <td style="font-size:20px; padding-right:10px; vertical-align:middle;">📋</td>
                                                 <td>
-                                                    <p style="margin:0; font-size:13px; font-weight:700; color:#473524;">Vacación Registrada por Recursos Humanos</p>
+                                                    <p style="margin:0; font-size:13px; font-weight:700; color:#473524;">Vacaciones Registrada por Recursos Humanos</p>
                                                     <p style="margin:4px 0 0; font-size:12px; color:#7a6050;">Esta solicitud fue creada por el área de RH en nombre del empleado, correspondiente a días de vacaciones ya disfrutados.</p>
                                                 </td>
                                             </tr>

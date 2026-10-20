@@ -12,9 +12,9 @@ use App\Models\SolicitudPermiso;
 use App\Jobs\ExportZipPermisosJob;
 use App\Jobs\ExportWeekPermisosJob;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\NotificacionSolicitudPermiso;
 use Illuminate\Support\Facades\Gate;
+use App\Services\PermisosService;
+
 
 class SolicitudPermisoController extends Controller
 {
@@ -144,44 +144,13 @@ class SolicitudPermisoController extends Controller
     /**
      * Guarda la solicitud y notifica al supervisor.
      */
-    public function store(Request $request)
+    public function store(Request $request, PermisosService $permisos)
     {
-        $request->validate([
-            'departamento_id'      => 'required|exists:departments,id',
-            'fecha_inicio'         => 'required|date',
-            'fecha_termino'        => 'required|date|after_or_equal:fecha_inicio',
-            'motivo'               => 'required|string|max:500',
-            'tipo_permiso'         => 'required|string|in:Con Goce de Sueldo,Sin Goce de Sueldo',
-            'fecha_regreso_laborar'=> 'nullable|date|after_or_equal:fecha_termino',
-            'tipo'                 => 'required|in:Permiso,Comisión,Suspensión',
-            'dia_descanso'         => 'nullable|string',
-            'archivo'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+        $datos = $request->validate(PermisosService::reglas() + [
+            'departamento_id' => 'nullable|exists:departments,id',
         ]);
 
-        $data = [
-            'empleado_id'          => auth()->id(),
-            'departamento_id'      => $request->departamento_id,
-            'fecha_inicio'         => $request->fecha_inicio,
-            'fecha_termino'        => $request->fecha_termino,
-            'motivo'               => $request->motivo,
-            'tipo_permiso'         => $request->tipo_permiso,
-            'estado'               => 'pendiente',
-            'fecha_regreso_laborar'=> $request->fecha_regreso_laborar,
-            'tipo'                 => $request->tipo,
-            'dia_descanso'         => $request->dia_descanso,
-        ];
-
-        if ($request->hasFile('archivo')) {
-            $data['archivo'] = $request->file('archivo')->store('archivos_permisos', 'public');
-        }
-
-        $permiso = SolicitudPermiso::create($data);
-
-        // Notificar al supervisor
-        $supervisor = Auth::user()->supervisor;
-        if ($supervisor && $supervisor->email) {
-            Mail::to($supervisor->email)->send(new NotificacionSolicitudPermiso($permiso));
-        }
+        $permisos->solicitar(auth()->user(), $datos, $request->file('archivo'));
 
         return redirect()->route('permisos.index')
             ->with('success', 'Solicitud enviada y notificada al supervisor.');
@@ -192,32 +161,21 @@ class SolicitudPermisoController extends Controller
      */
     public function show($id)
     {
-        Gate::authorize('view', $solicitud);
         $solicitud = SolicitudPermiso::with('empleado', 'departamento')->findOrFail($id);
+        Gate::authorize('view', $solicitud);
+
         return view('permisos.show', compact('solicitud'));
     }
 
     /**
      * Aprobar solicitud.
      */
-    public function aprobar($id)
+    public function aprobar($id, PermisosService $permisos)
     {
-        Gate::authorize('approve', $permiso); 
-        $permiso = SolicitudPermiso::with('empleado')->findOrFail($id);
+        $permiso = SolicitudPermiso::findOrFail($id);
+        Gate::authorize('approve', $permiso);
 
-        if ($permiso->empleado_id === auth()->id()) {
-            return redirect()->back()->with('error', 'No puedes aprobar tu propio permiso.');
-        }
-
-        if ($permiso->estado !== 'pendiente') {
-            return redirect()->back()->with('error', 'El permiso ya fue procesado.');
-        }
-
-        $permiso->update(['estado' => 'aprobado']);
-
-        if ($permiso->empleado) {
-            $permiso->empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('aprobado'));
-        }
+        $permisos->aprobar($permiso);
 
         return redirect()->route('permisos.index')->with('success', 'Permiso aprobado exitosamente.');
     }
@@ -225,24 +183,12 @@ class SolicitudPermisoController extends Controller
     /**
      * Rechazar solicitud.
      */
-    public function rechazar($id)
+    public function rechazar($id, PermisosService $permisos)
     {
+        $permiso = SolicitudPermiso::findOrFail($id);
         Gate::authorize('reject', $permiso);
-        $permiso = SolicitudPermiso::with('empleado')->findOrFail($id);
 
-        if ($permiso->empleado_id === auth()->id()) {
-            return redirect()->back()->with('error', 'No puedes rechazar tu propio permiso.');
-        }
-
-        if ($permiso->estado !== 'pendiente') {
-            return redirect()->back()->with('error', 'El permiso ya fue procesado.');
-        }
-
-        $permiso->update(['estado' => 'rechazado']);
-
-        if ($permiso->empleado) {
-            $permiso->empleado->notify(new \App\Notifications\EstadoPermisoActualizadoNotification('rechazado'));
-        }
+        $permisos->rechazar($permiso);
 
         return redirect()->route('permisos.index')->with('success', 'Permiso rechazado exitosamente.');
     }
