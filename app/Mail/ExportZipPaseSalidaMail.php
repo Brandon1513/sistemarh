@@ -33,7 +33,7 @@ class ExportZipPaseSalidaMail extends Mailable
     public function build()
     {
         return $this->subject('Exportación de Permisos en ZIP Completada')
-                    ->markdown('emails.export_zip_pasesalida')
+                    ->view('emails.export_zip_pasesalida')
                     ->with([
                         'url' => $this->downloadLink,
                     ]);

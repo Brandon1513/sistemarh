@@ -34,7 +34,7 @@ class NewUserCreated extends Mailable
     public function build()
     {
         return $this->subject('Bienvenido a la plataforma')
-                    ->markdown('emails.new_user') // Cambia la vista si usas una vista diferente
+                    ->view('emails.new_user') // Cambia la vista si usas una vista diferente
                     ->with([
                         'user' => $this->user,
                         'password' => $this->password,

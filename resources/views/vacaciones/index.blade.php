@@ -193,7 +193,12 @@
                                                 <div class="avatar-ph">{{ strtoupper(substr($solicitud->empleado->name ?? 'N', 0, 1)) }}</div>
                                             @endif
                                             <div>
-                                                <p style="font-weight:600; font-size:13px; line-height:1.3;">{{ $solicitud->empleado->name ?? 'N/A' }}</p>
+                                                <p style="font-weight:600; font-size:13px; line-height:1.3;">
+                                                    {{ $solicitud->empleado->name ?? 'N/A' }}
+                                                    @if(isset($solicitud->tipo) && $solicitud->tipo === 'espontanea')
+                                                        <span class="badge-espontanea">📋 RH</span>
+                                                    @endif
+                                                </p>
                                                 <p style="font-size:11px; color:var(--muted);">{{ $solicitud->departamento->name ?? '' }}</p>
                                             </div>
                                         </div>

@@ -31,7 +31,7 @@ class ExportWeekPaseSalidaMail extends Mailable
     public function build()
     {
         return $this->subject('Exportación Semanal de Permisos')
-                    ->markdown('emails.export_week_pasesalida')
+                    ->view('emails.export_week_pasesalida')
                     ->with(['url' => $this->downloadUrl]);
     }
 }

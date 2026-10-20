@@ -84,7 +84,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/permisos/{id}/rechazar', [SolicitudPermisoController::class, 'rechazar'])->name('permisos.rechazar');
 });
 
-Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
+Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function () {
     Route::get('/solicitudes_permisos', [SolicitudPermisoController::class, 'indexSolicitudesPermiso'])->name('solicitudes_permisos.index');
     Route::get('/solicitudes_permisos/export', [SolicitudPermisoController::class, 'export'])->name('solicitudes_permisos.export');
     Route::get('/solicitudes_permisos/exportWeek', [SolicitudPermisoController::class, 'exportWeek'])->name('solicitudes_permisos.exportWeek');
@@ -123,12 +123,14 @@ Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
     Route::get('/solicitudes_vacaciones', [SolicitudVacacionController::class, 'indexRH'])->name('solicitudes_vacaciones.index');
     Route::get('/solicitudes_vacaciones/export', [SolicitudVacacionController::class, 'export'])->name('solicitudes_vacaciones.export');
     Route::get('/solicitudes_vacaciones/exportWeek', [SolicitudVacacionController::class, 'exportWeek'])->name('solicitudes_vacaciones.exportWeek');
-    Route::get('/solicitudes_vacaciones/espontanea/crear', [SolicitudVacacionController::class, 'createEspontanea'])
-    ->name('solicitudes_vacaciones.espontanea.create');
-    Route::post('/solicitudes_vacaciones/espontanea', [SolicitudVacacionController::class, 'storeEspontanea'])
-    ->name('solicitudes_vacaciones.espontanea.store');
     Route::get('/solicitudes_vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
     Route::get('/solicitudes_vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
+});
+
+// Vacaciones espontáneas — registradas por RH en nombre del empleado
+Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function () {
+    Route::get('/vacaciones-espontaneas/create', [SolicitudVacacionController::class, 'createEspontanea'])->name('vacaciones.espontanea.create');
+    Route::post('/vacaciones-espontaneas', [SolicitudVacacionController::class, 'storeEspontanea'])->name('vacaciones.espontanea.store');
 });
 
 /*

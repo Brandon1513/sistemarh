@@ -34,15 +34,11 @@ class PaseSalidaActualizadoNotification extends Notification
      */
     public function toMail($notifiable)
     {
-        $mensaje = $this->estado === 'aprobado' 
-            ? 'Tu pase de salida ha sido aprobado.' 
-            : 'Tu pase de salida ha sido rechazado.';
-
         return (new MailMessage)
-            ->subject('Actualización de Estado de Pase de Salida')
-            ->line($mensaje)
-            ->line('Contacta a tu jefe directo para obtener más información.')
-            ->line('Gracias por utilizar nuestro sistema. Dasavena');
+            ->subject('🚪 Actualización de Estado de Pase de Salida')
+            ->view('emails.pase_salida_actualizado', [
+                'estado' => $this->estado,
+            ]);
     }
 }
 
