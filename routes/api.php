@@ -25,6 +25,10 @@ use App\Http\Controllers\Api\V2\PublicAssetController;
 
 use App\Http\Controllers\Api\V1\AuthController as AuthV1Controller;
 use App\Http\Controllers\Api\V1\DispositivoController;
+use App\Http\Controllers\Api\V1\VacacionController;
+use App\Http\Controllers\Api\V1\PaseController;
+use App\Http\Controllers\Api\V1\PermisoController;
+use App\Http\Controllers\Api\V1\SolicitudController;
 
 
 
@@ -147,5 +151,18 @@ Route::prefix('v1')->group(function () {
         Route::post('/logout', [AuthV1Controller::class, 'logout']);
         Route::get('/me', [AuthV1Controller::class, 'me']);
         Route::post('/dispositivos', [DispositivoController::class, 'store']);
+        //Vacaciones
+        Route::get('/dias-festivos', [VacacionController::class, 'festivos']);
+        Route::get('/vacaciones/periodos', [VacacionController::class, 'periodos']);
+        Route::post('/vacaciones', [VacacionController::class, 'store']);
+        Route::delete('/vacaciones/{solicitud}', [VacacionController::class, 'destroy']);
+        Route::get('/solicitudes', [SolicitudController::class, 'index']);
+        Route::get('/catalogos', [SolicitudController::class, 'catalogos']);
+
+        Route::post('/permisos', [PermisoController::class, 'store']);
+        Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy']);
+
+        Route::post('/pases', [PaseController::class, 'store']);
+        Route::delete('/pases/{pase}', [PaseController::class, 'destroy']);
     });
 });
