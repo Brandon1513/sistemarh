@@ -7,6 +7,7 @@ use App\Models\SolicitudPermiso;
 use App\Models\User;
 use App\Notifications\EstadoPermisoActualizadoNotification;
 use App\Services\Concerns\GestionaSolicitudes;
+use App\Support\CalendarioLaboral;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,6 @@ class PermisosService
             'tipo_permiso'          => ['required', Rule::in(self::GOCE)],
             'tipo'                  => ['required', Rule::in(self::TIPOS)],
             'fecha_regreso_laborar' => 'nullable|date|after_or_equal:fecha_termino',
-            'dia_descanso'          => 'nullable|string|max:255',
             'archivo'               => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ];
     }
@@ -53,6 +53,11 @@ class PermisosService
 
         $inicio = Carbon::parse($datos['fecha_inicio']);
         $fin = Carbon::parse($datos['fecha_termino']);
+
+        // Un permiso que cae solo en domingos o festivos no justifica nada
+        if (CalendarioLaboral::diasHabiles($inicio, $fin) === 0) {
+            $this->error('fecha_inicio', 'Las fechas que elegiste son domingo o día festivo. Un permiso debe incluir al menos un día laboral.');
+        }
 
         // No dos permisos que se crucen
         $empalme = SolicitudPermiso::where('empleado_id', $empleado->id)
@@ -86,8 +91,7 @@ class PermisosService
                 'motivo'                => $datos['motivo'],
                 'tipo_permiso'          => $datos['tipo_permiso'],
                 'tipo'                  => $datos['tipo'],
-                'fecha_regreso_laborar' => $datos['fecha_regreso_laborar'] ?? null,
-                'dia_descanso'          => $datos['dia_descanso'] ?? null,
+                'fecha_regreso_laborar' => $datos['fecha_regreso_laborar'] ?? CalendarioLaboral::siguienteHabil($fin)->toDateString(),
                 'archivo'               => $ruta,
                 'estado'                => 'pendiente',
             ]);

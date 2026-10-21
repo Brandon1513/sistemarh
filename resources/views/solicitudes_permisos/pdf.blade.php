@@ -115,10 +115,16 @@
         </table>
         <table class="fields">
             <tr>
-                <td class="label">Día de descanso</td>
-                <td class="value">{{ $permiso->dia_descanso ?: '—' }}</td>
-                <td class="label">Documento soporte</td>
-                <td class="value">{{ $permiso->archivo ? 'Sí, adjunto en la Intranet' : 'No se adjuntó' }}</td>
+                {{-- El día de descanso ya no se captura; solo aparece en permisos anteriores que lo tienen --}}
+                @if ($permiso->dia_descanso)
+                    <td class="label">Día de descanso</td>
+                    <td class="value">{{ $permiso->dia_descanso }}</td>
+                    <td class="label">Documento soporte</td>
+                    <td class="value">{{ $permiso->archivo ? 'Sí, adjunto en la Intranet' : 'No se adjuntó' }}</td>
+                @else
+                    <td class="label">Documento soporte</td>
+                    <td class="value" colspan="3">{{ $permiso->archivo ? 'Sí, adjunto en la Intranet' : 'No se adjuntó' }}</td>
+                @endif
             </tr>
         </table>
     </div>

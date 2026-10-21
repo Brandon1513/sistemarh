@@ -8,6 +8,7 @@ use App\Notifications\NotificacionSeguridadPermiso;
 use App\Notifications\PaseSalidaActualizadoNotification;
 use App\Notifications\PermissionRequested;
 use App\Services\Concerns\GestionaSolicitudes;
+use App\Support\CalendarioLaboral;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -54,10 +55,17 @@ class PasesService
             $this->error('position', 'Tu usuario no tiene un puesto asignado. Contacta a Recursos Humanos.');
         }
 
+        $dia = Carbon::parse($datos['date']);
+
+        // No se necesita pase en un día que no se trabaja
+        if (! CalendarioLaboral::esHabil($dia)) {
+            $this->error('date', 'Ese día es domingo o festivo, así que no necesitas pase.');
+        }
+
         // No dos pases del mismo tipo el mismo día
         $duplicado = Permission::where('user_id', $empleado->id)
             ->whereIn('status', ['pendiente', 'aprobado'])
-            ->whereDate('date', $datos['date'])
+            ->whereDate('date', $dia)
             ->where('entry_exit_type', $datos['entry_exit_type'])
             ->exists();
 
@@ -66,8 +74,6 @@ class PasesService
         }
 
         // Un pase no tiene sentido en un día de vacaciones o de permiso de ausencia
-        $dia = Carbon::parse($datos['date']);
-
         if ($conflicto = $this->agenda->vacacionesEn($empleado, $dia, $dia) ?? $this->agenda->permisoEn($empleado, $dia, $dia)) {
             $this->error('date', $conflicto);
         }

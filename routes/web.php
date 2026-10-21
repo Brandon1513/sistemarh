@@ -86,11 +86,11 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function () {
     Route::get('/solicitudes_permisos', [SolicitudPermisoController::class, 'indexSolicitudesPermiso'])->name('solicitudes_permisos.index');
-    Route::get('/solicitudes_permisos/export', [SolicitudPermisoController::class, 'export'])->name('solicitudes_permisos.export');
-    Route::get('/solicitudes_permisos/exportWeek', [SolicitudPermisoController::class, 'exportWeek'])->name('solicitudes_permisos.exportWeek');
-    Route::get('/solicitudes_permisos/download-zip', [SolicitudPermisoController::class, 'downloadSolicitudesZIP'])->name('solicitudes_permisos.download-zip');
-    Route::get('/solicitudes_permisos/{id}', [SolicitudPermisoController::class, 'show'])->name('solicitudes_permisos.show');
-    Route::get('/solicitudes_permisos/{id}/download', [SolicitudPermisoController::class, 'downloadPDF'])->name('solicitudes_permisos.download');
+    Route::get('/solicitudes-permisos/export', [SolicitudPermisoController::class, 'export'])->name('solicitudes_permisos.export');
+    Route::get('/solicitudes-permisos/exportWeek', [SolicitudPermisoController::class, 'exportWeek'])->name('solicitudes_permisos.exportWeek');
+    Route::get('/solicitudes-permisos/download-zip', [SolicitudPermisoController::class, 'downloadSolicitudesZIP'])->name('solicitudes_permisos.download-zip');
+    Route::get('/solicitudes-permisos/{id}', [SolicitudPermisoController::class, 'show'])->name('solicitudes_permisos.show');
+    Route::get('/solicitudes-permisos/{id}/download', [SolicitudPermisoController::class, 'downloadPDF'])->name('solicitudes_permisos.download');
 
     Route::redirect('/rh/permisos', '/solicitudes_permisos')->name('rh.permisos.index');
 });
@@ -118,13 +118,15 @@ Route::delete('solicitudes-vacaciones/{id}/admin-destroy', [SolicitudVacacionCon
     ->name('solicitudes_vacaciones.admin-destroy')
     ->middleware(['auth', 'role:administrador|recursos_humanos']);
 
+
 // Vista de RH. Las rutas fijas van antes que las de {id}, si no, "export" se toma como ID.
+// Las URLs con más de un segmento usan guiones: en DomCloud, el guion bajo en esas rutas da 404.
 Route::middleware(['auth', 'role:recursos_humanos'])->group(function () {
     Route::get('/solicitudes_vacaciones', [SolicitudVacacionController::class, 'indexRH'])->name('solicitudes_vacaciones.index');
-    Route::get('/solicitudes_vacaciones/export', [SolicitudVacacionController::class, 'export'])->name('solicitudes_vacaciones.export');
-    Route::get('/solicitudes_vacaciones/exportWeek', [SolicitudVacacionController::class, 'exportWeek'])->name('solicitudes_vacaciones.exportWeek');
-    Route::get('/solicitudes_vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
-    Route::get('/solicitudes_vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
+    Route::get('/solicitudes-vacaciones/export', [SolicitudVacacionController::class, 'export'])->name('solicitudes_vacaciones.export');
+    Route::get('/solicitudes-vacaciones/exportWeek', [SolicitudVacacionController::class, 'exportWeek'])->name('solicitudes_vacaciones.exportWeek');
+    Route::get('/solicitudes-vacaciones/{id}', [SolicitudVacacionController::class, 'showRH'])->name('solicitudes_vacaciones.show');
+    Route::get('/solicitudes-vacaciones/{id}/download', [SolicitudVacacionController::class, 'downloadPDF'])->name('solicitudes_vacaciones.download');
 });
 
 // Vacaciones espontáneas — registradas por RH en nombre del empleado
@@ -148,7 +150,7 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
     Route::get('/periodos/{id}/editar', [PeriodoVacacionController::class, 'edit'])->name('periodos.edit');
     Route::put('/periodos/{id}', [PeriodoVacacionController::class, 'update'])->name('periodos.update');
     Route::delete('/periodos/{id}', [PeriodoVacacionController::class, 'destroy'])->name('periodos.destroy');
-    Route::post('/periodos_vacaciones/{id}/toggle-activo', [PeriodoVacacionController::class, 'toggleActivo'])->name('periodos_vacaciones.toggle-activo');
+    Route::post('/periodos-vacaciones/{id}/toggle-activo', [PeriodoVacacionController::class, 'toggleActivo'])->name('periodos_vacaciones.toggle-activo');
 });
 
 /*
