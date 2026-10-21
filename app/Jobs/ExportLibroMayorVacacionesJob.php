@@ -69,8 +69,7 @@ class ExportLibroMayorVacacionesJob implements ShouldQueue
         $subtitle = VacacionesExport::filtersSubtitle($this->search, $this->startDate, $this->endDate);
         Excel::store(new VacacionesExport($vacaciones, $subtitle), $filePath, 'public');
 
-        // Enviar el correo con el enlace al archivo
-        $url = asset("storage/{$filePath}");
-        Mail::to($this->userEmail)->send(new ExportVacacionesMail($url));
-    }
+        // El correo arma el enlace de descarga a partir de la ruta relativa
+        Mail::to($this->userEmail)->send(new ExportVacacionesMail($filePath, 'Libro Mayor de Vacaciones'));
+        }
 }

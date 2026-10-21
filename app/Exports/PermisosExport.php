@@ -38,7 +38,6 @@ class PermisosExport extends BrandedExport
             'Fecha término'      => ['width' => 12, 'type' => 'date', 'value' => fn ($p) => $p->fecha_termino],
             'Días'               => ['width' => 8,  'type' => 'number', 'sum' => true, 'value' => fn ($p) => self::inclusiveDays($p->fecha_inicio, $p->fecha_termino)],
             'Regresa a laborar'  => ['width' => 13, 'type' => 'date', 'value' => fn ($p) => $p->fecha_regreso_laborar],
-            'Día de descanso'    => ['width' => 13, 'value' => fn ($p) => $p->dia_descanso],
             'Motivo'             => ['width' => 40, 'type' => 'long', 'value' => fn ($p) => $p->motivo],
             'Documento'          => ['width' => 11, 'value' => fn ($p) => $p->archivo ? 'Sí' : 'No'],
             'Estado'             => ['width' => 12, 'type' => 'status', 'value' => fn ($p) => $p->estado],

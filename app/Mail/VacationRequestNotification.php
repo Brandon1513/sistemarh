@@ -23,7 +23,7 @@ class VacationRequestNotification extends Mailable
     public function build()
     {
         return $this->subject('Nueva Solicitud de Vacaciones')
-                    ->markdown('emails.vacationRequestNotification')
+                    ->view('emails.vacationRequestNotification')
                     ->with([
                         'employee' => $this->employee,
                         'vacationRequest' => $this->vacationRequest,

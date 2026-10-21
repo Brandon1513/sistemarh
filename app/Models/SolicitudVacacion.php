@@ -10,18 +10,28 @@ class SolicitudVacacion extends Model
     use HasFactory;
     protected $table = 'solicitudes_vacaciones'; // Especifica el nombre correcto de la tabla
     protected $fillable = [
-        'empleado_id',
-        'departamento_id',
-        'fecha_solicitud',
-        'dias_corresponden',
-        'dias_solicitados',
-        'dias_pendientes',
-        'periodo_correspondiente',
-        'fecha_inicio',
-        'fecha_fin',
-        'fecha_reincorporacion',
-        'estado',
+    'empleado_id',
+    'departamento_id',
+    'fecha_solicitud',
+    'dias_corresponden',
+    'dias_solicitados',
+    'dias_pendientes',
+    'periodo_correspondiente',
+    'fecha_inicio',
+    'fecha_fin',
+    'fecha_reincorporacion',
+    'estado',
+    'tipo',        
+    'creado_por',  
     ];
+
+    // Relación con quien creó (RH)
+    public function creadoPor()
+    {
+        return $this->belongsTo(User::class, 'creado_por');
+    }
+
+
 
     // Relación con el modelo User
     public function empleado()

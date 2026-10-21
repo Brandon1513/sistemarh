@@ -26,18 +26,9 @@ class NotificacionSeguridadPermiso extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-            ->subject('Permiso Aprobado - Información del Solicitante')
-            ->greeting('Hola, equipo de seguridad')
-            ->line('Se ha aprobado un nuevo pase de salida con los siguientes datos:')
-            ->line('Empleado: ' . ($this->data['nombre_empleado'] ?? 'No disponible'))
-            ->line('Puesto: ' . ($this->data['puesto'] ?? 'No disponible'))
-            ->line('Departamento: ' . ($this->data['departamento'] ?? 'No disponible'))
-            ->line('Horario Oficial: ' . ($this->data['official_schedule'] ?? 'No disponible'))
-            ->line('Hora de Entrada/Salida: ' . ($this->data['entry_exit_time'] ?? 'No disponible'))
-            ->line('Fecha: ' . ($this->data['date'] ?? 'No disponible'))
-            ->line('Motivo: ' . ($this->data['reason'] ?? 'No disponible'))
-            ->line('Tipo de Entrada/Salida: ' . ($this->data['entry_exit_type'] ?? 'No disponible'))
-            ->action('Ver Permiso', url('/permissions/' . ($this->data['id'] ?? '')))
-            ->line('Gracias por su atención.');
+            ->subject('🔐 Permiso Aprobado - Información del Solicitante')
+            ->view('emails.notificacion_seguridad_permiso', [
+                'data' => $this->data,
+            ]);
     }
 }

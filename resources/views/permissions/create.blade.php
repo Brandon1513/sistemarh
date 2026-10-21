@@ -16,6 +16,7 @@
             --brand-mid:   #BBA4C0;
             --gold:        #D6A644;
             --gold-light:  #EED39B;
+            --gold-pale:   #faf3e0;
             --brown:       #473524;
             --rose:        #AA4969;
             --beige-light: #f7f3ef;
@@ -47,7 +48,14 @@
         .field-select { height:42px; }
         .field-textarea { resize:vertical; min-height:90px; line-height:1.55; }
         .field-input:focus,.field-select:focus,.field-textarea:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(106,44,117,.12); }
+        .field-input.has-error,.field-textarea.has-error { border-color:var(--error); background:var(--error-bg); }
         .field-hint { font-size:12px; color:var(--muted); margin-top:3px; }
+        .field-error { font-size:12px; color:var(--error); }
+
+        /* Recuadro de errores */
+        .error-box { margin-bottom:18px; padding:14px 16px; background:var(--error-bg); border:1px solid #f0b3c3; border-radius:10px; }
+        .error-box p { margin:0 0 8px; font-size:13px; font-weight:700; color:var(--rose); }
+        .error-box li { font-size:13px; color:#7a2039; margin-left:12px; }
 
         /* Tipo entrada/salida como cards seleccionables */
         .tipo-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -98,6 +106,19 @@
 
                     {{-- Información del solicitante (autocompletado) --}}
                     <div class="form-section">
+
+                        {{-- Errores: lo primero que ve el empleado si algo no pasó --}}
+                        @if ($errors->any())
+                            <div class="error-box">
+                                <p>No se pudo enviar tu pase:</p>
+                                <ul>
+                                    @foreach ($errors->all() as $error)
+                                        <li>• {{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
                         <p class="section-title">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0M12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                             Información del Solicitante
@@ -126,6 +147,7 @@
                                 <input type="hidden" name="position" value="{{ $authUser->puesto_empleado ?? old('position') }}">
                                 <input type="text" class="field-input" value="{{ $authUser->puesto_empleado ?? 'Sin puesto registrado' }}" readonly
                                     style="background:var(--beige-light);color:var(--muted);cursor:not-allowed;border-color:#ede3f2;">
+                                @error('position')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
 
                             {{-- Departamento: oculto real + visible readonly --}}
@@ -134,6 +156,7 @@
                                 <input type="hidden" name="department_id" value="{{ $authUser->departamento_id ?? old('department_id') }}">
                                 <input type="text" class="field-input" value="{{ $authUser->departamento->name ?? 'Sin departamento registrado' }}" readonly
                                     style="background:var(--beige-light);color:var(--muted);cursor:not-allowed;border-color:#ede3f2;">
+                                @error('department_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>
@@ -170,22 +193,32 @@
                                     </div>
                                 </label>
                             </div>
+                            @error('entry_exit_type')<span class="field-error">⚠ {{ $message }}</span>@enderror
                         </div>
 
                         <div class="form-grid">
                             <div class="field">
                                 <label class="field-label" for="official_schedule">Horario Oficial <span class="req">*</span></label>
-                                <input type="time" name="official_schedule" id="official_schedule" class="field-input" required>
+                                <input type="time" name="official_schedule" id="official_schedule"
+                                    class="field-input @error('official_schedule') has-error @enderror"
+                                    value="{{ old('official_schedule') }}" required>
                                 <span class="field-hint">Tu horario de trabajo habitual</span>
+                                @error('official_schedule')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                             <div class="field">
                                 <label class="field-label" for="entry_exit_time">Hora de Entrada/Salida <span class="req">*</span></label>
-                                <input type="time" name="entry_exit_time" id="entry_exit_time" class="field-input" required>
+                                <input type="time" name="entry_exit_time" id="entry_exit_time"
+                                    class="field-input @error('entry_exit_time') has-error @enderror"
+                                    value="{{ old('entry_exit_time') }}" required>
                                 <span class="field-hint">La hora real del permiso</span>
+                                @error('entry_exit_time')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                             <div class="col-span-2 field">
                                 <label class="field-label" for="date">Fecha del Permiso <span class="req">*</span></label>
-                                <input type="date" name="date" id="date" class="field-input" required>
+                                <input type="date" name="date" id="date"
+                                    class="field-input @error('date') has-error @enderror"
+                                    value="{{ old('date') }}" required>
+                                @error('date')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>
@@ -198,13 +231,14 @@
                         </p>
                         <div class="field">
                             <label class="field-label" for="reason">Descripción <span class="req">*</span></label>
-                            <textarea name="reason" id="reason" class="field-textarea"
+                            <textarea name="reason" id="reason"
+                                class="field-textarea @error('reason') has-error @enderror"
                                 placeholder="Describe el motivo de forma clara y concisa..." required maxlength="500">{{ old('reason') }}</textarea>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
                                 <span class="field-hint">Sé claro y específico con el motivo.</span>
                                 <span id="char-count" style="font-size:12px; color:var(--muted);">0 / 500</span>
                             </div>
-                            @error('reason')<span style="font-size:12px;color:var(--error);">⚠ {{ $message }}</span>@enderror
+                            @error('reason')<span class="field-error">⚠ {{ $message }}</span>@enderror
                         </div>
                     </div>
 
@@ -224,12 +258,13 @@
                             </div>
                         </div>
                         <div id="preview"></div>
+                        @error('supporting_document')<span class="field-error">⚠ {{ $message }}</span>@enderror
                     </div>
 
                     {{-- Aviso de privacidad --}}
                     <div class="form-section">
-                        <label class="privacy-check" id="privacy-wrap" onclick="togglePrivacy()">
-                            <input type="checkbox" name="aviso_privacidad" id="aviso_privacidad" required>
+                        <label class="privacy-check {{ old('aviso_privacidad') ? 'checked' : '' }}" id="privacy-wrap" onclick="togglePrivacy()">
+                            <input type="checkbox" name="aviso_privacidad" id="aviso_privacidad" required {{ old('aviso_privacidad') ? 'checked' : '' }}>
                             <div class="custom-check">
                                 <svg class="w-3 h-3 check-svg" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                             </div>
@@ -238,13 +273,14 @@
                                 <a href="https://dasavena.com/pages/terminos-condiciones/#aviso-privacidad" target="_blank" onclick="event.stopPropagation()">Aviso de Privacidad</a>.
                             </span>
                         </label>
+                        @error('aviso_privacidad')<span class="field-error">⚠ {{ $message }}</span>@enderror
                     </div>
 
                     {{-- Footer --}}
                     <div class="form-section-footer">
                         <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;">
                             <a href="{{ route('permissions.index') }}" class="btn btn-ghost">Cancelar</a>
-                            <button type="submit" id="submit-btn" class="btn btn-primary" disabled>
+                            <button type="submit" id="submit-btn" class="btn btn-primary" {{ old('aviso_privacidad') ? '' : 'disabled' }}>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 Enviar Solicitud
                             </button>
@@ -270,14 +306,16 @@
             document.querySelector(`input[value="${tipo}"]`).checked = true;
         }
 
-        // Contador de caracteres
+        // Contador de caracteres (incluye el texto que regresa con old())
         const reason = document.getElementById('reason');
         const counter = document.getElementById('char-count');
-        reason.addEventListener('input', () => {
+        function actualizarContador() {
             const n = reason.value.length;
             counter.textContent = n + ' / 500';
             counter.style.color = n > 450 ? 'var(--rose)' : 'var(--muted)';
-        });
+        }
+        reason.addEventListener('input', actualizarContador);
+        actualizarContador();
 
         // Aviso privacidad
         function togglePrivacy() {

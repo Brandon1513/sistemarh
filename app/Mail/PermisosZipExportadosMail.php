@@ -28,7 +28,7 @@ class PermisosZipExportadosMail extends Mailable
      */
     public function build()
     {
-        return $this->markdown('emails.permisos_zip_exportados')
+        return $this->view('emails.permisos_zip_exportados')
                     ->subject('Tu archivo ZIP está listo para descargar')
                     ->with([
                         'downloadLink' => $this->downloadLink, // Pasar el enlace a la vista

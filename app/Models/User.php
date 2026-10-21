@@ -31,6 +31,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'fcm_token',
     ];
     protected static function boot()
     {
@@ -93,6 +94,11 @@ class User extends Authenticatable
 public function getIsJefeAttribute()
 {
     return $this->role === 'jefe'; // O como esté definido en tu sistema
+}
+
+public function dispositivos()
+{
+    return $this->hasMany(UserDeviceToken::class);
 }
 
 }

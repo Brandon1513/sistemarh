@@ -16,10 +16,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Notification;
 use App\Jobs\ExportWeekPaseSalidaExcelJob;
 use App\Jobs\ExportPaseSalidaExcelLibroMJob;
-use App\Notifications\PermissionRequested;
-use App\Notifications\NotificacionSeguridadPermiso;
-use App\Notifications\PaseSalidaActualizadoNotification;
+use Illuminate\Support\Facades\Gate;
 use App\Models\User;
+use App\Services\PasesService;
 
 class PermissionController extends Controller
 {
@@ -77,43 +76,14 @@ class PermissionController extends Controller
     /**
      * Guarda un nuevo permiso.
      */
-    public function store(Request $request)
+    public function store(Request $request, PasesService $pases)
     {
-        $validated = $request->validate([
-            'position'           => 'required|string|max:255',
-            'department_id'      => 'required|exists:departments,id',
-            'entry_exit_type'    => 'required|in:entrada,salida',
-            'official_schedule'  => 'required',
-            'entry_exit_time'    => 'required',
-            'date'               => 'required|date',
-            'reason'             => 'required|string|max:500',
-            'supporting_document'=> 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'aviso_privacidad'   => 'accepted',
+        $datos = $request->validate(PasesService::reglas() + [
+            'position'      => 'nullable|string|max:255',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
-        $documentPath = null;
-        if ($request->hasFile('supporting_document')) {
-            $documentPath = $request->file('supporting_document')->store('documents', 'public');
-        }
-
-        $permission = Permission::create([
-            'user_id'             => auth()->id(),
-            'position'            => $validated['position'],
-            'department_id'       => $validated['department_id'],
-            'entry_exit_type'     => $validated['entry_exit_type'],
-            'official_schedule'   => $validated['official_schedule'],
-            'entry_exit_time'     => $validated['entry_exit_time'],
-            'date'                => $validated['date'],
-            'reason'              => $validated['reason'],
-            'supporting_document' => $documentPath,
-            'status'              => 'pendiente',
-        ]);
-
-        // Notificar al supervisor directo
-        $supervisor = auth()->user()->supervisor;
-        if ($supervisor) {
-            Notification::send($supervisor, new PermissionRequested($permission));
-        }
+        $pases->solicitar(auth()->user(), $datos, $request->file('supporting_document'));
 
         return redirect()->route('permissions.index')->with('success', 'Permiso solicitado exitosamente.');
     }
@@ -121,48 +91,20 @@ class PermissionController extends Controller
     /**
      * Detalle de un permiso.
      */
-    public function show(Permission $permission)
+   public function show(Permission $permission)
     {
+        Gate::authorize('view', $permission);
         return view('permissions.show', compact('permission'));
     }
 
     /**
      * Aprobar un permiso y notificar a seguridad.
      */
-    public function approve(Permission $permission)
+    public function approve(Permission $permission, PasesService $pases)
     {
-        $permission->update(['status' => 'aprobado']);
+        Gate::authorize('approve', $permission);
 
-        $empleado = $permission->user; // Usar relación correcta
-
-        if (!$empleado) {
-            Log::error("Permiso #{$permission->id} no tiene usuario asociado.");
-            return redirect()->route('permissions.index')->with('error', 'Error: el permiso no tiene un empleado asociado.');
-        }
-
-        $empleado->notify(new PaseSalidaActualizadoNotification('aprobado'));
-
-        $departamento = Department::find($empleado->departamento_id ?? $permission->department_id);
-
-        $data = [
-            'nombre_empleado'    => $empleado->name,
-            'puesto'             => $empleado->puesto_empleado ?? 'No especificado',
-            'departamento'       => $departamento->name ?? 'No especificado',
-            'official_schedule'  => $permission->official_schedule,
-            'entry_exit_time'    => $permission->entry_exit_time,
-            'date'               => $permission->date,
-            'reason'             => $permission->reason,
-            'supporting_document'=> $permission->supporting_document,
-            'status'             => 'aprobado',
-            'entry_exit_type'    => $permission->entry_exit_type,
-        ];
-
-        Log::info('Notificación de permiso aprobado:', $data);
-
-        $usuariosSeguridad = User::whereHas('roles', fn($q) => $q->where('name', 'Seguridad'))->get();
-        foreach ($usuariosSeguridad as $seguridad) {
-            $seguridad->notify(new NotificacionSeguridadPermiso($data));
-        }
+        $pases->aprobar($permission, auth()->user());
 
         return redirect()->route('permissions.index')->with('success', 'Permiso aprobado exitosamente.');
     }
@@ -170,14 +112,11 @@ class PermissionController extends Controller
     /**
      * Rechazar un permiso.
      */
-    public function reject(Permission $permission)
+    public function reject(Permission $permission, PasesService $pases)
     {
-        $permission->update(['status' => 'rechazado']);
+        Gate::authorize('reject', $permission);
 
-        $empleado = $permission->user;
-        if ($empleado) {
-            $empleado->notify(new PaseSalidaActualizadoNotification('rechazado'));
-        }
+        $pases->rechazar($permission, auth()->user());
 
         return redirect()->route('permissions.index')->with('success', 'Permiso rechazado exitosamente.');
     }

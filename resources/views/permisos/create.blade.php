@@ -213,20 +213,6 @@
                             </div>
                             @error('tipo_permiso')<span class="field-error">⚠ {{ $message }}</span>@enderror
                         </div>
-
-                        {{-- Día de descanso --}}
-                        <div class="field">
-                            <label class="field-label" for="dia_descanso">
-                                Día de Descanso
-                                <span class="opt">Opcional</span>
-                            </label>
-                            <select name="dia_descanso" id="dia_descanso" class="field-select">
-                                <option value="">No aplica</option>
-                                @foreach(['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'] as $dia)
-                                    <option value="{{ $dia }}" {{ old('dia_descanso') === $dia ? 'selected' : '' }}>{{ $dia }}</option>
-                                @endforeach
-                            </select>
-                        </div>
                     </div>
 
                     {{-- Motivo --}}
