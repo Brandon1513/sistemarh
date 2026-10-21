@@ -17,6 +17,17 @@ use App\Http\Controllers\Api\V2\PublicAssetController;
 
 
 
+/*
+|--------------------------------------------------------------------------
+| API v1 — App móvil nueva
+|--------------------------------------------------------------------------
+*/
+
+use App\Http\Controllers\Api\V1\AuthController as AuthV1Controller;
+use App\Http\Controllers\Api\V1\DispositivoController;
+
+
+
 
 
 /*
@@ -119,4 +130,22 @@ Route::get('/users', function (Request $r) {
         ->paginate($per, ['id','name','email']); // ← paginate!
 
     return response()->json($users);
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| API v1 — App móvil nueva
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('v1')->group(function () {
+    // Máximo 5 intentos por minuto, para frenar ataques de fuerza bruta
+    Route::post('/login', [AuthV1Controller::class, 'login'])->middleware('throttle:5,1');
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [AuthV1Controller::class, 'logout']);
+        Route::get('/me', [AuthV1Controller::class, 'me']);
+        Route::post('/dispositivos', [DispositivoController::class, 'store']);
+    });
 });
