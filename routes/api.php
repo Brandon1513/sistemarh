@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\V1\VacacionController;
 use App\Http\Controllers\Api\V1\PaseController;
 use App\Http\Controllers\Api\V1\PermisoController;
 use App\Http\Controllers\Api\V1\SolicitudController;
+use App\Http\Controllers\Api\V1\AprobacionController;
 
 
 
@@ -164,5 +165,10 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/pases', [PaseController::class, 'store']);
         Route::delete('/pases/{pase}', [PaseController::class, 'destroy']);
+        Route::get('/aprobaciones', [AprobacionController::class, 'index']);
+        Route::post('/aprobaciones/{tipo}/{id}/aprobar', [AprobacionController::class, 'aprobar'])
+            ->whereIn('tipo', ['vacaciones', 'permiso', 'pase'])->whereNumber('id');
+        Route::post('/aprobaciones/{tipo}/{id}/rechazar', [AprobacionController::class, 'rechazar'])
+            ->whereIn('tipo', ['vacaciones', 'permiso', 'pase'])->whereNumber('id');
     });
 });

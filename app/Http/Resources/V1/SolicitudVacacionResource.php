@@ -25,6 +25,12 @@ class SolicitudVacacionResource extends JsonResource
             'es_espontanea'         => $espontanea,
             'creada_en'             => $this->created_at?->toIso8601String(),
             'puede_cancelar'        => $this->estado === 'pendiente' && $request->user()?->can('delete', $this->resource),
+            'empleado' => $this->whenLoaded('empleado', fn () => $this->empleado ? [
+                'id'       => $this->empleado->id,
+                'name'     => $this->empleado->name,
+                'puesto'   => $this->empleado->puesto_empleado,
+                'foto_url' => $this->empleado->foto_perfil ? asset('storage/' . $this->empleado->foto_perfil) : null,
+            ] : null),
         ];
     }
 }
