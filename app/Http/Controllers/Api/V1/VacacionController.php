@@ -27,9 +27,9 @@ class VacacionController extends Controller
     /**
      * Días festivos del año actual y el siguiente, con su nombre.
      */
-    public function festivos()
+    public function festivos(Request $request)
     {
-        return collect(CalendarioLaboral::festivosEntre(now()->year, now()->year + 1))
+        return collect(CalendarioLaboral::festivosEntre(now()->year, now()->year + 1, $request->user()->sede_id))
             ->map(fn ($nombre, $fecha) => ['fecha' => $fecha, 'nombre' => $nombre])
             ->values();
     }

@@ -179,6 +179,15 @@
                             </select>
                         </div>
                         <div class="filter-group">
+                            <span class="filter-label">Sede</span>
+                            <select name="sede" class="filter-select">
+                                <option value="">Todas</option>
+                                @foreach ($sedes as $sede)
+                                    <option value="{{ $sede->id }}" {{ request('sede') == $sede->id ? 'selected' : '' }}>{{ $sede->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="filter-group">
                             <span class="filter-label">Rol</span>
                             <select name="rol" class="filter-select">
                                 <option value="">Todos</option>
@@ -192,7 +201,7 @@
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
                                 Filtrar
                             </button>
-                            @if(request()->hasAny(['search','estado','departamento','rol']))
+                            @if(request()->hasAny(['search','estado','departamento','sede','rol']))
                                 <a href="{{ route('empleados.index') }}" class="btn btn-outline">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                     Limpiar
@@ -222,6 +231,7 @@
                                 <th>Empleado</th>
                                 <th class="hide-mobile">Correo</th>
                                 <th class="hide-mobile">Departamento</th>
+                                <th class="hide-mobile">Sede</th>
                                 <th class="hide-mobile">Rol</th>
                                 <th>Estado</th>
                                 <th style="text-align:right;">Acciones</th>
@@ -249,6 +259,7 @@
                                     </td>
                                     <td class="hide-mobile" style="color:var(--muted); font-size:13px;">{{ $user->email }}</td>
                                     <td class="hide-mobile" style="font-size:13px;">{{ $user->departamento->name ?? '—' }}</td>
+                                    <td class="hide-mobile" style="font-size:13px;">{{ $user->sede->nombre ?? '—' }}</td>
                                     <td class="hide-mobile">
                                         @foreach($user->roles as $role)
                                             <span class="role-tag">{{ $role->name }}</span>
@@ -291,7 +302,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6">
+                                <tr><td colspan="7">
                                     <div class="empty-state">
                                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                         <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:4px;">Sin resultados</p>

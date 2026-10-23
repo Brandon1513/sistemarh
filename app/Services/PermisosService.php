@@ -57,7 +57,7 @@ class PermisosService
         $fin = Carbon::parse($datos['fecha_termino']);
 
         // Un permiso que cae solo en domingos o festivos no justifica nada
-        if (CalendarioLaboral::diasHabiles($inicio, $fin) === 0) {
+        if (CalendarioLaboral::diasHabiles($inicio, $fin, $empleado->sede_id) === 0) {
             $this->error('fecha_inicio', 'Las fechas que elegiste son domingo o día festivo. Un permiso debe incluir al menos un día laboral.');
         }
 
@@ -93,7 +93,7 @@ class PermisosService
                 'motivo' => $datos['motivo'],
                 'tipo_permiso' => $datos['tipo_permiso'],
                 'tipo' => $datos['tipo'],
-                'fecha_regreso_laborar' => $datos['fecha_regreso_laborar'] ?? CalendarioLaboral::siguienteHabil($fin)->toDateString(),
+                'fecha_regreso_laborar' => $datos['fecha_regreso_laborar'] ?? CalendarioLaboral::siguienteHabil($fin, $empleado->sede_id)->toDateString(),
                 'archivo' => $ruta,
                 'estado' => 'pendiente',
             ]);

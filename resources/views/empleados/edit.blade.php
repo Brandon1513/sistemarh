@@ -110,7 +110,7 @@
                     @endif
                     <div class="banner-info">
                         <p class="banner-name">{{ $user->name }}</p>
-                        <p class="banner-sub">{{ $user->puesto_empleado }} · {{ $user->departamento->name ?? '' }}</p>
+                        <p class="banner-sub">{{ $user->puesto_empleado }} · {{ $user->departamento->name ?? '' }} · {{ $user->sede->nombre ?? 'Sin sede' }}</p>
                         <div class="banner-badge">
                             <span class="dot"></span>
                             {{ $user->activo ? 'Activo' : 'Inactivo' }}
@@ -198,13 +198,29 @@
                                 @error('departamento_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                             <div class="field">
-                                <label class="field-label" for="supervisor_id">Supervisor <span class="opt">Opcional</span></label>
-                                <select name="supervisor_id" id="supervisor_id" class="field-select">
-                                    <option value="">Sin supervisor</option>
+                                <label class="field-label" for="supervisor_id">Jefe directo <span class="req">*</span></label>
+                                <select name="supervisor_id" id="supervisor_id"
+                                    class="field-select {{ $errors->has('supervisor_id') ? 'err' : '' }}" required>
+                                    <option value="" disabled {{ old('supervisor_id', $user->supervisor_id) ? '' : 'selected' }}>Seleccionar...</option>
                                     @foreach ($supervisors as $supervisor)
                                         <option value="{{ $supervisor->id }}" {{ old('supervisor_id', $user->supervisor_id) == $supervisor->id ? 'selected' : '' }}>{{ $supervisor->name }}</option>
                                     @endforeach
                                 </select>
+                                @error('supervisor_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
+                            </div>
+                            <div class="col-span-2 field">
+                                <label class="field-label" for="sede_id">Sede <span class="req">*</span></label>
+                                <select name="sede_id" id="sede_id"
+                                    class="field-select {{ $errors->has('sede_id') ? 'err' : '' }}" required>
+                                    @foreach ($sedes as $sede)
+                                        <option value="{{ $sede->id }}" {{ old('sede_id', $user->sede_id) == $sede->id ? 'selected' : '' }}>{{ $sede->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                <span class="field-hint">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Define los días inhábiles que aplican a sus vacaciones y permisos.
+                                </span>
+                                @error('sede_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>
