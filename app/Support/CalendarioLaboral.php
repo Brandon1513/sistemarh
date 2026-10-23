@@ -167,7 +167,7 @@ class CalendarioLaboral
     /**
      * Festivos de ley y de la empresa, iguales para todas las sedes.
      */
-    protected static function festivosDeLey(int $anio): array
+    public static function festivosDeLey(int $anio): array
     {
         $pascua = self::domingoDePascua($anio);
 
