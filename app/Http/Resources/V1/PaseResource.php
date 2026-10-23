@@ -26,6 +26,13 @@ class PaseResource extends JsonResource
             'tiene_archivo'   => (bool) $this->supporting_document,
             'creada_en'       => $this->created_at?->toIso8601String(),
             'puede_cancelar'  => $this->status === 'pendiente' && $request->user()?->can('delete', $this->resource),
+            'archivo_url' => $this->supporting_document ? asset('storage/' . $this->supporting_document) : null,
+            'empleado' => $this->whenLoaded('user', fn () => $this->user ? [
+                'id'       => $this->user->id,
+                'name'     => $this->user->name,
+                'puesto'   => $this->user->puesto_empleado,
+                'foto_url' => $this->user->foto_perfil ? asset('storage/' . $this->user->foto_perfil) : null,
+            ] : null),
         ];
     }
 }

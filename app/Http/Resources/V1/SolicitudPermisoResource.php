@@ -23,6 +23,13 @@ class SolicitudPermisoResource extends JsonResource
             'tiene_archivo'         => (bool) $this->archivo,
             'creada_en'             => $this->created_at?->toIso8601String(),
             'puede_cancelar'        => $this->estado === 'pendiente' && $request->user()?->can('delete', $this->resource),
+            'archivo_url' => $this->archivo ? asset('storage/' . $this->archivo) : null,
+            'empleado' => $this->whenLoaded('empleado', fn () => $this->empleado ? [
+                'id'       => $this->empleado->id,
+                'name'     => $this->empleado->name,
+                'puesto'   => $this->empleado->puesto_empleado,
+                'foto_url' => $this->empleado->foto_perfil ? asset('storage/' . $this->empleado->foto_perfil) : null,
+            ] : null),
         ];
     }
 }
