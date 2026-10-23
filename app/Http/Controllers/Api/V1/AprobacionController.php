@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Gate;
 class AprobacionController extends Controller
 {
     /**
-     * Solicitudes pendientes del equipo directo del jefe, las más antiguas primero.
+     * Solicitudes pendientes del equipo directo del jefe, las más recientes primero.
      */
     public function index(Request $request)
     {
@@ -27,19 +27,19 @@ class AprobacionController extends Controller
         $deMiEquipo = fn ($q) => $q->where('supervisor_id', $jefe->id);
 
         $vacaciones = SolicitudVacacion::with('empleado')
-            ->where('estado', 'pendiente')->whereHas('empleado', $deMiEquipo)->oldest()->get();
+        ->where('estado', 'pendiente')->whereHas('empleado', $deMiEquipo)->latest()->get();
 
         $permisos = SolicitudPermiso::with('empleado')
-            ->where('estado', 'pendiente')->whereHas('empleado', $deMiEquipo)->oldest()->get();
+            ->where('estado', 'pendiente')->whereHas('empleado', $deMiEquipo)->latest()->get();
 
         $pases = Permission::with('user')
-            ->where('status', 'pendiente')->whereHas('user', $deMiEquipo)->oldest()->get();
+            ->where('status', 'pendiente')->whereHas('user', $deMiEquipo)->latest()->get();
 
         $pendientes = collect()
             ->concat(SolicitudVacacionResource::collection($vacaciones)->resolve($request))
             ->concat(SolicitudPermisoResource::collection($permisos)->resolve($request))
             ->concat(PaseResource::collection($pases)->resolve($request))
-            ->sortBy('creada_en')
+            ->sortByDesc('creada_en')
             ->values();
 
         return response()->json($pendientes);

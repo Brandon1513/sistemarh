@@ -21,9 +21,10 @@ class VacacionesService
 {
     use GestionaSolicitudes;
 
-    public function __construct(private AgendaEmpleado $agenda)
-    {
-    }
+    public function __construct(
+        private AgendaEmpleado $agenda,
+        private PushService $push,
+    ) {}
 
     /**
      * Crea una solicitud de vacaciones y descuenta los días del periodo.
@@ -81,17 +82,17 @@ class VacacionesService
             $periodo->decrement('dias_disponibles', $dias);
 
             return SolicitudVacacion::create([
-                'empleado_id'             => $empleado->id,
-                'departamento_id'         => $empleado->departamento_id,
-                'fecha_solicitud'         => now(),
-                'dias_corresponden'       => $periodo->dias_corresponden,
-                'dias_solicitados'        => $dias,
-                'dias_pendientes'         => $periodo->dias_disponibles,
+                'empleado_id' => $empleado->id,
+                'departamento_id' => $empleado->departamento_id,
+                'fecha_solicitud' => now(),
+                'dias_corresponden' => $periodo->dias_corresponden,
+                'dias_solicitados' => $dias,
+                'dias_pendientes' => $periodo->dias_disponibles,
                 'periodo_correspondiente' => $periodo->anio,
-                'fecha_inicio'            => $fechaInicio->toDateString(),
-                'fecha_fin'               => $fechaFin->toDateString(),
-                'fecha_reincorporacion'   => CalendarioLaboral::siguienteHabil($fechaFin)->toDateString(),
-                'estado'                  => 'pendiente',
+                'fecha_inicio' => $fechaInicio->toDateString(),
+                'fecha_fin' => $fechaFin->toDateString(),
+                'fecha_reincorporacion' => CalendarioLaboral::siguienteHabil($fechaFin)->toDateString(),
+                'estado' => 'pendiente',
             ]);
         });
 
@@ -133,19 +134,19 @@ class VacacionesService
             $periodo->decrement('dias_disponibles', $dias);
 
             return SolicitudVacacion::create([
-                'empleado_id'             => $empleado->id,
-                'departamento_id'         => $empleado->departamento_id,
-                'fecha_solicitud'         => now(),
-                'dias_corresponden'       => $periodo->dias_corresponden,
-                'dias_solicitados'        => $dias,
-                'dias_pendientes'         => $periodo->dias_disponibles,
+                'empleado_id' => $empleado->id,
+                'departamento_id' => $empleado->departamento_id,
+                'fecha_solicitud' => now(),
+                'dias_corresponden' => $periodo->dias_corresponden,
+                'dias_solicitados' => $dias,
+                'dias_pendientes' => $periodo->dias_disponibles,
                 'periodo_correspondiente' => $periodo->anio,
-                'fecha_inicio'            => $fechaInicio->toDateString(),
-                'fecha_fin'               => $fechaFin->toDateString(),
-                'fecha_reincorporacion'   => Carbon::parse($fechaPresentarse)->toDateString(),
-                'estado'                  => 'pendiente',
-                'tipo'                    => 'espontanea',
-                'creado_por'              => $registradoPor->id,
+                'fecha_inicio' => $fechaInicio->toDateString(),
+                'fecha_fin' => $fechaFin->toDateString(),
+                'fecha_reincorporacion' => Carbon::parse($fechaPresentarse)->toDateString(),
+                'estado' => 'pendiente',
+                'tipo' => 'espontanea',
+                'creado_por' => $registradoPor->id,
             ]);
         });
 
@@ -174,6 +175,13 @@ class VacacionesService
                 ->each(fn (User $persona) => $persona->notify(new VacationSecurityNotification($solicitud)));
         });
 
+        $this->sinRomper(fn () => $solicitud->empleado && $this->push->enviar(
+            $solicitud->empleado,
+            'Tus vacaciones fueron aprobadas ✅',
+            $this->rangoCorto($solicitud->fecha_inicio, $solicitud->fecha_fin),
+            ['destino' => 'solicitudes'],
+        ));
+
         return $solicitud;
     }
 
@@ -192,6 +200,13 @@ class VacacionesService
 
         $this->sinRomper(fn () => $solicitud->empleado?->notify(new VacationRejectedNotification($solicitud)));
         $this->sinRomper(fn () => $this->notificarRH($solicitud, 'rechazada'));
+
+        $this->sinRomper(fn () => $solicitud->empleado && $this->push->enviar(
+            $solicitud->empleado,
+            'Tus vacaciones fueron rechazadas',
+            $this->rangoCorto($solicitud->fecha_inicio, $solicitud->fecha_fin).'. Los días regresaron a tu saldo.',
+            ['destino' => 'solicitudes'],
+        ));
 
         return $solicitud;
     }
@@ -230,9 +245,9 @@ class VacacionesService
         if ($traslape) {
             $this->error(
                 'fecha_inicio_vacaciones',
-                'Ya tienes una solicitud ' . $traslape->estado . ' del '
-                    . Carbon::parse($traslape->fecha_inicio)->format('d/m/Y') . ' al '
-                    . Carbon::parse($traslape->fecha_fin)->format('d/m/Y') . ' que se cruza con estas fechas.'
+                'Ya tienes una solicitud '.$traslape->estado.' del '
+                    .Carbon::parse($traslape->fecha_inicio)->format('d/m/Y').' al '
+                    .Carbon::parse($traslape->fecha_fin)->format('d/m/Y').' que se cruza con estas fechas.'
             );
         }
     }
@@ -263,6 +278,24 @@ class VacacionesService
                 Mail::to($empleado->supervisor->email)->send(new VacationRequestNotification($empleado, $solicitud));
             }
         });
+
+        $this->sinRomper(function () use ($empleado, $solicitud) {
+            if ($empleado->supervisor) {
+                // Las espontáneas las registra RH, no el empleado
+                $espontanea = $solicitud->tipo === 'espontanea';
+
+                $this->push->enviar(
+                    $empleado->supervisor,
+                    $espontanea ? 'Vacaciones registradas por RH' : 'Solicitud de vacaciones',
+                    PushService::nombreCorto($empleado)
+                        . ($espontanea
+                            ? ': '
+                            : " pide {$solicitud->dias_solicitados} " . ($solicitud->dias_solicitados == 1 ? 'día' : 'días') . ': ')
+                        . $this->rangoCorto($solicitud->fecha_inicio, $solicitud->fecha_fin),
+                        ['destino' => 'aprobaciones', 'tipo' => 'vacaciones', 'id' => $solicitud->id],
+                );
+            }
+        });
     }
 
     private function notificarRH(SolicitudVacacion $solicitud, string $resultado): void
@@ -272,5 +305,13 @@ class VacacionesService
         if ($correos) {
             Notification::route('mail', $correos)->notify(new VacationRHNotification($solicitud, $resultado));
         }
+    }
+
+    private function rangoCorto($inicio, $fin): string
+    {
+        $i = Carbon::parse($inicio);
+        $f = Carbon::parse($fin);
+
+        return $i->isSameDay($f) ? $i->format('d/m') : 'del '.$i->format('d/m').' al '.$f->format('d/m');
     }
 }

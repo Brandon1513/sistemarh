@@ -20,11 +20,13 @@ class PermisosService
     use GestionaSolicitudes;
 
     public const TIPOS = ['Permiso', 'Comisión', 'Suspensión'];
+
     public const GOCE = ['Con Goce de Sueldo', 'Sin Goce de Sueldo'];
 
-    public function __construct(private AgendaEmpleado $agenda)
-    {
-    }
+    public function __construct(
+        private AgendaEmpleado $agenda,
+        private PushService $push,
+    ) {}
 
     /**
      * Reglas compartidas por el formulario web y la API.
@@ -32,13 +34,13 @@ class PermisosService
     public static function reglas(): array
     {
         return [
-            'fecha_inicio'          => 'required|date',
-            'fecha_termino'         => 'required|date|after_or_equal:fecha_inicio',
-            'motivo'                => 'required|string|max:500',
-            'tipo_permiso'          => ['required', Rule::in(self::GOCE)],
-            'tipo'                  => ['required', Rule::in(self::TIPOS)],
+            'fecha_inicio' => 'required|date',
+            'fecha_termino' => 'required|date|after_or_equal:fecha_inicio',
+            'motivo' => 'required|string|max:500',
+            'tipo_permiso' => ['required', Rule::in(self::GOCE)],
+            'tipo' => ['required', Rule::in(self::TIPOS)],
             'fecha_regreso_laborar' => 'nullable|date|after_or_equal:fecha_termino',
-            'archivo'               => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ];
     }
 
@@ -69,9 +71,9 @@ class PermisosService
         if ($empalme) {
             $this->error(
                 'fecha_inicio',
-                'Ya tienes un permiso ' . $empalme->estado . ' del '
-                    . Carbon::parse($empalme->fecha_inicio)->format('d/m/Y') . ' al '
-                    . Carbon::parse($empalme->fecha_termino)->format('d/m/Y') . ' que se cruza con estas fechas.'
+                'Ya tienes un permiso '.$empalme->estado.' del '
+                    .Carbon::parse($empalme->fecha_inicio)->format('d/m/Y').' al '
+                    .Carbon::parse($empalme->fecha_termino)->format('d/m/Y').' que se cruza con estas fechas.'
             );
         }
 
@@ -84,16 +86,16 @@ class PermisosService
 
         try {
             $permiso = SolicitudPermiso::create([
-                'empleado_id'           => $empleado->id,
-                'departamento_id'       => $departamentoId,
-                'fecha_inicio'          => $datos['fecha_inicio'],
-                'fecha_termino'         => $datos['fecha_termino'],
-                'motivo'                => $datos['motivo'],
-                'tipo_permiso'          => $datos['tipo_permiso'],
-                'tipo'                  => $datos['tipo'],
+                'empleado_id' => $empleado->id,
+                'departamento_id' => $departamentoId,
+                'fecha_inicio' => $datos['fecha_inicio'],
+                'fecha_termino' => $datos['fecha_termino'],
+                'motivo' => $datos['motivo'],
+                'tipo_permiso' => $datos['tipo_permiso'],
+                'tipo' => $datos['tipo'],
                 'fecha_regreso_laborar' => $datos['fecha_regreso_laborar'] ?? CalendarioLaboral::siguienteHabil($fin)->toDateString(),
-                'archivo'               => $ruta,
-                'estado'                => 'pendiente',
+                'archivo' => $ruta,
+                'estado' => 'pendiente',
             ]);
         } catch (\Throwable $e) {
             // Si no se pudo guardar el registro, no dejamos el archivo huérfano
@@ -106,6 +108,16 @@ class PermisosService
         $this->sinRomper(function () use ($empleado, $permiso) {
             if ($empleado->supervisor?->email) {
                 Mail::to($empleado->supervisor->email)->send(new NotificacionSolicitudPermiso($permiso));
+            }
+        });
+        $this->sinRomper(function () use ($empleado, $permiso) {
+            if ($empleado->supervisor) {
+                $this->push->enviar(
+                    $empleado->supervisor,
+                    "Solicitud de {$permiso->tipo}",
+                    PushService::nombreCorto($empleado).': '.$this->rangoCorto($permiso->fecha_inicio, $permiso->fecha_termino),
+                    ['destino' => 'aprobaciones', 'tipo' => 'permiso', 'id' => $permiso->id],
+                );
             }
         });
 
@@ -151,6 +163,21 @@ class PermisosService
 
         $this->sinRomper(fn () => $permiso->empleado?->notify(new EstadoPermisoActualizadoNotification($estado)));
 
+        $this->sinRomper(fn () => $permiso->empleado && $this->push->enviar(
+            $permiso->empleado,
+            $estado === 'aprobado' ? 'Tu permiso fue aprobado ✅' : 'Tu permiso fue rechazado',
+            $this->rangoCorto($permiso->fecha_inicio, $permiso->fecha_termino),
+            ['destino' => 'solicitudes'],
+        ));
+
         return $permiso;
+    }
+
+    private function rangoCorto($inicio, $fin): string
+    {
+        $i = Carbon::parse($inicio);
+        $f = Carbon::parse($fin);
+
+        return $i->isSameDay($f) ? $i->format('d/m') : 'del '.$i->format('d/m').' al '.$f->format('d/m');
     }
 }

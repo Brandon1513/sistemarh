@@ -41,6 +41,6 @@ class AgendaEmpleado
 
     private function rango($inicio, $fin): string
     {
-        return Carbon::parse($inicio)->format('d/m/Y') . ' al ' . Carbon::parse($fin)->format('d/m/Y');
+        return Carbon::parse($inicio)->format('d/m/Y').' al '.Carbon::parse($fin)->format('d/m/Y');
     }
 }
