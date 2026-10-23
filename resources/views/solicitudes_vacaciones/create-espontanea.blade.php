@@ -144,8 +144,10 @@
                                             data-name="{{ $empleado->name }}"
                                             data-puesto="{{ $empleado->puesto_empleado ?? '' }}"
                                             data-depto="{{ $empleado->departamento->name ?? '' }}"
+                                            data-sede="{{ $empleado->sede_id }}"
+                                            data-sede-nombre="{{ $empleado->sede->nombre ?? 'Sin sede' }}"
                                             {{ old('empleado_id') == $empleado->id ? 'selected' : '' }}>
-                                            {{ $empleado->name }} — {{ $empleado->clave_empleado }}
+                                            {{ $empleado->name }} — {{ $empleado->clave_empleado }} · {{ $empleado->sede->nombre ?? 'Sin sede' }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -190,22 +192,13 @@
                         </div>
                     </div>
 
-                    {{-- Días y fechas --}}
+                    {{-- Fechas --}}
                     <div class="form-section">
                         <p class="section-title">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             Fechas — Se permiten fechas pasadas
                         </p>
                         <div class="form-grid">
-                            <div class="field">
-                                <label class="field-label" for="dias_solicitados">Días solicitados <span class="req">*</span></label>
-                                <input type="number" name="dias_solicitados" id="dias_solicitados" class="field-input" min="1" placeholder="Ej. 2" required oninput="actualizarDias()">
-                                <div class="dias-warning" id="dias-warning">⚠ No puedes solicitar más días de los disponibles.</div>
-                                @error('dias_solicitados')<span class="field-error">⚠ {{ $message }}</span>@enderror
-                            </div>
-                            <div class="field">
-                                {{-- spacer --}}
-                            </div>
                             <div class="field">
                                 <label class="field-label" for="fecha_inicio_vacaciones">Fecha de Inicio <span class="req">*</span></label>
                                 <input type="text" name="fecha_inicio_vacaciones" id="fecha_inicio_vacaciones" class="field-input" placeholder="Selecciona fecha" required>
@@ -216,11 +209,25 @@
                                 <input type="text" name="fecha_termino_vacaciones" id="fecha_termino_vacaciones" class="field-input" placeholder="Selecciona fecha" required>
                                 @error('fecha_termino_vacaciones')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
-                            <div class="col-span-2 field">
-                                <label class="field-label" for="fecha_presentarse_trabajar">Fecha de Reincorporación <span class="req">*</span></label>
+
+                            <div class="field">
+                                <label class="field-label" for="dias_solicitados">Días a descontar</label>
+                                <input type="number" name="dias_solicitados" id="dias_solicitados" class="field-input"
+                                    value="{{ old('dias_solicitados') }}" readonly required
+                                    style="background:var(--beige-light); font-weight:700; color:var(--brand);"
+                                    placeholder="—">
+                                <span class="field-hint">Se calcula con los festivos de la sede del empleado.</span>
+                                @error('dias_solicitados')<span class="field-error">⚠ {{ $message }}</span>@enderror
+                            </div>
+                            <div class="field">
+                                <label class="field-label" for="fecha_presentarse_trabajar">Regresa a laborar <span class="req">*</span></label>
                                 <input type="text" name="fecha_presentarse_trabajar" id="fecha_presentarse_trabajar" class="field-input" placeholder="Selecciona fecha" required>
-                                <span class="field-hint">Día en que regresará a laborar.</span>
+                                <span class="field-hint">Se propone sola; cámbiala si fue distinta.</span>
                                 @error('fecha_presentarse_trabajar')<span class="field-error">⚠ {{ $message }}</span>@enderror
+                            </div>
+
+                            <div class="col-span-2">
+                                <div class="dias-warning" id="dias-warning">⚠ El empleado no tiene suficientes días disponibles en este período.</div>
                             </div>
                         </div>
                     </div>
@@ -241,112 +248,159 @@
     </div>
 
     <script>
-        // Datos de períodos por empleado pasados desde el controller
-        const periodosPorEmpleado = @json($periodosPorEmpleado);
+    // Datos que manda el controlador
+    const periodosPorEmpleado = @json($periodosPorEmpleado);
+    const festivosPorSede = @json($festivosPorSede); // { sede_id: { 'Y-m-d': 'Nombre' } }
 
-        let diasDisponibles = 0;
+    let diasDisponibles = 0;
+    let festivos = {}; // Los de la sede del empleado elegido
 
-        function onEmpleadoChange(sel) {
-            const opt = sel.options[sel.selectedIndex];
-            const id  = sel.value;
+    const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const esHabil = d => d.getDay() !== 0 && !(ymd(d) in festivos);
 
-            // Preview empleado
-            if (id) {
-                document.getElementById('emp-av').textContent   = opt.dataset.name.charAt(0).toUpperCase();
-                document.getElementById('emp-name').textContent = opt.dataset.name;
-                document.getElementById('emp-meta').textContent = opt.dataset.puesto + (opt.dataset.depto ? ' · ' + opt.dataset.depto : '');
-                document.getElementById('emp-preview').classList.add('show');
-            } else {
-                document.getElementById('emp-preview').classList.remove('show');
-            }
+    // ── Calendarios (sin fecha mínima: RH registra vacaciones ya disfrutadas) ──
+    const fpBase = {
+        dateFormat: 'Y-m-d',
+        locale: 'es',
+        disable: [d => !esHabil(d)],
+        onDayCreate(_, __, ___, el) {
+            const nombre = festivos[ymd(el.dateObj)];
+            if (nombre) el.title = nombre;
+        },
+    };
 
-            // Cargar períodos
-            const periodos = periodosPorEmpleado[id] || [];
-            const container = document.getElementById('periodos-container');
-            const summary   = document.getElementById('days-summary');
+    const fpInicio = flatpickr('#fecha_inicio_vacaciones', {
+        ...fpBase,
+        defaultDate: @json(old('fecha_inicio_vacaciones')),
+        onChange: ([inicio]) => {
+            if (inicio) fpFin.set('minDate', inicio);
+            recalcular();
+        },
+    });
 
-            if (!periodos.length) {
-                container.innerHTML = '<div class="no-periodos">Este empleado no tiene períodos de vacaciones registrados.</div>';
-                summary.style.display = 'none';
-                diasDisponibles = 0;
-                return;
-            }
+    const fpFin = flatpickr('#fecha_termino_vacaciones', {
+        ...fpBase,
+        defaultDate: @json(old('fecha_termino_vacaciones')),
+        onChange: recalcular,
+    });
 
-            let html = '<div class="periodo-card">';
-            periodos.forEach((p, i) => {
-                html += `
-                    <label class="periodo-option ${i === 0 ? 'selected' : ''}" onclick="selectPeriodo(this, ${p.dias_disponibles}, ${p.dias_corresponden}, ${p.anio})">
-                        <input type="radio" name="_periodo_radio" value="${p.anio}" ${i === 0 ? 'checked' : ''}>
-                        <span class="periodo-year">Período ${p.anio}</span>
-                        <div class="periodo-dias">
-                            <span class="dias-corr">${p.dias_corresponden} corresponden</span>
-                            <span class="dias-disp">${p.dias_disponibles} disponibles</span>
-                        </div>
-                    </label>`;
-            });
-            html += '</div>';
-            container.innerHTML = html;
+    const fpRegreso = flatpickr('#fecha_presentarse_trabajar', {
+        ...fpBase,
+        defaultDate: @json(old('fecha_presentarse_trabajar')),
+    });
 
-            // Seleccionar el primero por defecto
-            const first = periodos[0];
-            selectPeriodo(null, first.dias_disponibles, first.dias_corresponden, first.anio);
-            document.getElementById('periodos-wrap').style.display = 'block';
-        }
+    // Cuenta los días hábiles del rango y propone la fecha de regreso
+    function recalcular() {
+        const inicio = fpInicio.selectedDates[0];
+        const fin = fpFin.selectedDates[0];
+        const input = document.getElementById('dias_solicitados');
 
-        function selectPeriodo(el, disp, corr, anio) {
-            if (el) {
-                document.querySelectorAll('.periodo-option').forEach(o => o.classList.remove('selected'));
-                el.classList.add('selected');
-                el.querySelector('input').checked = true;
-            }
-            diasDisponibles = disp;
-            document.getElementById('periodo_hidden').value        = anio;
-            document.getElementById('stat-corresponden').textContent = corr;
-            document.getElementById('stat-disponibles').textContent  = disp;
-            document.getElementById('days-summary').style.display   = 'flex';
+        if (!inicio || !fin || fin < inicio) {
+            input.value = '';
             actualizarDias();
+            return;
         }
 
-        function actualizarDias() {
-            const sol  = parseInt(document.getElementById('dias_solicitados').value) || 0;
-            const pend = diasDisponibles - sol;
-            const warn = document.getElementById('dias-warning');
-            const btn  = document.getElementById('submit-btn');
+        let dias = 0;
+        const d = new Date(inicio);
+        while (d <= fin) {
+            if (esHabil(d)) dias++;
+            d.setDate(d.getDate() + 1);
+        }
+        input.value = dias;
 
-            document.getElementById('stat-solicitados').textContent = sol;
-            document.getElementById('stat-pendientes').textContent  = pend;
+        const regreso = new Date(fin);
+        do { regreso.setDate(regreso.getDate() + 1); } while (!esHabil(regreso));
+        fpRegreso.setDate(regreso, false);
 
-            const invalid = sol > diasDisponibles || sol < 1;
-            warn.style.display = sol > diasDisponibles ? 'block' : 'none';
+        actualizarDias();
+    }
 
-            const inp = document.getElementById('dias_solicitados');
-            inp.style.borderColor = invalid && sol > 0 ? 'var(--rose)' : 'var(--border)';
-            inp.style.background  = invalid && sol > 0 ? '#fce8ee' : '#fff';
+    // ── Empleado ──
+    function onEmpleadoChange(sel) {
+        const opt = sel.options[sel.selectedIndex];
+        const id  = sel.value;
 
-            btn.disabled = sol > diasDisponibles;
+        // Vista previa del empleado, con su sede
+        if (id) {
+            document.getElementById('emp-av').textContent   = opt.dataset.name.charAt(0).toUpperCase();
+            document.getElementById('emp-name').textContent = opt.dataset.name;
+            document.getElementById('emp-meta').textContent =
+                [opt.dataset.puesto, opt.dataset.depto, opt.dataset.sedeNombre].filter(Boolean).join(' · ');
+            document.getElementById('emp-preview').classList.add('show');
+        } else {
+            document.getElementById('emp-preview').classList.remove('show');
         }
 
-        // Flatpickr — sin restricción de fecha mínima para RH
-        const diasFestivos = [
-            '{{ date("Y") }}-01-01','{{ date("Y") }}-02-03','{{ date("Y") }}-03-17',
-            '{{ date("Y") }}-04-18','{{ date("Y") }}-04-19','{{ date("Y") }}-05-01',
-            '{{ date("Y") }}-09-16','{{ date("Y") }}-10-12','{{ date("Y") }}-11-17',
-            '{{ date("Y") }}-12-24','{{ date("Y") }}-12-25','{{ date("Y") }}-12-31'
-        ];
-        const fpConfig = {
-            dateFormat: 'Y-m-d',
-            locale: 'es',
-            // Sin minDate — RH puede registrar fechas pasadas
-            disable: [d => d.getDay() === 0 || diasFestivos.includes(d.toISOString().split('T')[0])],
-        };
-        flatpickr('#fecha_inicio_vacaciones',    fpConfig);
-        flatpickr('#fecha_termino_vacaciones',   fpConfig);
-        flatpickr('#fecha_presentarse_trabajar', fpConfig);
+        // Festivos de su sede: los calendarios se vuelven a pintar y los días se recalculan
+        festivos = festivosPorSede[opt.dataset.sede] || {};
+        [fpInicio, fpFin, fpRegreso].forEach(fp => fp.redraw());
+        recalcular();
 
-        // Si hay old value al cargar
-        window.addEventListener('DOMContentLoaded', () => {
-            const sel = document.getElementById('empleado_id');
-            if (sel.value) onEmpleadoChange(sel);
+        // Periodos del empleado
+        const periodos  = periodosPorEmpleado[id] || [];
+        const container = document.getElementById('periodos-container');
+        const summary   = document.getElementById('days-summary');
+
+        if (!periodos.length) {
+            container.innerHTML = '<div class="no-periodos">Este empleado no tiene períodos de vacaciones disponibles.</div>';
+            summary.style.display = 'none';
+            diasDisponibles = 0;
+            actualizarDias();
+            return;
+        }
+
+        let html = '<div class="periodo-card">';
+        periodos.forEach((p, i) => {
+            html += `
+                <label class="periodo-option ${i === 0 ? 'selected' : ''}" onclick="selectPeriodo(this, ${p.dias_disponibles}, ${p.dias_corresponden}, ${p.anio})">
+                    <input type="radio" name="_periodo_radio" value="${p.anio}" ${i === 0 ? 'checked' : ''}>
+                    <span class="periodo-year">Período ${p.anio}</span>
+                    <div class="periodo-dias">
+                        <span class="dias-corr">${p.dias_corresponden} corresponden</span>
+                        <span class="dias-disp">${p.dias_disponibles} disponibles</span>
+                    </div>
+                </label>`;
         });
-    </script>
+        html += '</div>';
+        container.innerHTML = html;
+
+        const first = periodos[0];
+        selectPeriodo(null, first.dias_disponibles, first.dias_corresponden, first.anio);
+        document.getElementById('periodos-wrap').style.display = 'block';
+    }
+
+    function selectPeriodo(el, disp, corr, anio) {
+        if (el) {
+            document.querySelectorAll('.periodo-option').forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+            el.querySelector('input').checked = true;
+        }
+        diasDisponibles = disp;
+        document.getElementById('periodo_hidden').value          = anio;
+        document.getElementById('stat-corresponden').textContent = corr;
+        document.getElementById('stat-disponibles').textContent  = disp;
+        document.getElementById('days-summary').style.display    = 'flex';
+        actualizarDias();
+    }
+
+    function actualizarDias() {
+        const sol  = parseInt(document.getElementById('dias_solicitados').value) || 0;
+        const warn = document.getElementById('dias-warning');
+        const btn  = document.getElementById('submit-btn');
+
+        document.getElementById('stat-solicitados').textContent = sol;
+        document.getElementById('stat-pendientes').textContent  = diasDisponibles - sol;
+
+        const excede = sol > diasDisponibles;
+        warn.style.display = excede ? 'block' : 'none';
+        btn.disabled = excede || sol < 1;
+    }
+
+    // Si regresa con errores, restaura el empleado elegido
+    window.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('empleado_id');
+        if (sel.value) onEmpleadoChange(sel);
+    });
+</script>
 </x-app-layout>

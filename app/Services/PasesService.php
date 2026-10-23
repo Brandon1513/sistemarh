@@ -59,7 +59,7 @@ class PasesService
         $dia = Carbon::parse($datos['date']);
 
         // No se necesita pase en un día que no se trabaja
-        if (! CalendarioLaboral::esHabil($dia)) {
+        if (! CalendarioLaboral::esHabil($dia, $empleado->sede_id)) {
             $this->error('date', 'Ese día es domingo o festivo, así que no necesitas pase.');
         }
 

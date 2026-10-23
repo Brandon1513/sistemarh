@@ -3,6 +3,10 @@
 use App\Support\CalendarioLaboral;
 use Carbon\Carbon;
 
+// Cada prueba arranca sin días extra; las de sedes cargan los suyos
+beforeEach(fn () => CalendarioLaboral::usarDiasExtra([]));
+afterEach(fn () => CalendarioLaboral::usarDiasExtra(null));
+
 test('calcula los festivos que cambian de fecha cada año', function () {
     $f2026 = CalendarioLaboral::festivos(2026);
 
@@ -15,10 +19,10 @@ test('calcula los festivos que cambian de fecha cada año', function () {
         '2026-12-24', '2026-12-25', '2026-12-31',
     ]);
 
-    // 2025 coincide con la lista que estaba escrita a mano en el controlador
+    // Festivos generales de 2025. El 12 de octubre ya no está: ahora es día de la sede Guadalajara
     expect(array_keys(CalendarioLaboral::festivos(2025)))->toEqual([
         '2025-01-01', '2025-02-03', '2025-03-17', '2025-04-18', '2025-04-19',
-        '2025-05-01', '2025-09-16', '2025-10-12', '2025-11-17', '2025-12-24', '2025-12-25', '2025-12-31',
+        '2025-05-01', '2025-09-16', '2025-11-17', '2025-12-24', '2025-12-25', '2025-12-31',
     ]);
 });
 
@@ -61,4 +65,34 @@ test('la reincorporación es el siguiente día hábil', function () {
 
     // Termina sábado 19 dic 2026 → domingo 20 no → lunes 21
     expect(CalendarioLaboral::siguienteHabil('2026-12-19')->toDateString())->toBe('2026-12-21');
+});
+
+test('cada sede tiene sus propios días inhábiles', function () {
+    $guadalajara = 1;
+    $cdmx = 2;
+
+    CalendarioLaboral::usarDiasExtra([
+        ['sede_id' => $guadalajara, 'nombre' => 'Virgen de Zapopan', 'mes' => 10, 'dia' => 12, 'anio' => null],
+        ['sede_id' => $cdmx, 'nombre' => 'Virgen de Guadalupe', 'mes' => 12, 'dia' => 12, 'anio' => null],
+        ['sede_id' => null, 'nombre' => 'Puente de la empresa', 'mes' => 11, 'dia' => 2, 'anio' => 2026],
+    ]);
+
+    // Lunes 12 oct 2026: inhábil en Guadalajara, hábil en CDMX y sin sede
+    expect(CalendarioLaboral::esHabil(Carbon::parse('2026-10-12'), $guadalajara))->toBeFalse();
+    expect(CalendarioLaboral::esHabil(Carbon::parse('2026-10-12'), $cdmx))->toBeTrue();
+    expect(CalendarioLaboral::esHabil(Carbon::parse('2026-10-12')))->toBeTrue();
+
+    // 12 de diciembre: solo CDMX
+    expect(CalendarioLaboral::festivos(2026, $cdmx))->toHaveKey('2026-12-12');
+    expect(CalendarioLaboral::festivos(2026, $guadalajara))->not->toHaveKey('2026-12-12');
+
+    // Un día general de un solo año aplica a todas las sedes, solo ese año
+    expect(CalendarioLaboral::festivos(2026, $guadalajara))->toHaveKey('2026-11-02');
+    expect(CalendarioLaboral::festivos(2026, $cdmx))->toHaveKey('2026-11-02');
+    expect(CalendarioLaboral::festivos(2027, $cdmx))->not->toHaveKey('2027-11-02');
+
+    // Del vie 9 al mar 13 oct 2026 (con el domingo 11 en medio):
+    // 3 días en Guadalajara (el lunes 12 es inhábil) y 4 en CDMX
+    expect(CalendarioLaboral::diasHabiles('2026-10-09', '2026-10-13', $guadalajara))->toBe(3);
+    expect(CalendarioLaboral::diasHabiles('2026-10-09', '2026-10-13', $cdmx))->toBe(4);
 });

@@ -183,13 +183,26 @@
                                 @error('departamento_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                             <div class="field">
-                                <label class="field-label" for="supervisor_id">Supervisor <span class="opt">Opcional</span></label>
-                                <select name="supervisor_id" id="supervisor_id" class="field-select">
-                                    <option value="">Sin supervisor</option>
+                                <label class="field-label" for="supervisor_id">Jefe directo <span class="req">*</span></label>
+                                <select name="supervisor_id" id="supervisor_id"
+                                    class="field-select {{ $errors->has('supervisor_id') ? 'err' : '' }}" required>
+                                    <option value="" disabled {{ old('supervisor_id') ? '' : 'selected' }}>Seleccionar...</option>
                                     @foreach ($supervisors as $supervisor)
                                         <option value="{{ $supervisor->id }}" {{ old('supervisor_id') == $supervisor->id ? 'selected' : '' }}>{{ $supervisor->name }}</option>
                                     @endforeach
                                 </select>
+                                @error('supervisor_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
+                            </div>
+                            <div class="col-span-2 field">
+                                <label class="field-label" for="sede_id">Sede <span class="req">*</span></label>
+                                <select name="sede_id" id="sede_id"
+                                    class="field-select {{ $errors->has('sede_id') ? 'err' : '' }}" required>
+                                    <option value="" disabled {{ old('sede_id') ? '' : 'selected' }}>Seleccionar...</option>
+                                    @foreach ($sedes as $sede)
+                                        <option value="{{ $sede->id }}" {{ old('sede_id') == $sede->id ? 'selected' : '' }}>{{ $sede->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                @error('sede_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>

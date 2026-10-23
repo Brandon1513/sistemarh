@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use Illuminate\View\View;
-use App\Models\Department;
 use App\Mail\NewUserCreated;
-use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
+use App\Models\Department;
+use App\Models\Sede;
+use App\Models\User;
 use Illuminate\Container\Container;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
+use Spatie\Permission\Models\Role;
 
 class EmpleadoController extends Controller
 {
@@ -19,17 +20,19 @@ class EmpleadoController extends Controller
     {
         $supervisors = User::whereHas('roles', function ($query) {
             $query->where('name', 'jefe');
-        })->get();
+        })->orderBy('name')->get();
 
         $roles = Role::all();
-        $departamentos = Department::all();
+        $departamentos = Department::orderBy('name')->get();
+        $sedes = Sede::orderBy('nombre')->get();
 
-        return compact('supervisors', 'roles', 'departamentos');
+        return compact('supervisors', 'roles', 'departamentos', 'sedes');
     }
 
     public function index(Request $request)
     {
-        $query = User::withoutGlobalScope('activo');
+        // Se cargan las relaciones de una vez, en lugar de una consulta por cada fila de la tabla
+        $query = User::withoutGlobalScope('activo')->with(['departamento', 'sede', 'roles']);
 
         // Filtro búsqueda por nombre o email
         if ($request->filled('search')) {
@@ -50,14 +53,18 @@ class EmpleadoController extends Controller
             $query->where('departamento_id', $request->input('departamento'));
         }
 
+        // Filtro por sede
+        if ($request->filled('sede')) {
+            $query->where('sede_id', $request->input('sede'));
+        }
+
         // Filtro por rol
         if ($request->filled('rol')) {
             $query->role($request->input('rol'));
         }
 
-        $users = $query->paginate(10)->withQueryString();
+        $users = $query->orderBy('name')->paginate(10)->withQueryString();
 
-        // Pasar también departamentos y roles para los selects del filtro
         $data = array_merge(['users' => $users], $this->getCommonData());
 
         return view('empleados.index', $data);
@@ -72,10 +79,11 @@ class EmpleadoController extends Controller
         }
 
         $user = User::withoutGlobalScope('activo')->findOrFail($id);
-        $user->activo = !$user->activo;
+        $user->activo = ! $user->activo;
         $user->save();
 
         $message = $user->activo ? 'Usuario activado exitosamente.' : 'Usuario inactivado exitosamente.';
+
         return redirect()->route('empleados.index')->with('success', $message);
     }
 
@@ -95,6 +103,7 @@ class EmpleadoController extends Controller
             'fecha_ingreso'   => 'nullable|date',
             'puesto_empleado' => 'nullable|string|max:255',
             'departamento_id' => 'required|exists:departments,id',
+            'sede_id'         => 'required|exists:sedes,id',
             'foto_perfil'     => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
@@ -107,6 +116,7 @@ class EmpleadoController extends Controller
             'puesto_empleado' => $request->puesto_empleado,
             'supervisor_id'   => $request->supervisor_id,
             'departamento_id' => $request->departamento_id,
+            'sede_id'         => $request->sede_id,
         ]);
 
         if ($request->hasFile('foto_perfil')) {
@@ -141,7 +151,8 @@ class EmpleadoController extends Controller
             'clave_empleado'  => 'nullable|string|max:255',
             'fecha_ingreso'   => 'nullable|date',
             'puesto_empleado' => 'nullable|string|max:255',
-            'departamento_id' => 'required|exists:departments,id', // ← faltaba esta línea
+            'departamento_id' => 'required|exists:departments,id',
+            'sede_id'         => 'required|exists:sedes,id',
             'roles'           => 'nullable|array',
             'roles.*'         => 'exists:roles,name',
             'foto_perfil'     => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -154,7 +165,8 @@ class EmpleadoController extends Controller
         $user->clave_empleado  = $request->clave_empleado;
         $user->fecha_ingreso   = $request->fecha_ingreso;
         $user->puesto_empleado = $request->puesto_empleado;
-        $user->departamento_id = $request->departamento_id; // ← faltaba esta línea
+        $user->departamento_id = $request->departamento_id;
+        $user->sede_id         = $request->sede_id;
 
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);

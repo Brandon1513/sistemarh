@@ -34,6 +34,7 @@ class VacacionesService
      */
     public function solicitar(User $empleado, int $anioPeriodo, string $inicio, string $fin, ?int $diasEsperados = null): SolicitudVacacion
     {
+        $sede = $empleado->sede_id;
         $fechaInicio = Carbon::parse($inicio)->startOfDay();
         $fechaFin = Carbon::parse($fin)->startOfDay();
 
@@ -45,15 +46,15 @@ class VacacionesService
             $this->error('fecha_termino_vacaciones', 'La fecha de término no puede ser anterior a la de inicio.');
         }
 
-        if (! CalendarioLaboral::esHabil($fechaInicio)) {
+        if (! CalendarioLaboral::esHabil($fechaInicio, $sede)) {
             $this->error('fecha_inicio_vacaciones', 'La fecha de inicio cae en domingo o día festivo.');
         }
 
-        if (! CalendarioLaboral::esHabil($fechaFin)) {
+        if (! CalendarioLaboral::esHabil($fechaFin, $sede)) {
             $this->error('fecha_termino_vacaciones', 'La fecha de término cae en domingo o día festivo.');
         }
 
-        $dias = CalendarioLaboral::diasHabiles($fechaInicio, $fechaFin);
+        $dias = CalendarioLaboral::diasHabiles($fechaInicio, $fechaFin, $sede);
 
         if ($diasEsperados !== null && $dias !== $diasEsperados) {
             $this->error(
@@ -65,7 +66,7 @@ class VacacionesService
         $this->validarSinEmpalme($empleado, $fechaInicio, $fechaFin);
         $this->validarSinPermisos($empleado, $fechaInicio, $fechaFin);
 
-        $solicitud = DB::transaction(function () use ($empleado, $anioPeriodo, $fechaInicio, $fechaFin, $dias) {
+        $solicitud = DB::transaction(function () use ($empleado, $anioPeriodo, $fechaInicio, $fechaFin, $dias, $sede) {
             $periodo = $this->bloquearPeriodo($empleado, $anioPeriodo);
 
             if (! $periodo) {
@@ -91,7 +92,7 @@ class VacacionesService
                 'periodo_correspondiente' => $periodo->anio,
                 'fecha_inicio' => $fechaInicio->toDateString(),
                 'fecha_fin' => $fechaFin->toDateString(),
-                'fecha_reincorporacion' => CalendarioLaboral::siguienteHabil($fechaFin)->toDateString(),
+                'fecha_reincorporacion' => CalendarioLaboral::siguienteHabil($fechaFin, $sede)->toDateString(),
                 'estado' => 'pendiente',
             ]);
         });
@@ -114,11 +115,32 @@ class VacacionesService
         int $dias,
         string $fechaPresentarse,
     ): SolicitudVacacion {
+        $sede = $empleado->sede_id;
         $fechaInicio = Carbon::parse($inicio)->startOfDay();
         $fechaFin = Carbon::parse($fin)->startOfDay();
 
         if ($fechaFin->lt($fechaInicio)) {
             $this->error('fecha_termino_vacaciones', 'La fecha de término no puede ser anterior a la de inicio.');
+        }
+
+        if (! CalendarioLaboral::esHabil($fechaInicio, $sede)) {
+            $this->error('fecha_inicio_vacaciones', 'La fecha de inicio es domingo o día festivo para la sede del empleado.');
+        }
+
+        if (! CalendarioLaboral::esHabil($fechaFin, $sede)) {
+            $this->error('fecha_termino_vacaciones', 'La fecha de término es domingo o día festivo para la sede del empleado.');
+        }
+
+        // Los días deben coincidir con el calendario de la sede del empleado
+        $diasHabiles = CalendarioLaboral::diasHabiles($fechaInicio, $fechaFin, $sede);
+
+        if ($diasHabiles !== $dias) {
+            $nombreSede = $empleado->sede?->nombre ?? 'sin sede';
+            $this->error(
+                'dias_solicitados',
+                "Del {$fechaInicio->format('d/m/Y')} al {$fechaFin->format('d/m/Y')} hay {$diasHabiles} días hábiles "
+                    . "para la sede {$nombreSede}, pero se capturaron {$dias}."
+            );
         }
 
         $this->validarSinEmpalme($empleado, $fechaInicio, $fechaFin);

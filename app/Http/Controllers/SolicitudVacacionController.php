@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
+use App\Models\Sede;
 
 class SolicitudVacacionController extends Controller
 {
@@ -62,7 +63,7 @@ class SolicitudVacacionController extends Controller
         $departamentoNombre = $user->departamento ? $user->departamento->name : 'Sin departamento';
 
         // Festivos para bloquear y descontar días en el calendario del formulario
-        $festivos = CalendarioLaboral::festivosEntre(now()->year, now()->year + 1);
+        $festivos = CalendarioLaboral::festivosEntre(now()->year, now()->year + 1, $user->sede_id);
 
         return view('vacaciones.create', compact('user', 'departments', 'departamentoNombre', 'periodos', 'festivos'));
     }
@@ -167,7 +168,10 @@ class SolicitudVacacionController extends Controller
  */
 public function createEspontanea()
 {
-    $empleados = User::whereNotNull('fecha_ingreso')->orderBy('name')->get();
+    $empleados = User::with(['departamento', 'sede'])
+        ->whereNotNull('fecha_ingreso')
+        ->orderBy('name')
+        ->get();
 
     // Periodos con días disponibles, agrupados por empleado para el JavaScript de la vista
     $periodosPorEmpleado = PeriodoVacacion::whereIn('empleado_id', $empleados->pluck('id'))
@@ -179,7 +183,12 @@ public function createEspontanea()
         ->map(fn ($periodos) => $periodos->map->only(['anio', 'dias_corresponden', 'dias_disponibles'])->values())
         ->toArray();
 
-    return view('solicitudes_vacaciones.create-espontanea', compact('empleados', 'periodosPorEmpleado'));
+    // Festivos de cada sede, del año pasado al siguiente (se permiten fechas pasadas)
+    $festivosPorSede = Sede::pluck('id')
+        ->mapWithKeys(fn ($id) => [$id => CalendarioLaboral::festivosEntre(now()->year - 1, now()->year + 1, $id)])
+        ->toArray();
+
+    return view('solicitudes_vacaciones.create-espontanea', compact('empleados', 'periodosPorEmpleado', 'festivosPorSede'));
 }
 
 /**

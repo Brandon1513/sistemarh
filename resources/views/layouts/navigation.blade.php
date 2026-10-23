@@ -251,7 +251,7 @@
             {{-- Administración --}}
             @if(Auth::user()->hasAnyRole(['administrador','recursos_humanos']))
                 <div class="nav-dropdown">
-                    <button class="nav-dropdown-trigger {{ in_array(true, [request()->routeIs('empleados.*'), request()->routeIs('periodos.*')]) ? 'open' : '' }}"
+                    <button class="nav-dropdown-trigger {{ request()->routeIs('empleados.*', 'periodos.*', 'dias_inhabiles.*') ? 'open' : '' }}"
                         @click="activeDropdown = activeDropdown === 'admin' ? null : 'admin'"
                         :class="{ 'open': activeDropdown === 'admin' }">
                         <div class="nav-section-icon icon-admin">
@@ -272,6 +272,10 @@
                         <a href="{{ route('periodos.index') }}" class="panel-item {{ request()->routeIs('periodos.*') ? 'active' : '' }}">
                             <div class="panel-item-icon" style="background:#faf3e0;">📅</div>
                             Gestionar Períodos
+                        </a>
+                        <a href="{{ route('dias_inhabiles.index') }}" class="panel-item {{ request()->routeIs('dias_inhabiles.*') ? 'active' : '' }}">
+                            <div class="panel-item-icon" style="background:#fce8ee;">🗓️</div>
+                            Días Inhábiles
                         </a>
                     </div>
                 </div>
@@ -472,6 +476,9 @@
                     @endif
                     <a href="{{ route('periodos.index') }}" class="mob-link {{ request()->routeIs('periodos.*') ? 'active' : '' }}">
                         <span class="mob-icon">📅</span> Gestionar Períodos
+                    </a>
+                    <a href="{{ route('dias_inhabiles.index') }}" class="mob-link {{ request()->routeIs('dias_inhabiles.*') ? 'active' : '' }}">
+                        <span class="mob-icon">🗓️</span> Días Inhábiles
                     </a>
                 </div>
             @endif

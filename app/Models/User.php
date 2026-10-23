@@ -25,6 +25,7 @@ class User extends Authenticatable
         'puesto_empleado',  // Agrega este campo
         'departamento_id',
         'foto_perfil',      // Agrega este campo
+        'sede_id',
 
     ];
 
@@ -88,17 +89,21 @@ class User extends Authenticatable
     return $this->belongsTo(Department::class);
     }
     public function vacaciones()
-{
-    return $this->hasMany(SolicitudVacacion::class);
-}
-public function getIsJefeAttribute()
-{
-    return $this->role === 'jefe'; // O como esté definido en tu sistema
-}
+    {
+        return $this->hasMany(SolicitudVacacion::class);
+    }
+    public function getIsJefeAttribute()
+    {
+        return $this->role === 'jefe'; // O como esté definido en tu sistema
+    }
 
-public function dispositivos()
-{
-    return $this->hasMany(UserDeviceToken::class);
-}
+    public function dispositivos()
+    {
+        return $this->hasMany(UserDeviceToken::class);
+    }
+    public function sede()
+    {
+        return $this->belongsTo(Sede::class);
+    }
 
 }

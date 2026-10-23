@@ -1,16 +1,17 @@
 <?php
 
-use App\Models\Noticia;
-use App\Models\CarruselImage;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\NoticiaController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CarruselController;
+use App\Http\Controllers\DiaInhabilController;
 use App\Http\Controllers\EmpleadoController;
-use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\PeriodoVacacionController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SolicitudPermisoController;
 use App\Http\Controllers\SolicitudVacacionController;
+use App\Models\CarruselImage;
+use App\Models\Noticia;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
@@ -187,6 +188,21 @@ Route::middleware(['auth', 'role:administrador|marketing'])->group(function () {
     Route::resource('carrusel', CarruselController::class)->only(['index', 'create', 'store']);
     Route::delete('/carrusel/{id}', [CarruselController::class, 'destroy'])->name('carrusel.destroy');
     Route::put('/carrusel/{id}', [CarruselController::class, 'update'])->name('carrusel.update');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Días inhábiles por sede (los administra RH)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(function () {
+    Route::get('/dias-inhabiles', [DiaInhabilController::class, 'index'])->name('dias_inhabiles.index');
+    Route::get('/dias-inhabiles/crear', [DiaInhabilController::class, 'create'])->name('dias_inhabiles.create');
+    Route::post('/dias-inhabiles', [DiaInhabilController::class, 'store'])->name('dias_inhabiles.store');
+    Route::get('/dias-inhabiles/{diaInhabil}/editar', [DiaInhabilController::class, 'edit'])->name('dias_inhabiles.edit');
+    Route::put('/dias-inhabiles/{diaInhabil}', [DiaInhabilController::class, 'update'])->name('dias_inhabiles.update');
+    Route::delete('/dias-inhabiles/{diaInhabil}', [DiaInhabilController::class, 'destroy'])->name('dias_inhabiles.destroy');
 });
 
 require __DIR__.'/auth.php';
