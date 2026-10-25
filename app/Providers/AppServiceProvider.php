@@ -28,5 +28,18 @@ class AppServiceProvider extends ServiceProvider
     {
         // Los Resources de la API se devuelven sin la envoltura {"data": ...}
         JsonResource::withoutWrapping();
+        // Correo con Microsoft Graph, desde el buzón de la intranet (MAIL_MAILER=microsoft-graph)
+        \Illuminate\Support\Facades\Mail::extend('microsoft-graph', fn () => new \App\Mail\Transport\MicrosoftGraphTransport(
+            (string) config('services.microsoft_graph.tenant_id'),
+            (string) config('services.microsoft_graph.client_id'),
+            (string) config('services.microsoft_graph.client_secret'),
+            (string) config('services.microsoft_graph.remitente'),
+        ));
+
+        // Inicio de sesión con Microsoft (Entra ID) por Socialite
+        \Illuminate\Support\Facades\Event::listen(
+            \SocialiteProviders\Manager\SocialiteWasCalled::class,
+            [\SocialiteProviders\Azure\AzureExtendSocialite::class, 'handle'],
+        );
     }
 }
