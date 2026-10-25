@@ -42,4 +42,14 @@ return [
         ],
     ],
 
+    'azure' => [
+    'client_id'     => env('MS_LOGIN_CLIENT_ID'),
+    'client_secret' => env('MS_LOGIN_CLIENT_SECRET'),
+    'redirect'      => env('MS_LOGIN_REDIRECT'),
+    'tenant'        => env('MS_GRAPH_TENANT_ID'),
+    'proxy'         => env('PROXY'),
+    // Dominios cuyas cuentas de Microsoft pueden entrar (separados por coma)
+    'dominios'      => array_filter(array_map('trim', explode(',', env('MS_LOGIN_DOMINIOS', 'dasavena.com')))),
+    ],
+
 ];

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\UsuarioResource;
 use App\Models\User;
 use App\Models\UserDeviceToken;
+use App\Services\AccesoMicrosoft;
+use App\Services\VerificadorTokenMicrosoft;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -29,15 +31,26 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken($datos['dispositivo'] ?? 'app-movil')->plainTextToken;
-
-        return response()->json([
-            'token' => $token,
-            'user'  => new UsuarioResource($user->load('departamento', 'supervisor')),
-        ]);
+        return $this->sesionPara($user, $datos['dispositivo'] ?? null);
     }
 
-   public function logout(Request $request)
+    /**
+     * Inicio de sesión desde la app con una cuenta de Microsoft de Dasavena.
+     */
+    public function microsoft(Request $request, VerificadorTokenMicrosoft $verificador, AccesoMicrosoft $acceso)
+    {
+        $datos = $request->validate([
+            'id_token'    => 'required|string',
+            'dispositivo' => 'nullable|string|max:100',
+        ]);
+
+        $correo = $verificador->correoDe($datos['id_token']);
+        $user = $acceso->usuarioPara($correo);
+
+        return $this->sesionPara($user, $datos['dispositivo'] ?? null);
+    }
+
+    public function logout(Request $request)
     {
         $request->validate([
             'token_push' => 'nullable|string|max:255',
@@ -58,6 +71,19 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return new UsuarioResource($request->user()->load('departamento', 'supervisor'));
+        return new UsuarioResource($request->user()->load('departamento', 'supervisor', 'sede'));
+    }
+
+    /**
+     * La misma respuesta para cualquier forma de entrar: el token de la app y los datos del usuario.
+     */
+    private function sesionPara(User $user, ?string $dispositivo)
+    {
+        $token = $user->createToken($dispositivo ?? 'app-movil')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user'  => new UsuarioResource($user->load('departamento', 'supervisor', 'sede')),
+        ]);
     }
 }

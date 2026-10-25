@@ -145,18 +145,22 @@ Route::get('/users', function (Request $r) {
 */
 
 Route::prefix('v1')->group(function () {
-    // Máximo 5 intentos por minuto, para frenar ataques de fuerza bruta
+    // Rutas públicas para entrar, con límite de intentos por minuto contra ataques de fuerza bruta
     Route::post('/login', [AuthV1Controller::class, 'login'])->middleware('throttle:5,1');
+    Route::post('/auth/microsoft', [AuthV1Controller::class, 'microsoft'])->middleware('throttle:10,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthV1Controller::class, 'logout']);
         Route::get('/me', [AuthV1Controller::class, 'me']);
         Route::post('/dispositivos', [DispositivoController::class, 'store']);
-        //Vacaciones
+
+        // Vacaciones
         Route::get('/dias-festivos', [VacacionController::class, 'festivos']);
         Route::get('/vacaciones/periodos', [VacacionController::class, 'periodos']);
         Route::post('/vacaciones', [VacacionController::class, 'store']);
         Route::delete('/vacaciones/{solicitud}', [VacacionController::class, 'destroy']);
+
+        // Solicitudes del empleado
         Route::get('/solicitudes', [SolicitudController::class, 'index']);
         Route::get('/catalogos', [SolicitudController::class, 'catalogos']);
 
@@ -165,6 +169,8 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/pases', [PaseController::class, 'store']);
         Route::delete('/pases/{pase}', [PaseController::class, 'destroy']);
+
+        // Bandeja de aprobaciones del jefe
         Route::get('/aprobaciones', [AprobacionController::class, 'index']);
         Route::post('/aprobaciones/{tipo}/{id}/aprobar', [AprobacionController::class, 'aprobar'])
             ->whereIn('tipo', ['vacaciones', 'permiso', 'pase'])->whereNumber('id');

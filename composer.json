@@ -11,8 +11,10 @@
         "kreait/laravel-firebase": "^6.0",
         "laravel/framework": "^11.9",
         "laravel/sanctum": "^4.1",
+        "laravel/socialite": "^5.31",
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
+        "socialiteproviders/microsoft-azure": "^5.2",
         "spatie/laravel-permission": "^6.9"
     },
     "require-dev": {

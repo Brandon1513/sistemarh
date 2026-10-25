@@ -35,5 +35,11 @@ class AppServiceProvider extends ServiceProvider
             (string) config('services.microsoft_graph.client_secret'),
             (string) config('services.microsoft_graph.remitente'),
         ));
+
+        // Inicio de sesión con Microsoft (Entra ID) por Socialite
+        \Illuminate\Support\Facades\Event::listen(
+            \SocialiteProviders\Manager\SocialiteWasCalled::class,
+            [\SocialiteProviders\Azure\AzureExtendSocialite::class, 'handle'],
+        );
     }
 }
