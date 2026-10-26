@@ -76,7 +76,7 @@
                     $inicio = \Carbon\Carbon::parse($vacation->fecha_inicio);
                     $fin    = \Carbon\Carbon::parse($vacation->fecha_fin);
                     $reinc  = $vacation->fecha_reincorporacion ? \Carbon\Carbon::parse($vacation->fecha_reincorporacion) : null;
-                    $dias   = $vacation->dias_solicitados ?? ($inicio->diffInDays($fin) + 1);
+                    $dias   = $vacation->dias_solicitados ?? ((int) $inicio->copy()->startOfDay()->diffInDays($fin->copy()->startOfDay()) + 1);
                 @endphp
 
                 {{-- Banner --}}

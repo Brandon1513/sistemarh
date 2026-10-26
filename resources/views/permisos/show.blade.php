@@ -97,7 +97,7 @@
                     $estado = $solicitud->estado;
                     $inicio = \Carbon\Carbon::parse($solicitud->fecha_inicio);
                     $fin    = \Carbon\Carbon::parse($solicitud->fecha_termino);
-                    $dias   = $inicio->diffInDays($fin) + 1;
+                    $dias   = (int) $inicio->copy()->startOfDay()->diffInDays($fin->copy()->startOfDay()) + 1;
                 @endphp
 
                 {{-- Banner --}}
