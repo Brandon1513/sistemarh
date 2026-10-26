@@ -49,37 +49,18 @@ test('email verification status is unchanged when the email address is unchanged
 
     $this->assertNotNull($user->refresh()->email_verified_at);
 });
-
-test('user can delete their account', function () {
+test('los empleados no pueden borrar su propia cuenta', function () {
     $user = User::factory()->create();
 
-    $response = $this
+    // Las bajas las hace RH inactivando al usuario; la ruta para borrarse ya no existe
+    $this
         ->actingAs($user)
-        ->delete('/profile', [
-            'password' => 'password',
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect('/');
-
-    $this->assertGuest();
-    $this->assertNull($user->fresh());
-});
-
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from('/profile')
-        ->delete('/profile', [
-            'password' => 'wrong-password',
-        ]);
-
-    $response
-        ->assertSessionHasErrorsIn('userDeletion', 'password')
-        ->assertRedirect('/profile');
+        ->delete('/profile', ['password' => 'password'])
+        ->assertStatus(405);
 
     $this->assertNotNull($user->fresh());
+});
+test('no existe el registro público de usuarios', function () {
+    // Las altas las hace RH desde Gestionar Usuarios
+    $this->get('/register')->assertNotFound();
 });
