@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CarruselController;
+use App\Http\Controllers\ComunicadoController;
 use App\Http\Controllers\DiaInhabilController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\NoticiaController;
@@ -188,6 +189,28 @@ Route::middleware(['auth', 'role:administrador|marketing'])->group(function () {
     Route::delete('/carrusel/{id}', [CarruselController::class, 'destroy'])->name('carrusel.destroy');
     Route::put('/carrusel/{id}', [CarruselController::class, 'update'])->name('carrusel.update');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Comunicados: panel de marketing y RH
+|--------------------------------------------------------------------------
+| Los permisos por tipo los revisa ComunicadoPolicy en el controlador.
+*/
+
+Route::middleware('auth')
+    ->prefix('gestion/comunicados')
+    ->name('comunicados.admin.')
+    ->controller(ComunicadoController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/nuevo', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{comunicado}/editar', 'edit')->name('edit');
+        Route::put('/{comunicado}', 'update')->name('update');
+        Route::post('/{comunicado}/publicar', 'publicar')->name('publicar');
+        Route::post('/{comunicado}/archivar', 'archivar')->name('archivar');
+        Route::delete('/{comunicado}', 'destroy')->name('destroy');
+    });
 
 /*
 |--------------------------------------------------------------------------

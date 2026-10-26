@@ -241,13 +241,15 @@
         @if(Auth::check())
         <div class="nav-links">
 
-            {{-- Dashboard --}}
-            <a href="{{ route('dashboard') }}"
-               class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                Dashboard
-            </a>
-
+            
+            {{-- Comunicados (marketing y RH) --}}
+                @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
+                    <a href="{{ route('comunicados.admin.index') }}"
+                    class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
+                        <span style="font-size:14px;">📣</span>
+                        Comunicados
+                    </a>
+                @endif
             {{-- Administración --}}
             @if(Auth::user()->hasAnyRole(['administrador','recursos_humanos']))
                 <div class="nav-dropdown">
@@ -366,6 +368,13 @@
                             <div class="panel-item-icon" style="background:#f3eef5;">🖼️</div>
                             Carrusel
                         </a>
+                        @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
+                            <a href="{{ route('comunicados.admin.index') }}"
+                            class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
+                                <span style="font-size:14px; ">📣</span>
+                                Comunicados
+                            </a>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -447,6 +456,11 @@
                 <a href="{{ route('dashboard') }}" class="mob-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <span class="mob-icon">🏠</span> Dashboard
                 </a>
+                @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
+                    <a href="{{ route('comunicados.admin.index') }}" class="mob-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
+                        <span class="mob-icon">📣</span> Comunicados
+                    </a>
+                @endif
             </div>
 
             {{-- Solicitudes --}}
@@ -515,6 +529,13 @@
                     <a href="{{ route('carrusel.index') }}" class="mob-link {{ request()->routeIs('carrusel.*') ? 'active' : '' }}">
                         <span class="mob-icon">🖼️</span> Carrusel
                     </a>
+                    @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
+                        <a href="{{ route('comunicados.admin.index') }}"
+                        class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
+                            <span style="font-size:14px;">📣</span>
+                            Comunicados
+                        </a>
+                    @endif
                 </div>
             @endif
 
