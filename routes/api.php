@@ -30,7 +30,7 @@ use App\Http\Controllers\Api\V1\PaseController;
 use App\Http\Controllers\Api\V1\PermisoController;
 use App\Http\Controllers\Api\V1\SolicitudController;
 use App\Http\Controllers\Api\V1\AprobacionController;
-
+use App\Http\Controllers\Api\V1\ComunicadoController;
 
 
 
@@ -176,5 +176,9 @@ Route::prefix('v1')->group(function () {
             ->whereIn('tipo', ['vacaciones', 'permiso', 'pase'])->whereNumber('id');
         Route::post('/aprobaciones/{tipo}/{id}/rechazar', [AprobacionController::class, 'rechazar'])
             ->whereIn('tipo', ['vacaciones', 'permiso', 'pase'])->whereNumber('id');
+
+            // Comunicados para los empleados
+        Route::get('/comunicados', [ComunicadoController::class, 'index']);
+        Route::get('/comunicados/{comunicado}', [ComunicadoController::class, 'show'])->whereNumber('comunicado');
     });
 });

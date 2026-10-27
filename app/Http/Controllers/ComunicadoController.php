@@ -57,8 +57,11 @@ class ComunicadoController extends Controller
         Gate::authorize('create', [Comunicado::class, $tipo]);
 
         $comunicado = new Comunicado([
-            'tipo'  => $tipo,
-            'firma' => ComunicadosService::firmaPorDefecto($tipo),
+            'tipo'           => $tipo,
+            'firma'          => ComunicadosService::firmaPorDefecto($tipo),
+            // Los avisos de RH nuevos vienen con la plantilla activada
+            'usar_plantilla' => $tipo === 'aviso',
+            'encabezado'     => $tipo === 'aviso' ? 'AVISO IMPORTANTE' : null,
         ]);
 
         return view('comunicados.admin.form', compact('comunicado', 'tipos'));
@@ -139,7 +142,10 @@ class ComunicadoController extends Controller
             'enlace'           => [Rule::requiredIf($tipo === 'red_social'), 'nullable', 'url', 'max:255'],
             'firma'            => 'nullable|string|max:100',
             'fijado'           => 'nullable|boolean',
+            'usar_plantilla'   => 'nullable|boolean',
+            'encabezado'       => ['nullable', Rule::in(Comunicado::ENCABEZADOS)],
             'imagen'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'imagen_generada'  => 'nullable|image|mimes:png|max:4096',
             'quitar_imagen'    => 'nullable|boolean',
             'galeria'          => 'nullable|array|max:20',
             'galeria.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',

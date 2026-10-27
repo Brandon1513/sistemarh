@@ -19,11 +19,17 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    $noticias = Noticia::with('galeria')->where('activo', 1)->latest()->take(6)->get();
+    $noticias = \App\Models\Comunicado::visibles()->paraUsuario(auth()->user())->with('imagenes')->take(5)->get();
     $carruselImages = CarruselImage::all();
 
     return view('dashboard', compact('noticias', 'carruselImages'));
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+// Todos los comunicados ("Ver todas"). Cualquier empleado con sesión;
+// cada quien ve solo los que son para él (lo filtra paraUsuario en el controlador)
+Route::get('/noticias-publicas', [NoticiaController::class, 'publicIndex'])
+    ->middleware('auth')
+    ->name('noticias.public');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -108,7 +114,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vacaciones', [SolicitudVacacionController::class, 'store'])->name('vacaciones.store');
     Route::get('/vacaciones/{id}', [SolicitudVacacionController::class, 'show'])->name('vacaciones.show');
 
-   
     Route::post('/vacaciones/{id}/aprobar', [SolicitudVacacionController::class, 'approve'])->name('vacaciones.aprobar');
     Route::post('/vacaciones/{id}/rechazar', [SolicitudVacacionController::class, 'reject'])->name('vacaciones.rechazar');
 
@@ -118,7 +123,6 @@ Route::middleware(['auth'])->group(function () {
 Route::delete('solicitudes-vacaciones/{id}/admin-destroy', [SolicitudVacacionController::class, 'destroyAdmin'])
     ->name('solicitudes_vacaciones.admin-destroy')
     ->middleware(['auth', 'role:administrador|recursos_humanos']);
-
 
 // Vista de RH. Las rutas fijas van antes que las de {id}, si no, "export" se toma como ID.
 // Las URLs con más de un segmento usan guiones: en DomCloud, el guion bajo en esas rutas da 404.
@@ -156,7 +160,7 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
 
 /*
 |--------------------------------------------------------------------------
-| Noticias
+| Noticias (panel viejo de marketing; se retira cuando los comunicados estén en producción)
 |--------------------------------------------------------------------------
 */
 
@@ -168,10 +172,6 @@ Route::middleware(['auth', 'role:administrador|marketing'])->group(function () {
     Route::get('/noticias/{noticia}/edit', [NoticiaController::class, 'edit'])->name('noticias.edit');
     Route::put('/noticias/{noticia}', [NoticiaController::class, 'update'])->name('noticias.update');
     Route::delete('/noticias/{noticia}', [NoticiaController::class, 'destroy'])->name('noticias.destroy');
-
-    // TODO: el comentario original decía que esta ruta es pública, pero está protegida por rol.
-    // Confirmar con marketing si debe ser pública antes de moverla fuera del grupo.
-    Route::get('/noticias-publicas', [NoticiaController::class, 'publicIndex'])->name('noticias.public');
 
     Route::get('/noticias/{noticia}', function (Noticia $noticia) {
         return response()->json($noticia);

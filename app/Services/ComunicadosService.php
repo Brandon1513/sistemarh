@@ -24,31 +24,43 @@ class ComunicadosService
             $tipo = $datos['tipo'];
 
             $comunicado->fill([
-                'tipo'      => $tipo,
-                'categoria' => $tipo === 'aviso' ? ($datos['categoria'] ?? 'general') : null,
-                'titulo'    => trim($datos['titulo']),
-                'resumen'   => $datos['resumen'] ?? null,
-                'contenido' => $datos['contenido'] ?? null,
-                'enlace'    => $datos['enlace'] ?? null,
-                'firma'     => ($datos['firma'] ?? null) ?: self::firmaPorDefecto($tipo),
-                'fijado'    => (bool) ($datos['fijado'] ?? false),
+                'tipo'           => $tipo,
+                'categoria'      => $tipo === 'aviso' ? ($datos['categoria'] ?? 'general') : null,
+                'titulo'         => trim($datos['titulo']),
+                'resumen'        => $datos['resumen'] ?? null,
+                'contenido'      => $datos['contenido'] ?? null,
+                'enlace'         => $datos['enlace'] ?? null,
+                'firma'          => ($datos['firma'] ?? null) ?: self::firmaPorDefecto($tipo),
+                'fijado'         => (bool) ($datos['fijado'] ?? false),
+                'usar_plantilla' => $tipo === 'aviso' && ! empty($datos['usar_plantilla']),
+                'encabezado'     => $tipo === 'aviso' ? ($datos['encabezado'] ?? 'AVISO IMPORTANTE') : null,
             ]);
 
             if (! $comunicado->exists) {
                 $comunicado->estado = 'borrador';
             }
 
-            // Imagen principal: quitarla o reemplazarla
+            // Imagen principal: quitarla
             if (! empty($datos['quitar_imagen']) && $comunicado->imagen) {
                 $this->borrarArchivo($comunicado->imagen);
                 $comunicado->imagen = null;
             }
 
+            // Imagen principal subida a mano: esa manda y la plantilla se apaga
             if ($request->hasFile('imagen')) {
                 if ($comunicado->imagen) {
                     $this->borrarArchivo($comunicado->imagen);
                 }
                 $comunicado->imagen = $request->file('imagen')->store('comunicados', 'public');
+                $comunicado->usar_plantilla = false;
+            }
+
+            // Imagen que generó el formulario con la plantilla de RH (se reemplaza en cada guardado)
+            if ($comunicado->usar_plantilla && $request->hasFile('imagen_generada')) {
+                if ($comunicado->imagen) {
+                    $this->borrarArchivo($comunicado->imagen);
+                }
+                $comunicado->imagen = $request->file('imagen_generada')->store('comunicados/avisos', 'public');
             }
 
             $comunicado->save();

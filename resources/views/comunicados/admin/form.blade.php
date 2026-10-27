@@ -27,7 +27,7 @@
             --gold:#D6A644; --brown:#473524; --rose:#AA4969; --beige-light:#f7f3ef;
             --border:#e6d9ed; --text:#2c1a30; --muted:#7a6682;
         }
-        .layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:20px; align-items:start; }
+        .layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start; }
         @media(max-width:960px){ .layout { grid-template-columns:minmax(0,1fr); } }
         .card { background:#fff; border-radius:16px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(106,44,117,.08),0 8px 28px rgba(106,44,117,.07); }
         .card-body { padding:26px 28px; display:flex; flex-direction:column; gap:20px; }
@@ -42,14 +42,15 @@
         .input:focus, .select:focus, .textarea:focus { border-color:var(--brand); outline:none; box-shadow:0 0 0 3px rgba(106,44,117,.12); }
         .titulo-input { height:52px; font-size:19px; font-weight:700; }
         .hint { font-size:12px; color:var(--muted); }
-        .error { font-size:12px; color:var(--rose); }
         .contador { font-size:11.5px; color:var(--muted); text-align:right; }
 
         .imagen-zona { position:relative; border:2px dashed var(--border); border-radius:12px; overflow:hidden; background:var(--beige-light); min-height:170px; display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer; }
         .imagen-zona:hover { border-color:var(--brand); }
         .imagen-zona input { position:absolute; inset:0; opacity:0; cursor:pointer; }
-        .imagen-zona img { width:100%; height:200px; object-fit:cover; }
+        .imagen-zona img { width:100%; height:auto; max-height:420px; object-fit:contain; background:#fff; }
         .imagen-zona .vacia { padding:20px; color:var(--muted); font-size:13px; }
+        .generando { position:absolute; top:8px; right:8px; font-size:11px; font-weight:700; color:var(--brand); background:#fff; border:1px solid var(--border); border-radius:20px; padding:3px 9px; display:none; }
+        .generando.show { display:block; }
 
         .galeria { display:grid; grid-template-columns:repeat(auto-fill, minmax(96px,1fr)); gap:10px; }
         .foto { position:relative; aspect-ratio:1; border-radius:10px; overflow:hidden; background:var(--brand-light); }
@@ -70,6 +71,7 @@
         .btn-outline:hover { border-color:var(--brand); }
         .alert { padding:12px 16px; border-radius:10px; font-size:13.5px; margin-bottom:16px; }
         .alert-success { background:#e8f5ee; color:#1b6b38; border:1px solid #b3dfc3; }
+        .alert-warning { background:#faf3e0; color:#7a5a12; border:1px solid #EED39B; }
         .alert-error { background:#fce8ee; color:#7a2039; border:1px solid #f0b3c3; }
     </style>
 
@@ -78,6 +80,9 @@
 
             @if(session('success'))
                 <div class="alert alert-success">✓ {{ session('success') }}</div>
+            @endif
+            @if(session('warning'))
+                <div class="alert alert-warning">⚠ {{ session('warning') }}</div>
             @endif
             @if($errors->any())
                 <div class="alert alert-error">
@@ -88,12 +93,16 @@
                 </div>
             @endif
 
-            <form method="POST" enctype="multipart/form-data"
+            <form method="POST" enctype="multipart/form-data" id="form-comunicado"
                   action="{{ $editando ? route('comunicados.admin.update', $comunicado) : route('comunicados.admin.store') }}">
                 @csrf
                 @if($editando) @method('PUT') @endif
                 <input type="hidden" name="tipo" value="{{ $tipo }}">
+                {{-- La acción viaja aquí y no en el botón: el bloqueo de doble envío desactiva los botones --}}
                 <input type="hidden" name="accion" id="accion" value="borrador">
+                {{-- La imagen que genera la plantilla de RH al guardar --}}
+                <input type="file" name="imagen_generada" id="imagen_generada" accept="image/png" hidden>
+
                 <div class="layout">
                     {{-- ── Contenido ── --}}
                     <div class="card">
@@ -102,7 +111,7 @@
                                 <label class="label" for="titulo">Título <span class="req">*</span></label>
                                 <input id="titulo" name="titulo" class="input titulo-input" maxlength="255" required
                                        value="{{ old('titulo', $comunicado->titulo) }}"
-                                       placeholder="{{ $tipo === 'aviso' ? 'Ej. El pago de aguinaldo será el 15 de diciembre' : 'Ej. Lanzamos nuestra nueva línea de granolas' }}">
+                                       placeholder="{{ $tipo === 'aviso' ? 'Ej. Pago de nómina semana 42 (viernes 23 de octubre)' : 'Ej. Lanzamos nuestra nueva línea de granolas' }}">
                             </div>
 
                             <div class="field">
@@ -121,6 +130,7 @@
                                 <textarea id="contenido" name="contenido" class="textarea" rows="14" maxlength="20000" data-contador="contador-contenido"
                                           placeholder="Escribe el comunicado. Deja una línea en blanco entre párrafos.">{{ old('contenido', $comunicado->contenido) }}</textarea>
                                 <span class="contador" id="contador-contenido"></span>
+                                <span class="hint">Para <strong>negritas</strong>, escribe el texto entre dos asteriscos: **así**.</span>
                             </div>
 
                             <div class="field">
@@ -179,6 +189,7 @@
                             <div class="card-body">
                                 <p class="card-title">Imagen principal</p>
                                 <label class="imagen-zona" id="imagen-zona">
+                                    <span class="generando" id="generando">Generando…</span>
                                     @if($comunicado->imagen_url)
                                         <img src="{{ $comunicado->imagen_url }}" id="imagen-preview" alt="">
                                     @else
@@ -187,6 +198,9 @@
                                     @endif
                                     <input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" id="imagen-input">
                                 </label>
+                                @if($tipo === 'aviso')
+                                    <span class="hint" id="hint-plantilla">Con la plantilla activada, aquí ves cómo va quedando el aviso mientras escribes.</span>
+                                @endif
                                 @if($comunicado->imagen)
                                     <label class="check" style="padding:8px 12px;">
                                         <input type="checkbox" name="quitar_imagen" value="1"> <span style="font-size:13px;">Quitar la imagen</span>
@@ -208,6 +222,21 @@
                                             @endforeach
                                         </select>
                                     </div>
+
+                                    <div class="field">
+                                        <label class="label" for="encabezado">Encabezado de la imagen</label>
+                                        <select id="encabezado" name="encabezado" class="select">
+                                            @foreach(Comunicado::ENCABEZADOS as $opcion)
+                                                <option value="{{ $opcion }}" {{ old('encabezado', $comunicado->encabezado ?? 'AVISO IMPORTANTE') === $opcion ? 'selected' : '' }}>{{ $opcion }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <label class="check">
+                                        <input type="hidden" name="usar_plantilla" value="0">
+                                        <input type="checkbox" name="usar_plantilla" value="1" {{ old('usar_plantilla', $comunicado->usar_plantilla) ? 'checked' : '' }}>
+                                        <span style="font-size:13.5px;"><strong>🖼 Generar imagen con la plantilla de RH</strong><br><span class="hint">Logo, encabezado, texto y firma. Se actualiza en cada guardado.</span></span>
+                                    </label>
                                 @endif
 
                                 <div class="field">
@@ -229,8 +258,13 @@
         </div>
     </div>
 
+    @if($tipo === 'aviso')
+        @include('comunicados.plantillas.aviso-rh')
+        <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+    @endif
+
     <script>
-        // Contadores de caracteres
+        // ── Contadores de caracteres ──
         document.querySelectorAll('[data-contador]').forEach(el => {
             const salida = document.getElementById(el.dataset.contador);
             const pintar = () => { salida.textContent = `${el.value.length} / ${el.maxLength}`; };
@@ -238,7 +272,7 @@
             pintar();
         });
 
-        // Vista previa de la imagen principal
+        // ── Vista previa de la imagen principal subida a mano ──
         document.getElementById('imagen-input').addEventListener('change', e => {
             const archivo = e.target.files[0];
             if (!archivo) return;
@@ -248,7 +282,7 @@
             document.getElementById('imagen-vacia')?.remove();
         });
 
-        // Vista previa de las fotos nuevas de la galería
+        // ── Vista previa de las fotos nuevas de la galería ──
         document.getElementById('galeria-input').addEventListener('change', e => {
             const galeria = document.getElementById('galeria');
             galeria.querySelectorAll('.foto.nueva').forEach(f => f.remove());
@@ -259,5 +293,124 @@
                 galeria.insertBefore(foto, galeria.lastElementChild);
             });
         });
+
+        // ── Plantilla de avisos de RH: vista previa en vivo y generación al guardar ──
+        (() => {
+            const plantilla = document.getElementById('plantilla-aviso');
+            if (!plantilla || !window.htmlToImage) return;
+
+            const form        = document.getElementById('form-comunicado');
+            const casilla     = document.querySelector('input[type=checkbox][name=usar_plantilla]');
+            const campoImg    = document.getElementById('imagen_generada');
+            const inputPropia = document.getElementById('imagen-input');
+            const preview     = document.getElementById('imagen-preview');
+            const aviso       = document.getElementById('generando');
+            const $ = id => document.getElementById(id);
+
+            const escapar = t => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+            // El mismo formato que en el servidor: párrafos, saltos de línea y **negritas**
+            const textoAHtml = t => t.trim().split(/\n\s*\n/).filter(p => p.trim())
+                .map(p => '<p>' + escapar(p.trim()).replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>').replace(/\n/g, '<br>') + '</p>')
+                .join('');
+
+            function pintar() {
+                $('pa-encabezado').textContent = $('encabezado')?.value || 'AVISO IMPORTANTE';
+                $('pa-titulo').textContent     = $('titulo').value;
+                $('pa-cuerpo').innerHTML       = textoAHtml($('contenido').value);
+                $('pa-firma').textContent      = $('firma').value || 'Recursos Humanos';
+            }
+
+            /*
+             * La fuente Veneer, ya convertida a texto (data URL), para meterla dentro de la imagen.
+             * Se la damos hecha a la librería para que no revise las demás hojas de estilo de la
+             * página (las de Vite y las de fuentes externas), que el navegador no la deja leer.
+             * Se prepara una sola vez.
+             */
+            let fuente = null;
+            function prepararFuente() {
+                fuente ??= fetch(@json(asset('fonts/Veneer.ttf')))
+                    .then(r => r.ok ? r.blob() : Promise.reject(new Error('No se encontró la fuente Veneer')))
+                    .then(blob => new Promise((ok, mal) => {
+                        const lector = new FileReader();
+                        lector.onload = () => ok(lector.result);
+                        lector.onerror = mal;
+                        lector.readAsDataURL(blob);
+                    }))
+                    .then(dataUrl => `@font-face { font-family: 'Veneer'; src: url(${dataUrl}) format('truetype'); }`)
+                    .catch(error => {
+                        console.warn(error);
+                        return ''; // sin la fuente, la imagen sale con Impact; mejor eso que nada
+                    });
+                return fuente;
+            }
+
+            async function generar() {
+                pintar();
+                const css = await prepararFuente();
+
+                // Que el logo ya esté cargado antes de dibujar
+                await plantilla.querySelector('img')?.decode?.().catch(() => {});
+
+                return htmlToImage.toBlob(plantilla, {
+                    pixelRatio: 1,
+                    backgroundColor: '#ffffff',
+                    // La plantilla vive fuera de la pantalla; al dibujarla, se pone en su lugar
+                    style: { position: 'static', left: '0', top: '0' },
+                    // Con la fuente ya hecha, no revisa las hojas de estilo de la página
+                    ...(css ? { fontEmbedCSS: css } : { skipFonts: true }),
+                });
+            }
+
+            // Vista previa: se actualiza un momento después de que RH deja de escribir
+            let espera = null;
+            function actualizarVista() {
+                if (!casilla?.checked) return;
+                clearTimeout(espera);
+                espera = setTimeout(async () => {
+                    aviso?.classList.add('show');
+                    try {
+                        const blob = await generar();
+                        if (!blob) return;
+                        preview.src = URL.createObjectURL(blob);
+                        preview.style.display = 'block';
+                        $('imagen-vacia')?.remove();
+                    } catch (error) {
+                        console.error('No se pudo generar la vista previa del aviso', error);
+                    } finally {
+                        aviso?.classList.remove('show');
+                    }
+                }, 700);
+            }
+            ['titulo', 'contenido', 'firma'].forEach(id => $(id)?.addEventListener('input', actualizarVista));
+            $('encabezado')?.addEventListener('change', actualizarVista);
+            casilla?.addEventListener('change', actualizarVista);
+            actualizarVista();
+
+            // Si RH sube su propia imagen, la plantilla se apaga
+            inputPropia?.addEventListener('change', () => { if (inputPropia.files.length && casilla) casilla.checked = false; });
+
+            // Al guardar: primero genera la imagen y la adjunta; después envía el formulario
+            form.addEventListener('submit', async (e) => {
+                if (!casilla?.checked || !$('contenido').value.trim() || form.dataset.imagenLista === '1') return;
+
+                e.preventDefault();
+                e.stopImmediatePropagation(); // antes que el bloqueo de doble envío
+
+                try {
+                    const blob = await generar();
+                    const archivos = new DataTransfer();
+                    archivos.items.add(new File([blob], 'aviso.png', { type: 'image/png' }));
+                    campoImg.files = archivos.files;
+
+                    form.dataset.imagenLista = '1';
+                    form.submit();
+                } catch (error) {
+                    console.error(error);
+                    alert('No se pudo generar la imagen del aviso. Intenta de nuevo, o desactiva la plantilla y sube una imagen.');
+                    form.querySelectorAll('button[type=submit]').forEach(b => { b.disabled = false; });
+                }
+            }, true);
+        })();
     </script>
 </x-app-layout>

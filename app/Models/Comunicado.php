@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Comunicado extends Model
 {
@@ -34,8 +35,17 @@ class Comunicado extends Model
         'archivado'   => 'Archivado',
     ];
 
+    /** El letrero rojo de la plantilla de avisos de RH. */
+    public const ENCABEZADOS = [
+        'AVISO IMPORTANTE',
+        'COMUNICADO',
+        'RECORDATORIO',
+        'FELICIDADES',
+        'BIENVENIDA',
+    ];
+
     protected $fillable = [
-        'tipo', 'categoria', 'titulo', 'resumen', 'contenido', 'imagen', 'enlace',
+        'tipo', 'categoria', 'titulo', 'resumen', 'contenido', 'imagen', 'usar_plantilla', 'encabezado', 'enlace',
         'autor_id', 'firma',
         'estado', 'revisor_id', 'comentario_revision', 'revisado_en', 'publicar_en', 'publicado_en', 'fijado',
         'enviar_push', 'enviar_correo', 'remitente',
@@ -44,11 +54,12 @@ class Comunicado extends Model
     protected function casts(): array
     {
         return [
-            'revisado_en'  => 'datetime',
-            'publicar_en'  => 'datetime',
-            'publicado_en' => 'datetime',
-            'fijado'       => 'boolean',
-            'enviar_push'  => 'boolean',
+            'usar_plantilla' => 'boolean',
+            'revisado_en'    => 'datetime',
+            'publicar_en'    => 'datetime',
+            'publicado_en'   => 'datetime',
+            'fijado'         => 'boolean',
+            'enviar_push'    => 'boolean',
         ];
     }
 
@@ -101,7 +112,7 @@ class Comunicado extends Model
     }
 
     /**
-     * El resumen escrito, o uno automático con el inicio del contenido.
+     * El resumen escrito, o uno automático con el inicio del contenido (sin los ** de las negritas).
      */
     public function getResumenCortoAttribute(): string
     {
@@ -111,6 +122,64 @@ class Comunicado extends Model
 
         $texto = html_entity_decode(strip_tags((string) $this->contenido), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-        return \Illuminate\Support\Str::limit(trim(preg_replace('/\s+/u', ' ', $texto)), 170);
+        return Str::limit(trim(preg_replace('/\s+/u', ' ', str_replace('**', '', $texto))), 170);
+    }
+    public function destinos()
+    {
+        return $this->hasMany(ComunicadoDestino::class);
+    }
+
+    /**
+     * Solo lo que le toca a este empleado: lo que es para todos (sin destinos),
+     * o lo dirigido a su sede, su departamento, uno de sus grupos o a él directamente.
+     */
+    public function scopeParaUsuario(Builder $query, User $user): Builder
+    {
+        return $query->where(function ($q) use ($user) {
+            $q->whereDoesntHave('destinos')
+            ->orWhereHas('destinos', function ($d) use ($user) {
+                $d->where(fn ($w) => $w->where('tipo', 'sede')->where('destino_id', $user->sede_id))
+                    ->orWhere(fn ($w) => $w->where('tipo', 'departamento')->where('destino_id', $user->departamento_id))
+                    ->orWhere(fn ($w) => $w->where('tipo', 'usuario')->where('destino_id', $user->id))
+                    ->orWhere(fn ($w) => $w->where('tipo', 'grupo')
+                        ->whereIn('destino_id', $user->grupos()->select('grupos.id')));
+            });
+        });
+    }
+    /**
+     * Los empleados que reciben este comunicado (para push y correo).
+     * Sin destinos, son todos los empleados activos.
+     */
+    public function destinatarios(): Builder
+    {
+        $usuarios = User::query();
+        $porTipo = $this->destinos()->get()->groupBy('tipo')->map->pluck('destino_id');
+
+        if ($porTipo->isEmpty()) {
+            return $usuarios;
+        }
+
+        return $usuarios->where(function ($q) use ($porTipo) {
+            if ($ids = $porTipo->get('sede')) {
+                $q->orWhereIn('sede_id', $ids);
+            }
+            if ($ids = $porTipo->get('departamento')) {
+                $q->orWhereIn('departamento_id', $ids);
+            }
+            if ($ids = $porTipo->get('usuario')) {
+                $q->orWhereIn('id', $ids);
+            }
+            if ($ids = $porTipo->get('grupo')) {
+                $q->orWhereHas('grupos', fn ($g) => $g->whereIn('grupos.id', $ids));
+            }
+        });
+    }
+
+    /** ¿Es para toda la empresa? */
+    public function getParaTodosAttribute(): bool
+    {
+        return $this->relationLoaded('destinos')
+            ? $this->destinos->isEmpty()
+            : ! $this->destinos()->exists();
     }
 }

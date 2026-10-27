@@ -134,10 +134,10 @@ class NoticiaController extends Controller
 
 public function publicIndex()
 {
-    $noticias = Noticia::with('galeria') // ← cargamos la galería
-        ->where('activo', 1)
-        ->orderBy('fecha', 'desc')
-        ->paginate(8);
+    $noticias = \App\Models\Comunicado::visibles()
+    ->paraUsuario(auth()->user())
+    ->with('imagenes')
+    ->paginate(8);
 
     $carruselImages = CarruselImage::all(); // Obtener imágenes del carrusel
 
