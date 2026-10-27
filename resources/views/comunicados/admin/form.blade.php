@@ -29,6 +29,7 @@
         }
         .layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start; }
         @media(max-width:960px){ .layout { grid-template-columns:minmax(0,1fr); } }
+        .columna { display:flex; flex-direction:column; gap:20px; min-width:0; }
         .card { background:#fff; border-radius:16px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(106,44,117,.08),0 8px 28px rgba(106,44,117,.07); }
         .card-body { padding:26px 28px; display:flex; flex-direction:column; gap:20px; }
         .card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--brand); }
@@ -63,6 +64,35 @@
 
         .check { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border:1.5px solid var(--border); border-radius:9px; cursor:pointer; }
         .check input { width:18px; height:18px; margin-top:2px; accent-color:var(--brand); }
+
+        /* ── Destinatarios ── */
+        .para-opciones { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .para-opcion { display:flex; align-items:center; gap:10px; padding:14px; border:1.5px solid var(--border); border-radius:12px; cursor:pointer; }
+        .para-opcion input { width:18px; height:18px; accent-color:var(--brand); }
+        .para-opcion:has(input:checked) { border-color:var(--brand); background:var(--brand-light); }
+        .para-opcion strong { display:block; font-size:14px; color:var(--text); }
+        .para-opcion span { font-size:12px; color:var(--muted); }
+        .elegir-panel { display:flex; flex-direction:column; gap:18px; }
+        .elegir-panel[hidden] { display:none; }
+        .subtitulo { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:8px; }
+        .chips-opciones { display:flex; flex-wrap:wrap; gap:8px; }
+        .chip-opcion { display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border:1.5px solid var(--border); border-radius:20px; font-size:13px; font-weight:600; color:var(--text); background:#fff; cursor:pointer; user-select:none; }
+        .chip-opcion input { display:none; }
+        .chip-opcion:has(input:checked) { background:var(--brand); border-color:var(--brand); color:#fff; }
+        .chip-opcion small { font-weight:500; opacity:.7; }
+        .buscador { position:relative; }
+        .resultados { position:absolute; left:0; right:0; top:calc(100% + 4px); background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(61,21,69,.18); max-height:280px; overflow-y:auto; z-index:20; display:none; }
+        .resultados.show { display:block; }
+        .resultado { display:block; width:100%; text-align:left; padding:10px 14px; border:none; background:none; cursor:pointer; border-bottom:1px solid #f5f0f7; }
+        .resultado:hover { background:var(--brand-light); }
+        .resultado strong { display:block; font-size:13.5px; color:var(--text); }
+        .resultado small { font-size:12px; color:var(--muted); }
+        .resultado-vacio { padding:12px 14px; font-size:13px; color:var(--muted); }
+        .personas-elegidas { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+        .persona-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 6px 5px 12px; border-radius:20px; background:var(--brand-light); color:var(--brand); font-size:13px; font-weight:600; }
+        .persona-chip button { width:20px; height:20px; border-radius:50%; border:none; background:rgba(106,44,117,.15); color:var(--brand); cursor:pointer; font-size:12px; line-height:1; }
+        .alcance { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:var(--beige-light); font-size:13.5px; color:var(--text); }
+        .alcance strong { color:var(--brand); font-size:16px; }
 
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 20px; height:44px; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; border:none; text-decoration:none; width:100%; }
         .btn-primary { background:var(--brand); color:#fff; }
@@ -104,75 +134,159 @@
                 <input type="file" name="imagen_generada" id="imagen_generada" accept="image/png" hidden>
 
                 <div class="layout">
-                    {{-- ── Contenido ── --}}
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="field">
-                                <label class="label" for="titulo">Título <span class="req">*</span></label>
-                                <input id="titulo" name="titulo" class="input titulo-input" maxlength="255" required
-                                       value="{{ old('titulo', $comunicado->titulo) }}"
-                                       placeholder="{{ $tipo === 'aviso' ? 'Ej. Pago de nómina semana 42 (viernes 23 de octubre)' : 'Ej. Lanzamos nuestra nueva línea de granolas' }}">
-                            </div>
+                    {{-- ── Columna principal ── --}}
+                    <div class="columna">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="field">
+                                    <label class="label" for="titulo">Título <span class="req">*</span></label>
+                                    <input id="titulo" name="titulo" class="input titulo-input" maxlength="255" required
+                                           value="{{ old('titulo', $comunicado->titulo) }}"
+                                           placeholder="{{ $tipo === 'aviso' ? 'Ej. Pago de nómina semana 42 (viernes 23 de octubre)' : 'Ej. Lanzamos nuestra nueva línea de granolas' }}">
+                                </div>
 
-                            <div class="field">
-                                <label class="label" for="resumen">Resumen <span class="opt">Opcional</span></label>
-                                <input id="resumen" name="resumen" class="input" maxlength="300" data-contador="contador-resumen"
-                                       value="{{ old('resumen', $comunicado->resumen) }}"
-                                       placeholder="Una o dos líneas que aparecen en la lista y en la notificación">
-                                <span class="contador" id="contador-resumen"></span>
-                                <span class="hint">Si lo dejas vacío, se toma el inicio del contenido.</span>
-                            </div>
+                                <div class="field">
+                                    <label class="label" for="resumen">Resumen <span class="opt">Opcional</span></label>
+                                    <input id="resumen" name="resumen" class="input" maxlength="300" data-contador="contador-resumen"
+                                           value="{{ old('resumen', $comunicado->resumen) }}"
+                                           placeholder="Una o dos líneas que aparecen en la lista y en la notificación">
+                                    <span class="contador" id="contador-resumen"></span>
+                                    <span class="hint">Si lo dejas vacío, se toma el inicio del contenido.</span>
+                                </div>
 
-                            <div class="field">
-                                <label class="label" for="contenido">
-                                    Contenido @if($tipo !== 'red_social')<span class="req">*</span>@else<span class="opt">Opcional</span>@endif
-                                </label>
-                                <textarea id="contenido" name="contenido" class="textarea" rows="14" maxlength="20000" data-contador="contador-contenido"
-                                          placeholder="Escribe el comunicado. Deja una línea en blanco entre párrafos.">{{ old('contenido', $comunicado->contenido) }}</textarea>
-                                <span class="contador" id="contador-contenido"></span>
-                                <span class="hint">Para <strong>negritas</strong>, escribe el texto entre dos asteriscos: **así**.</span>
-                            </div>
-
-                            <div class="field">
-                                <label class="label" for="enlace">
-                                    {{ $tipo === 'red_social' ? 'Liga de la publicación' : 'Liga' }}
-                                    @if($tipo === 'red_social')<span class="req">*</span>@else<span class="opt">Opcional</span>@endif
-                                </label>
-                                <input id="enlace" name="enlace" type="url" class="input" maxlength="255"
-                                       value="{{ old('enlace', $comunicado->enlace) }}"
-                                       placeholder="{{ $tipo === 'red_social' ? 'https://www.instagram.com/p/...' : 'https://... (video, formulario, sitio)' }}">
-                            </div>
-
-                            {{-- Galería --}}
-                            <div class="field">
-                                <span class="label">Galería <span class="opt">Opcional · hasta 20 fotos de 2 MB</span></span>
-                                <div class="galeria" id="galeria">
-                                    @foreach($comunicado->imagenes ?? [] as $foto)
-                                        <div class="foto">
-                                            <img src="{{ $foto->url }}" alt="">
-                                            <label>
-                                                <input type="checkbox" name="quitar_galeria[]" value="{{ $foto->id }}"
-                                                       onchange="this.closest('.foto').classList.toggle('quitada', this.checked)">
-                                                Quitar
-                                            </label>
-                                        </div>
-                                    @endforeach
-                                    <label class="agregar-fotos">
-                                        <span style="font-size:22px;">＋</span> Agregar fotos
-                                        <input type="file" name="galeria[]" accept="image/jpeg,image/png,image/webp" multiple id="galeria-input">
+                                <div class="field">
+                                    <label class="label" for="contenido">
+                                        Contenido @if($tipo !== 'red_social')<span class="req">*</span>@else<span class="opt">Opcional</span>@endif
                                     </label>
+                                    <textarea id="contenido" name="contenido" class="textarea" rows="14" maxlength="20000" data-contador="contador-contenido"
+                                              placeholder="Escribe el comunicado. Deja una línea en blanco entre párrafos.">{{ old('contenido', $comunicado->contenido) }}</textarea>
+                                    <span class="contador" id="contador-contenido"></span>
+                                    <span class="hint">Para <strong>negritas</strong>, escribe el texto entre dos asteriscos: **así**.</span>
+                                </div>
+
+                                <div class="field">
+                                    <label class="label" for="enlace">
+                                        {{ $tipo === 'red_social' ? 'Liga de la publicación' : 'Liga' }}
+                                        @if($tipo === 'red_social')<span class="req">*</span>@else<span class="opt">Opcional</span>@endif
+                                    </label>
+                                    <input id="enlace" name="enlace" type="url" class="input" maxlength="255"
+                                           value="{{ old('enlace', $comunicado->enlace) }}"
+                                           placeholder="{{ $tipo === 'red_social' ? 'https://www.instagram.com/p/...' : 'https://... (video, formulario, sitio)' }}">
+                                </div>
+
+                                {{-- Galería --}}
+                                <div class="field">
+                                    <span class="label">Galería <span class="opt">Opcional · hasta 20 fotos de 2 MB</span></span>
+                                    <div class="galeria" id="galeria">
+                                        @foreach($comunicado->imagenes ?? [] as $foto)
+                                            <div class="foto">
+                                                <img src="{{ $foto->url }}" alt="">
+                                                <label>
+                                                    <input type="checkbox" name="quitar_galeria[]" value="{{ $foto->id }}"
+                                                           onchange="this.closest('.foto').classList.toggle('quitada', this.checked)">
+                                                    Quitar
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                        <label class="agregar-fotos">
+                                            <span style="font-size:22px;">＋</span> Agregar fotos
+                                            <input type="file" name="galeria[]" accept="image/jpeg,image/png,image/webp" multiple id="galeria-input">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ── Destinatarios ── --}}
+                        <div class="card">
+                            <div class="card-body">
+                                <p class="card-title">¿A quién va dirigido?</p>
+
+                                <div class="para-opciones">
+                                    <label class="para-opcion">
+                                        <input type="radio" name="para" value="todos" {{ $para === 'todos' ? 'checked' : '' }}>
+                                        <div><strong>Para todos</strong><span>Toda la empresa</span></div>
+                                    </label>
+                                    <label class="para-opcion">
+                                        <input type="radio" name="para" value="elegir" {{ $para === 'elegir' ? 'checked' : '' }}>
+                                        <div><strong>Elegir destinatarios</strong><span>Sedes, áreas, grupos o personas</span></div>
+                                    </label>
+                                </div>
+
+                                <div class="elegir-panel" id="elegir-panel" {{ $para === 'elegir' ? '' : 'hidden' }}>
+                                    <div>
+                                        <p class="subtitulo">Sedes</p>
+                                        <div class="chips-opciones">
+                                            @foreach($sedes as $sede)
+                                                <label class="chip-opcion">
+                                                    <input type="checkbox" name="destinos[]" value="sede:{{ $sede->id }}" {{ in_array("sede:{$sede->id}", $elegidos) ? 'checked' : '' }}>
+                                                    {{ $sede->nombre }}
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="subtitulo">Departamentos</p>
+                                        <div class="chips-opciones">
+                                            @foreach($departamentos as $dep)
+                                                <label class="chip-opcion">
+                                                    <input type="checkbox" name="destinos[]" value="departamento:{{ $dep->id }}" {{ in_array("departamento:{$dep->id}", $elegidos) ? 'checked' : '' }}>
+                                                    {{ $dep->name }}
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="subtitulo">Grupos</p>
+                                        @if($grupos->isEmpty())
+                                            <p class="hint">Todavía no hay grupos. RH los crea en Administración → Grupos.</p>
+                                        @else
+                                            <div class="chips-opciones">
+                                                @foreach($grupos as $grupo)
+                                                    <label class="chip-opcion">
+                                                        <input type="checkbox" name="destinos[]" value="grupo:{{ $grupo->id }}" {{ in_array("grupo:{$grupo->id}", $elegidos) ? 'checked' : '' }}>
+                                                        {{ $grupo->nombre }} <small>{{ $grupo->usuarios_count }}</small>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <div>
+                                        <p class="subtitulo">Personas en particular</p>
+                                        <div class="buscador">
+                                            <input type="search" id="buscar-persona" class="input" autocomplete="off"
+                                                   placeholder="Escribe un nombre, correo o clave de empleado...">
+                                            <div class="resultados" id="resultados-personas"></div>
+                                        </div>
+                                        <div class="personas-elegidas" id="personas-elegidas">
+                                            @foreach($personas as $persona)
+                                                <span class="persona-chip" data-id="{{ $persona['id'] }}">
+                                                    {{ $persona['nombre'] }}
+                                                    <input type="hidden" name="destinos[]" value="usuario:{{ $persona['id'] }}">
+                                                    <button type="button" title="Quitar" data-quitar-persona>✕</button>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alcance">
+                                    👥 <span>Le llegará a <strong id="total-destinatarios">…</strong> <span id="palabra-personas">personas</span></span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {{-- ── Panel lateral ── --}}
-                    <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="columna">
                         <div class="card">
                             <div class="card-body">
                                 <p class="card-title">Publicación</p>
                                 <button type="submit" class="btn btn-primary"
-                                        onclick="if (!confirm('Al publicarlo, lo verán todos los empleados. ¿Continuar?')) return false; document.getElementById('accion').value = 'publicar';">
+                                        onclick="if (!confirm('Al publicarlo, lo verán sus destinatarios. ¿Continuar?')) return false; document.getElementById('accion').value = 'publicar';">
                                     {{ $comunicado->estado === 'publicado' ? 'Guardar cambios' : 'Publicar ahora' }}
                                 </button>
                                 @if($comunicado->estado !== 'publicado')
@@ -294,6 +408,109 @@
             });
         });
 
+        // ── Destinatarios: elegir, buscar personas y contar ──
+        (() => {
+            const form       = document.getElementById('form-comunicado');
+            const panel      = document.getElementById('elegir-panel');
+            const buscador   = document.getElementById('buscar-persona');
+            const resultados = document.getElementById('resultados-personas');
+            const elegidas   = document.getElementById('personas-elegidas');
+            const total      = document.getElementById('total-destinatarios');
+            const palabra    = document.getElementById('palabra-personas');
+            const token      = form.querySelector('input[name=_token]').value;
+
+            const para = () => form.querySelector('input[name=para]:checked')?.value ?? 'todos';
+            const escapar = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+            // Contador: cuántas personas lo recibirán
+            let esperaConteo = null;
+            function contar() {
+                clearTimeout(esperaConteo);
+                esperaConteo = setTimeout(async () => {
+                    const datos = new FormData();
+                    datos.append('para', para());
+                    form.querySelectorAll('input[name="destinos[]"]').forEach(el => {
+                        if (el.type !== 'checkbox' || el.checked) datos.append('destinos[]', el.value);
+                    });
+                    try {
+                        const r = await fetch(@json(route('comunicados.admin.contar-destinatarios')), {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                            body: datos,
+                        });
+                        const { total: n } = await r.json();
+                        total.textContent = n;
+                        palabra.textContent = n === 1 ? 'persona' : 'personas';
+                    } catch {
+                        total.textContent = '?';
+                    }
+                }, 300);
+            }
+
+            // Mostrar u ocultar el panel de "Elegir"
+            form.querySelectorAll('input[name=para]').forEach(r => r.addEventListener('change', () => {
+                panel.hidden = para() !== 'elegir';
+                contar();
+            }));
+            panel.addEventListener('change', e => { if (e.target.matches('input[type=checkbox]')) contar(); });
+
+            // Buscar personas
+            let esperaBusqueda = null;
+            buscador.addEventListener('input', () => {
+                clearTimeout(esperaBusqueda);
+                const q = buscador.value.trim();
+                if (q.length < 2) { resultados.classList.remove('show'); return; }
+
+                esperaBusqueda = setTimeout(async () => {
+                    const r = await fetch(@json(route('comunicados.admin.buscar-personas')) + '?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } });
+                    const personas = await r.json();
+                    const yaElegidas = new Set([...elegidas.querySelectorAll('[data-id]')].map(c => c.dataset.id));
+
+                    resultados.innerHTML = personas.length
+                        ? personas.map(p => `
+                            <button type="button" class="resultado" data-id="${p.id}" data-nombre="${escapar(p.nombre)}" ${yaElegidas.has(String(p.id)) ? 'disabled style="opacity:.45"' : ''}>
+                                <strong>${escapar(p.nombre)}</strong>
+                                <small>${escapar(p.detalle || '')}${yaElegidas.has(String(p.id)) ? ' · ya está' : ''}</small>
+                            </button>`).join('')
+                        : '<div class="resultado-vacio">No se encontró a nadie.</div>';
+                    resultados.classList.add('show');
+                }, 300);
+            });
+
+            // Agregar a la persona elegida
+            resultados.addEventListener('click', e => {
+                const boton = e.target.closest('.resultado');
+                if (!boton || boton.disabled) return;
+
+                const chip = document.createElement('span');
+                chip.className = 'persona-chip';
+                chip.dataset.id = boton.dataset.id;
+                chip.innerHTML = `${escapar(boton.dataset.nombre)}
+                    <input type="hidden" name="destinos[]" value="usuario:${boton.dataset.id}">
+                    <button type="button" title="Quitar" data-quitar-persona>✕</button>`;
+                elegidas.appendChild(chip);
+
+                buscador.value = '';
+                resultados.classList.remove('show');
+                buscador.focus();
+                contar();
+            });
+
+            // Quitar a una persona
+            elegidas.addEventListener('click', e => {
+                if (e.target.matches('[data-quitar-persona]')) {
+                    e.target.closest('.persona-chip').remove();
+                    contar();
+                }
+            });
+
+            // Cerrar los resultados al hacer clic fuera, y que Enter no envíe el formulario
+            document.addEventListener('click', e => { if (!e.target.closest('.buscador')) resultados.classList.remove('show'); });
+            buscador.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+
+            contar();
+        })();
+
         // ── Plantilla de avisos de RH: vista previa en vivo y generación al guardar ──
         (() => {
             const plantilla = document.getElementById('plantilla-aviso');
@@ -325,7 +542,6 @@
              * La fuente Veneer, ya convertida a texto (data URL), para meterla dentro de la imagen.
              * Se la damos hecha a la librería para que no revise las demás hojas de estilo de la
              * página (las de Vite y las de fuentes externas), que el navegador no la deja leer.
-             * Se prepara una sola vez.
              */
             let fuente = null;
             function prepararFuente() {
@@ -340,7 +556,7 @@
                     .then(dataUrl => `@font-face { font-family: 'Veneer'; src: url(${dataUrl}) format('truetype'); }`)
                     .catch(error => {
                         console.warn(error);
-                        return ''; // sin la fuente, la imagen sale con Impact; mejor eso que nada
+                        return '';
                     });
                 return fuente;
             }
@@ -348,21 +564,16 @@
             async function generar() {
                 pintar();
                 const css = await prepararFuente();
-
-                // Que el logo ya esté cargado antes de dibujar
                 await plantilla.querySelector('img')?.decode?.().catch(() => {});
 
                 return htmlToImage.toBlob(plantilla, {
                     pixelRatio: 1,
                     backgroundColor: '#ffffff',
-                    // La plantilla vive fuera de la pantalla; al dibujarla, se pone en su lugar
                     style: { position: 'static', left: '0', top: '0' },
-                    // Con la fuente ya hecha, no revisa las hojas de estilo de la página
                     ...(css ? { fontEmbedCSS: css } : { skipFonts: true }),
                 });
             }
 
-            // Vista previa: se actualiza un momento después de que RH deja de escribir
             let espera = null;
             function actualizarVista() {
                 if (!casilla?.checked) return;
@@ -387,10 +598,8 @@
             casilla?.addEventListener('change', actualizarVista);
             actualizarVista();
 
-            // Si RH sube su propia imagen, la plantilla se apaga
             inputPropia?.addEventListener('change', () => { if (inputPropia.files.length && casilla) casilla.checked = false; });
 
-            // Al guardar: primero genera la imagen y la adjunta; después envía el formulario
             form.addEventListener('submit', async (e) => {
                 if (!casilla?.checked || !$('contenido').value.trim() || form.dataset.imagenLista === '1') return;
 

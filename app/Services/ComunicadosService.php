@@ -16,7 +16,24 @@ class ComunicadosService
     }
 
     /**
-     * Crea o actualiza un comunicado con sus imágenes. Si $datos['accion'] es "publicar", lo publica.
+     * "sede:2" → ['tipo' => 'sede', 'destino_id' => 2]. Lo que no tenga ese formato se ignora.
+     */
+    public static function leerDestinos(array $valores): array
+    {
+        return collect($valores)
+            ->filter(fn ($v) => is_string($v) && preg_match('/^(sede|departamento|grupo|usuario):\d+$/', $v))
+            ->unique()
+            ->map(function ($v) {
+                [$tipo, $id] = explode(':', $v, 2);
+
+                return ['tipo' => $tipo, 'destino_id' => (int) $id];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Crea o actualiza un comunicado con sus imágenes y destinatarios. Si $datos['accion'] es "publicar", lo publica.
      */
     public function guardar(Comunicado $comunicado, array $datos, Request $request): Comunicado
     {
@@ -63,7 +80,18 @@ class ComunicadosService
                 $comunicado->imagen = $request->file('imagen_generada')->store('comunicados/avisos', 'public');
             }
 
+            // La plantilla está activada pero no llegó la imagen: avisar en lugar de quedarse callado
+            if ($comunicado->usar_plantilla && ! $request->hasFile('imagen_generada') && filled($comunicado->contenido)) {
+                session()->flash('warning', 'No se generó la imagen del aviso. Revisa tu conexión y vuelve a guardar, o sube una imagen.');
+            }
+
             $comunicado->save();
+
+            // Destinatarios: se reemplazan completos. "Para todos" = sin destinos.
+            $comunicado->destinos()->delete();
+            if (($datos['para'] ?? 'todos') === 'elegir') {
+                $comunicado->destinos()->createMany(self::leerDestinos($datos['destinos'] ?? []));
+            }
 
             // Galería: quitar las marcadas y agregar las nuevas al final
             if (! empty($datos['quitar_galeria'])) {

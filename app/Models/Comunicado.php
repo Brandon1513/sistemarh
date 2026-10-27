@@ -80,6 +80,11 @@ class Comunicado extends Model
         return $this->hasMany(ComunicadoImagen::class)->orderBy('orden');
     }
 
+    public function destinos()
+    {
+        return $this->hasMany(ComunicadoDestino::class);
+    }
+
     // ─── Consultas ───────────────────────────────────────────────────────────
 
     /**
@@ -92,6 +97,60 @@ class Comunicado extends Model
             ->where('publicado_en', '<=', now())
             ->orderByDesc('fijado')
             ->orderByDesc('publicado_en');
+    }
+
+    /**
+     * Solo lo que le toca a este empleado: lo que es para todos (sin destinos),
+     * o lo dirigido a su sede, su departamento, uno de sus grupos o a él directamente.
+     */
+    public function scopeParaUsuario(Builder $query, User $user): Builder
+    {
+        return $query->where(function ($q) use ($user) {
+            $q->whereDoesntHave('destinos')
+              ->orWhereHas('destinos', function ($d) use ($user) {
+                  $d->where(fn ($w) => $w->where('tipo', 'sede')->where('destino_id', $user->sede_id))
+                    ->orWhere(fn ($w) => $w->where('tipo', 'departamento')->where('destino_id', $user->departamento_id))
+                    ->orWhere(fn ($w) => $w->where('tipo', 'usuario')->where('destino_id', $user->id))
+                    ->orWhere(fn ($w) => $w->where('tipo', 'grupo')
+                        ->whereIn('destino_id', $user->grupos()->select('grupos.id')));
+              });
+        });
+    }
+
+    /**
+     * Los empleados que reciben un conjunto de destinos: [['tipo' => 'sede', 'destino_id' => 2], ...].
+     * Sin destinos, son todos los empleados activos. La usa el contador del formulario
+     * y, en la fase 3, las push y los correos.
+     */
+    public static function consultaDestinatarios(array $destinos): Builder
+    {
+        $usuarios = User::query();
+        $porTipo = collect($destinos)->groupBy('tipo')->map(fn ($grupo) => $grupo->pluck('destino_id')->all());
+
+        if ($porTipo->isEmpty()) {
+            return $usuarios;
+        }
+
+        return $usuarios->where(function ($q) use ($porTipo) {
+            if ($ids = $porTipo->get('sede')) {
+                $q->orWhereIn('sede_id', $ids);
+            }
+            if ($ids = $porTipo->get('departamento')) {
+                $q->orWhereIn('departamento_id', $ids);
+            }
+            if ($ids = $porTipo->get('usuario')) {
+                $q->orWhereIn('id', $ids);
+            }
+            if ($ids = $porTipo->get('grupo')) {
+                $q->orWhereHas('grupos', fn ($g) => $g->whereIn('grupos.id', $ids));
+            }
+        });
+    }
+
+    /** Los empleados que reciben este comunicado. */
+    public function destinatarios(): Builder
+    {
+        return self::consultaDestinatarios($this->destinos()->get(['tipo', 'destino_id'])->toArray());
     }
 
     // ─── Ayudas para las vistas ──────────────────────────────────────────────
@@ -124,56 +183,6 @@ class Comunicado extends Model
 
         return Str::limit(trim(preg_replace('/\s+/u', ' ', str_replace('**', '', $texto))), 170);
     }
-    public function destinos()
-    {
-        return $this->hasMany(ComunicadoDestino::class);
-    }
-
-    /**
-     * Solo lo que le toca a este empleado: lo que es para todos (sin destinos),
-     * o lo dirigido a su sede, su departamento, uno de sus grupos o a él directamente.
-     */
-    public function scopeParaUsuario(Builder $query, User $user): Builder
-    {
-        return $query->where(function ($q) use ($user) {
-            $q->whereDoesntHave('destinos')
-            ->orWhereHas('destinos', function ($d) use ($user) {
-                $d->where(fn ($w) => $w->where('tipo', 'sede')->where('destino_id', $user->sede_id))
-                    ->orWhere(fn ($w) => $w->where('tipo', 'departamento')->where('destino_id', $user->departamento_id))
-                    ->orWhere(fn ($w) => $w->where('tipo', 'usuario')->where('destino_id', $user->id))
-                    ->orWhere(fn ($w) => $w->where('tipo', 'grupo')
-                        ->whereIn('destino_id', $user->grupos()->select('grupos.id')));
-            });
-        });
-    }
-    /**
-     * Los empleados que reciben este comunicado (para push y correo).
-     * Sin destinos, son todos los empleados activos.
-     */
-    public function destinatarios(): Builder
-    {
-        $usuarios = User::query();
-        $porTipo = $this->destinos()->get()->groupBy('tipo')->map->pluck('destino_id');
-
-        if ($porTipo->isEmpty()) {
-            return $usuarios;
-        }
-
-        return $usuarios->where(function ($q) use ($porTipo) {
-            if ($ids = $porTipo->get('sede')) {
-                $q->orWhereIn('sede_id', $ids);
-            }
-            if ($ids = $porTipo->get('departamento')) {
-                $q->orWhereIn('departamento_id', $ids);
-            }
-            if ($ids = $porTipo->get('usuario')) {
-                $q->orWhereIn('id', $ids);
-            }
-            if ($ids = $porTipo->get('grupo')) {
-                $q->orWhereHas('grupos', fn ($g) => $g->whereIn('grupos.id', $ids));
-            }
-        });
-    }
 
     /** ¿Es para toda la empresa? */
     public function getParaTodosAttribute(): bool
@@ -181,5 +190,39 @@ class Comunicado extends Model
         return $this->relationLoaded('destinos')
             ? $this->destinos->isEmpty()
             : ! $this->destinos()->exists();
+    }
+
+    /**
+     * A quién va, en corto, para el panel: "Todos", "CDMX · Producción", "Comité de seguridad · 2 personas".
+     */
+    public function getEtiquetaDestinosAttribute(): string
+    {
+        $destinos = $this->relationLoaded('destinos') ? $this->destinos : $this->destinos()->get();
+
+        if ($destinos->isEmpty()) {
+            return 'Todos';
+        }
+
+        // Los nombres se buscan una sola vez por petición, aunque la lista tenga muchos comunicados
+        static $nombres = null;
+        $nombres ??= [
+            'sede'         => Sede::pluck('nombre', 'id'),
+            'departamento' => Department::pluck('name', 'id'),
+            'grupo'        => Grupo::pluck('nombre', 'id'),
+        ];
+
+        $partes = $destinos->where('tipo', '!=', 'usuario')
+            ->map(fn ($d) => $nombres[$d->tipo][$d->destino_id] ?? null)
+            ->filter()
+            ->values();
+
+        $personas = $destinos->where('tipo', 'usuario')->count();
+        if ($personas) {
+            $partes->push($personas === 1 ? '1 persona' : "{$personas} personas");
+        }
+
+        $texto = $partes->take(3)->implode(' · ');
+
+        return $partes->count() > 3 ? $texto . ' + ' . ($partes->count() - 3) : $texto;
     }
 }

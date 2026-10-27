@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comunicado;
+use App\Models\Department;
+use App\Models\Grupo;
+use App\Models\Sede;
+use App\Models\User;
 use App\Policies\ComunicadoPolicy;
 use App\Services\ComunicadosService;
 use Illuminate\Http\Request;
@@ -25,7 +29,7 @@ class ComunicadoController extends Controller
         // Cada quien solo ve los tipos que le tocan
         $tipos = ComunicadoPolicy::tiposDe($request->user());
 
-        $query = Comunicado::with('autor')->withCount('imagenes')->whereIn('tipo', $tipos);
+        $query = Comunicado::with(['autor', 'destinos'])->withCount('imagenes')->whereIn('tipo', $tipos);
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->input('estado'));
@@ -64,12 +68,12 @@ class ComunicadoController extends Controller
             'encabezado'     => $tipo === 'aviso' ? 'AVISO IMPORTANTE' : null,
         ]);
 
-        return view('comunicados.admin.form', compact('comunicado', 'tipos'));
+        return view('comunicados.admin.form', ['comunicado' => $comunicado, 'tipos' => $tipos] + $this->datosFormulario($comunicado));
     }
 
     public function store(Request $request)
     {
-        $datos = $request->validate($this->reglas($request));
+        $datos = $request->validate($this->reglas($request), $this->mensajes());
         Gate::authorize('create', [Comunicado::class, $datos['tipo']]);
 
         $comunicado = $this->comunicados->guardar(
@@ -85,17 +89,17 @@ class ComunicadoController extends Controller
     {
         Gate::authorize('update', $comunicado);
 
-        $comunicado->load('imagenes');
+        $comunicado->load(['imagenes', 'destinos']);
         $tipos = ComunicadoPolicy::tiposDe($request->user());
 
-        return view('comunicados.admin.form', compact('comunicado', 'tipos'));
+        return view('comunicados.admin.form', ['comunicado' => $comunicado, 'tipos' => $tipos] + $this->datosFormulario($comunicado));
     }
 
     public function update(Request $request, Comunicado $comunicado)
     {
         Gate::authorize('update', $comunicado);
 
-        $datos = $request->validate($this->reglas($request));
+        $datos = $request->validate($this->reglas($request), $this->mensajes());
         $datos['tipo'] = $comunicado->tipo; // el tipo no cambia después de crearlo
 
         $this->comunicados->guardar($comunicado, $datos, $request);
@@ -127,6 +131,84 @@ class ComunicadoController extends Controller
         return redirect()->route('comunicados.admin.index')->with('success', "«{$comunicado->titulo}» se eliminó.");
     }
 
+    /**
+     * Búsqueda de personas para elegir destinatarios (por nombre, correo o clave de empleado).
+     */
+    public function buscarPersonas(Request $request)
+    {
+        Gate::authorize('viewAny', Comunicado::class);
+
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $personas = User::with('sede')
+            ->where(fn ($w) => $w->where('name', 'like', "%{$q}%")
+                ->orWhere('email', 'like', "%{$q}%")
+                ->orWhere('clave_empleado', 'like', "%{$q}%"))
+            ->orderBy('name')
+            ->limit(15)
+            ->get()
+            ->map(fn (User $u) => [
+                'id'      => $u->id,
+                'nombre'  => $u->name,
+                'detalle' => collect([$u->puesto_empleado, $u->sede?->nombre])->filter()->implode(' · '),
+            ]);
+
+        return response()->json($personas);
+    }
+
+    /**
+     * Cuántas personas reciben los destinatarios elegidos (el contador del formulario).
+     */
+    public function contarDestinatarios(Request $request)
+    {
+        Gate::authorize('viewAny', Comunicado::class);
+
+        $destinos = $request->input('para') === 'elegir'
+            ? ComunicadosService::leerDestinos((array) $request->input('destinos', []))
+            : [];
+
+        // Eligió "Elegir" pero todavía no marcó nada: nadie
+        if ($request->input('para') === 'elegir' && $destinos === []) {
+            return response()->json(['total' => 0]);
+        }
+
+        return response()->json(['total' => Comunicado::consultaDestinatarios($destinos)->count()]);
+    }
+
+    /**
+     * Las listas para elegir destinatarios, y lo que ya tiene elegido el comunicado.
+     */
+    private function datosFormulario(Comunicado $comunicado): array
+    {
+        $actuales = $comunicado->exists
+            ? $comunicado->destinos->map(fn ($d) => "{$d->tipo}:{$d->destino_id}")->all()
+            : [];
+
+        // Si el formulario regresó con errores, se respeta lo que la persona había marcado
+        $elegidos = old('destinos', $actuales);
+
+        $idsPersonas = collect($elegidos)
+            ->filter(fn ($v) => str_starts_with((string) $v, 'usuario:'))
+            ->map(fn ($v) => (int) substr($v, 8));
+
+        return [
+            'sedes'         => Sede::orderBy('nombre')->get(['id', 'nombre']),
+            'departamentos' => Department::orderBy('name')->get(['id', 'name']),
+            'grupos'        => Grupo::withCount('usuarios')->orderBy('nombre')->get(),
+            'elegidos'      => $elegidos,
+            'para'          => old('para', $actuales ? 'elegir' : 'todos'),
+            'personas'      => User::with('sede')->whereIn('id', $idsPersonas)->orderBy('name')->get()
+                ->map(fn (User $u) => [
+                    'id'      => $u->id,
+                    'nombre'  => $u->name,
+                    'detalle' => collect([$u->puesto_empleado, $u->sede?->nombre])->filter()->implode(' · '),
+                ]),
+        ];
+    }
+
     private function reglas(Request $request): array
     {
         $publicando = $request->input('accion') === 'publicar';
@@ -151,7 +233,17 @@ class ComunicadoController extends Controller
             'galeria.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
             'quitar_galeria'   => 'nullable|array',
             'quitar_galeria.*' => 'integer',
+            'para'             => 'required|in:todos,elegir',
+            'destinos'         => 'required_if:para,elegir|array',
+            'destinos.*'       => ['string', 'regex:/^(sede|departamento|grupo|usuario):\d+$/'],
             'accion'           => 'required|in:borrador,publicar',
+        ];
+    }
+
+    private function mensajes(): array
+    {
+        return [
+            'destinos.required_if' => 'Elige al menos un destinatario, o marca "Para todos".',
         ];
     }
 

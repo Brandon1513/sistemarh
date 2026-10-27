@@ -202,6 +202,9 @@ Route::middleware('auth')
     ->name('comunicados.admin.')
     ->controller(ComunicadoController::class)
     ->group(function () {
+        Route::get('/buscar-personas', 'buscarPersonas')->name('buscar-personas');
+        Route::post('/contar-destinatarios', 'contarDestinatarios')->name('contar-destinatarios');
+
         Route::get('/', 'index')->name('index');
         Route::get('/nuevo', 'create')->name('create');
         Route::post('/', 'store')->name('store');

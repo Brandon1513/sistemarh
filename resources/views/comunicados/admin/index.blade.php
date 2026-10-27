@@ -146,6 +146,7 @@
                             <div class="meta">
                                 <span class="chip" style="background:{{ $fondo }}; color:{{ $color }};">{{ $c->estado_nombre }}</span>
                                 <span>{{ $iconosTipo[$c->tipo] ?? '' }} {{ $c->tipo_nombre }}@if($c->categoria) · {{ Comunicado::CATEGORIAS_AVISO[$c->categoria] ?? $c->categoria }}@endif</span>
+                                <span title="Destinatarios">👥 {{ $c->etiqueta_destinos }}</span>
                                 <span>✍ {{ $c->firma ?: 'Sin firma' }}</span>
                                 @if($c->publicado_en)
                                     <span>📅 {{ $c->publicado_en->locale('es')->isoFormat('D MMM YYYY, H:mm') }}</span>
