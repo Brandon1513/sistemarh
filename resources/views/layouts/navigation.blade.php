@@ -241,19 +241,26 @@
         @if(Auth::check())
         <div class="nav-links">
 
-            
+            {{-- Dashboard --}}
+            <a href="{{ route('dashboard') }}"
+               class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+
             {{-- Comunicados (marketing y RH) --}}
-                @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
-                    <a href="{{ route('comunicados.admin.index') }}"
-                    class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
-                        <span style="font-size:14px;">📣</span>
-                        Comunicados
-                    </a>
-                @endif
+            @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
+                <a href="{{ route('comunicados.admin.index') }}"
+                   class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
+                    <span style="font-size:14px;">📣</span>
+                    Comunicados
+                </a>
+            @endif
+
             {{-- Administración --}}
             @if(Auth::user()->hasAnyRole(['administrador','recursos_humanos']))
                 <div class="nav-dropdown">
-                    <button class="nav-dropdown-trigger {{ request()->routeIs('empleados.*', 'periodos.*', 'dias_inhabiles.*') ? 'open' : '' }}"
+                    <button class="nav-dropdown-trigger {{ request()->routeIs('empleados.*', 'periodos.*', 'dias_inhabiles.*', 'grupos.*') ? 'open' : '' }}"
                         @click="activeDropdown = activeDropdown === 'admin' ? null : 'admin'"
                         :class="{ 'open': activeDropdown === 'admin' }">
                         <div class="nav-section-icon icon-admin">
@@ -278,6 +285,10 @@
                         <a href="{{ route('dias_inhabiles.index') }}" class="panel-item {{ request()->routeIs('dias_inhabiles.*') ? 'active' : '' }}">
                             <div class="panel-item-icon" style="background:#fce8ee;">🗓️</div>
                             Días Inhábiles
+                        </a>
+                        <a href="{{ route('grupos.index') }}" class="panel-item {{ request()->routeIs('grupos.*') ? 'active' : '' }}">
+                            <div class="panel-item-icon" style="background:#e0eaff;">🫂</div>
+                            Grupos
                         </a>
                     </div>
                 </div>
@@ -341,7 +352,6 @@
                             <div class="panel-item-icon" style="background:#faf3e0;">📋</div>
                             Registrar Vacación Espontánea
                         </a>
-
                     </div>
                 </div>
             @endif
@@ -368,13 +378,6 @@
                             <div class="panel-item-icon" style="background:#f3eef5;">🖼️</div>
                             Carrusel
                         </a>
-                        @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
-                            <a href="{{ route('comunicados.admin.index') }}"
-                            class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
-                                <span style="font-size:14px; ">📣</span>
-                                Comunicados
-                            </a>
-                        @endif
                     </div>
                 </div>
             @endif
@@ -494,6 +497,9 @@
                     <a href="{{ route('dias_inhabiles.index') }}" class="mob-link {{ request()->routeIs('dias_inhabiles.*') ? 'active' : '' }}">
                         <span class="mob-icon">🗓️</span> Días Inhábiles
                     </a>
+                    <a href="{{ route('grupos.index') }}" class="mob-link {{ request()->routeIs('grupos.*') ? 'active' : '' }}">
+                        <span class="mob-icon">🫂</span> Grupos
+                    </a>
                 </div>
             @endif
 
@@ -514,7 +520,6 @@
                     <a href="{{ route('vacaciones.espontanea.create') }}" class="mob-link {{ request()->routeIs('vacaciones.espontanea.*') ? 'active' : '' }}">
                         <span class="mob-icon">📋</span> Vacación Espontánea
                     </a>
-
                 </div>
             @endif
 
@@ -529,13 +534,6 @@
                     <a href="{{ route('carrusel.index') }}" class="mob-link {{ request()->routeIs('carrusel.*') ? 'active' : '' }}">
                         <span class="mob-icon">🖼️</span> Carrusel
                     </a>
-                    @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
-                        <a href="{{ route('comunicados.admin.index') }}"
-                        class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
-                            <span style="font-size:14px;">📣</span>
-                            Comunicados
-                        </a>
-                    @endif
                 </div>
             @endif
 

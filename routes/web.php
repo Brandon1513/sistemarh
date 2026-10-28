@@ -4,6 +4,7 @@ use App\Http\Controllers\CarruselController;
 use App\Http\Controllers\ComunicadoController;
 use App\Http\Controllers\DiaInhabilController;
 use App\Http\Controllers\EmpleadoController;
+use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\PeriodoVacacionController;
 use App\Http\Controllers\PermissionController;
@@ -214,6 +215,25 @@ Route::middleware('auth')
         Route::post('/{comunicado}/archivar', 'archivar')->name('archivar');
         Route::delete('/{comunicado}', 'destroy')->name('destroy');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Grupos para dirigir comunicados (los administra RH)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware(['auth', 'role:administrador|recursos_humanos'])
+        ->prefix('gestion/grupos')
+        ->name('grupos.')
+        ->controller(GrupoController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/nuevo', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{grupo}/editar', 'edit')->name('edit');
+            Route::put('/{grupo}', 'update')->name('update');
+            Route::delete('/{grupo}', 'destroy')->name('destroy');
+        });
 
 /*
 |--------------------------------------------------------------------------
