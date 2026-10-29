@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Sede extends Model
 {
-    protected $fillable = ['nombre'];
+    protected $fillable = ['nombre', 'correo_grupo'];
 
     public function empleados()
     {

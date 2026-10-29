@@ -105,5 +105,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Sede::class);
     }
+    public function grupos()
+    {
+        return $this->belongsToMany(Grupo::class, 'grupo_usuario');
+    }
 
 }

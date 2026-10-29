@@ -4,8 +4,9 @@
     $prepararNoticia = function ($noticia) {
         $html  = preg_replace(['/<br\s*\/?>/i', '/<\/(p|div|li|h[1-6]|blockquote)>/i'], ["\n", "\n\n"], $noticia->contenido ?? '');
         $texto = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $texto = str_replace('**', '', $texto);
         $texto = trim(preg_replace("/\n{3,}/", "\n\n", preg_replace("/[ \t]+/", ' ', $texto)));
-        $fecha = \Carbon\Carbon::parse($noticia->fecha ?? $noticia->created_at)->locale('es');
+        $fecha = \Carbon\Carbon::parse($noticia->publicado_en ?? $noticia->created_at)->locale('es');
         $palabras = count(preg_split('/\s+/u', $texto, -1, PREG_SPLIT_NO_EMPTY));
 
         return (object) [
@@ -15,8 +16,8 @@
             'fecha'   => $fecha,
             'nueva'   => $fecha->between(now()->subDays(7), now()->endOfDay()),
             'imagen'  => $noticia->imagen ? asset('storage/' . $noticia->imagen) : null,
-            'inicial' => Str::upper(Str::substr(trim($noticia->autor ?? '') ?: 'D', 0, 1)),
-            'fotos'   => $noticia->galeria->count(),
+            'inicial' => Str::upper(Str::substr(trim($noticia->firma ?? '') ?: 'D', 0, 1)),
+            'fotos'   => $noticia->imagenes->count(),
         ];
     };
 
@@ -219,12 +220,12 @@
     .news-featured:hover, .news-featured:focus-visible { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
     .news-featured:focus-visible { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--brand), var(--shadow-lg); }
 
-    .news-featured-media { position: absolute; inset: 0; z-index: -2; }
+    .news-featured-media { position: absolute; inset: 0; z-index: -2; overflow: hidden; }
     .news-featured-media img, .news-featured-media .news-ph {
         width: 100%; height: 100%; object-fit: cover;
         transition: transform .8s var(--ease);
     }
-    .news-featured:hover .news-featured-media img,
+    .news-featured:hover .news-featured-media img.img-frente,
     .news-featured:hover .news-featured-media .news-ph { transform: scale(1.05); }
     .news-featured::before {
         content: ''; position: absolute; inset: 0; z-index: -1;
@@ -244,6 +245,13 @@
     .chip-glass { background: rgba(255,255,255,.16); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.2); }
     .chip-new   { background: #fff; color: var(--rose); }
     .chip-new::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--rose); }
+    /* Botón "Ver imagen" del modal */
+    .chip-ver {
+        background: rgba(255,255,255,.92); color: var(--brand);
+        border: none; cursor: pointer; font-family: inherit;
+        transition: background .15s, transform .15s;
+    }
+    .chip-ver:hover { background: #fff; transform: translateY(-1px); }
 
     .news-featured-body {
         position: absolute; left: 0; right: 0; bottom: 0;
@@ -334,9 +342,9 @@
     .news-row-thumb img, .news-row-thumb .news-ph {
         width: 100%; height: 100%; object-fit: cover; transition: transform .5s var(--ease);
     }
-    .news-row:hover .news-row-thumb img, .news-row:hover .news-row-thumb .news-ph { transform: scale(1.08); }
+    .news-row:hover .news-row-thumb img.img-frente, .news-row:hover .news-row-thumb .news-ph { transform: scale(1.08); }
     .news-row-thumb .photos {
-        position: absolute; right: 5px; bottom: 5px;
+        position: absolute; right: 5px; bottom: 5px; z-index: 1;
         display: inline-flex; align-items: center; gap: 3px;
         font-size: 10px; font-weight: 700; color: #fff;
         background: rgba(28,6,34,.65); backdrop-filter: blur(4px);
@@ -402,19 +410,22 @@
     .news-modal.show .news-modal-box { transform: none; }
     @media(max-width:640px){ .news-modal-box { max-height: 94vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; } }
 
-    .modal-scroll { overflow-y: auto; overscroll-behavior: contain; }
+    .modal-scroll { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 
     .modal-hero {
         position: relative; min-height: 320px;
         display: flex; flex-direction: column; justify-content: flex-end;
         padding: 28px 36px; color: #fff; isolation: isolate;
+        overflow: hidden;
     }
     .modal-hero.no-img { min-height: 220px; }
     @media(max-width:640px){ .modal-hero { min-height: 240px; padding: 20px; } .modal-hero.no-img { min-height: 180px; } }
     .modal-hero > img, .modal-hero > .news-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+    .modal-hero > img.img-frente { cursor: zoom-in; }
     .modal-hero::before {
         content: ''; position: absolute; inset: 0; z-index: -1;
         background: linear-gradient(to top, rgba(28,6,34,.92) 0%, rgba(42,10,50,.45) 50%, rgba(42,10,50,.1) 100%);
+        pointer-events: none; /* deja pasar los clics a la imagen de abajo */
     }
     .modal-hero .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
     .modal-title {
@@ -435,8 +446,10 @@
 
     .modal-content {
         font-size: 16px; color: #3d2943; line-height: 1.8;
-        white-space: pre-line; max-width: 68ch; overflow-wrap: anywhere;
+        max-width: 68ch; overflow-wrap: anywhere;
     }
+    .modal-content p { margin: 0 0 1em; }
+    .modal-content strong { color: var(--text); }
 
     .modal-media {
         margin-top: 24px; display: flex; align-items: center; gap: 14px;
@@ -486,7 +499,7 @@
         opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s;
     }
     .lightbox.show { opacity: 1; visibility: visible; transition: opacity .2s; }
-    .lightbox img { max-width: 100%; max-height: 86vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .lightbox img { max-width: 100%; max-height: 86vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5); background: #fff; }
     .lb-btn {
         position: absolute; width: 44px; height: 44px; border-radius: 50%;
         background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
@@ -499,6 +512,10 @@
     .lb-next  { right: 20px; top: 50%; transform: translateY(-50%); }
     .lb-count { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.75); font-size: 13px; font-weight: 600; }
     .lightbox.single .lb-prev, .lightbox.single .lb-next, .lightbox.single .lb-count { display: none; }
+
+    /* Imagen completa (sin recortar) sobre un fondo con la misma imagen desenfocada */
+    img.img-fondo  { position:absolute !important; inset:0; width:100%; height:100%; object-fit:cover !important; filter:blur(22px) saturate(1.1); transform:scale(1.2) !important; opacity:.55; pointer-events:none; }
+    img.img-frente { position:absolute !important; inset:0; width:100%; height:100%; object-fit:contain !important; }
 
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -551,7 +568,7 @@
     @endif
 
     {{-- ══════════════════════════════════════════
-         SECCIÓN NOTICIAS
+         SECCIÓN COMUNICADOS
     ══════════════════════════════════════════ --}}
     <section class="news-section">
         <div class="news-inner">
@@ -559,11 +576,11 @@
             <div class="news-header">
                 <div>
                     <p class="news-eyebrow"><span class="pulse"></span> Lo más reciente</p>
-                    <h2 class="news-title">Últimas noticias</h2>
+                    <h2 class="news-title">Comunicados</h2>
                     <p class="news-subtitle">Entérate de lo que está pasando en la empresa.</p>
                 </div>
                 <a href="{{ route('noticias.public') }}" class="news-link">
-                    Ver todas
+                    Ver todos
                     <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </a>
             </div>
@@ -573,26 +590,27 @@
                     <div class="news-empty-icon">
                         <svg width="26" height="26" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
                     </div>
-                    <h3>Aún no hay noticias</h3>
-                    <p>Cuando se publique una noticia aparecerá aquí.</p>
+                    <h3>Aún no hay comunicados</h3>
+                    <p>Cuando se publique uno aparecerá aquí.</p>
                 </div>
             @else
                 @php $d = $info[$destacada->id]; @endphp
                 <div class="news-layout {{ $resto->isEmpty() ? 'single' : '' }}">
 
-                    {{-- Noticia destacada --}}
+                    {{-- Comunicado destacado --}}
                     <article class="news-featured reveal" tabindex="0" role="button"
                              data-news="{{ $destacada->id }}" aria-label="Leer: {{ $destacada->titulo }}">
                         <div class="news-featured-media">
                             @if($d->imagen)
-                                <img src="{{ $d->imagen }}" alt="">
+                                <img src="{{ $d->imagen }}" class="img-fondo" alt="" aria-hidden="true">
+                                <img src="{{ $d->imagen }}" class="img-frente" alt="">
                             @else
                                 <div class="news-ph"><svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg></div>
                             @endif
                         </div>
 
                         <div class="news-featured-top">
-                            <span class="chip chip-gold">Destacada</span>
+                            <span class="chip chip-gold">Destacado</span>
                             @if($d->nueva)<span class="chip chip-new">Nuevo</span>@endif
                         </div>
 
@@ -621,19 +639,19 @@
                                 <div class="author">
                                     <span class="avatar">{{ $d->inicial }}</span>
                                     <div style="min-width:0;">
-                                        <div class="author-name">{{ $destacada->autor ?: 'Dasavena' }}</div>
+                                        <div class="author-name">{{ $destacada->firma ?: 'Dasavena' }}</div>
                                         <div class="author-role">{{ ucfirst($d->fecha->diffForHumans()) }}</div>
                                     </div>
                                 </div>
                                 <span class="read-btn">
-                                    <span class="read-label">Leer noticia</span>
+                                    <span class="read-label">Leer</span>
                                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M5 12h14M13 6l6 6-6 6"/></svg>
                                 </span>
                             </div>
                         </div>
                     </article>
 
-                    {{-- Resto de noticias --}}
+                    {{-- Resto de comunicados --}}
                     @if($resto->isNotEmpty())
                         <div class="news-list reveal" style="animation-delay:.08s;">
                             <div class="news-list-head">
@@ -648,7 +666,8 @@
                                          data-news="{{ $noticia->id }}" aria-label="Leer: {{ $noticia->titulo }}">
                                     <div class="news-row-thumb">
                                         @if($n->imagen)
-                                            <img src="{{ $n->imagen }}" alt="" loading="lazy">
+                                            <img src="{{ $n->imagen }}" class="img-fondo" alt="" aria-hidden="true" loading="lazy">
+                                            <img src="{{ $n->imagen }}" class="img-frente" alt="" loading="lazy">
                                         @else
                                             <div class="news-ph"><svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg></div>
                                         @endif
@@ -679,7 +698,7 @@
     </section>
 
     {{-- ══════════════════════════════════════════
-         MODALES NOTICIAS
+         MODALES
     ══════════════════════════════════════════ --}}
     @foreach($noticias as $noticia)
         @php $n = $info[$noticia->id]; @endphp
@@ -692,13 +711,20 @@
                 <div class="modal-scroll">
                     <header class="modal-hero {{ $n->imagen ? '' : 'no-img' }}">
                         @if($n->imagen)
-                            <img src="{{ $n->imagen }}" alt="" loading="lazy">
+                            <img src="{{ $n->imagen }}" class="img-fondo" alt="" aria-hidden="true" loading="lazy">
+                            <img src="{{ $n->imagen }}" class="img-frente" alt="" loading="lazy" data-ver-imagen="{{ $n->imagen }}">
                         @else
                             <div class="news-ph"></div>
                         @endif
                         <div class="chips">
-                            <span class="chip chip-glass">Noticia</span>
+                            <span class="chip chip-glass">{{ $noticia->tipo_nombre }}</span>
                             @if($n->nueva)<span class="chip chip-new">Nuevo</span>@endif
+                            @if($n->imagen)
+                                <button type="button" class="chip chip-ver" data-ver-imagen="{{ $n->imagen }}">
+                                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M11 8v6m-3-3h6m3 0a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
+                                    Ver imagen
+                                </button>
+                            @endif
                         </div>
                         <h2 class="modal-title" id="modal-title-{{ $noticia->id }}">{{ $noticia->titulo }}</h2>
                     </header>
@@ -708,7 +734,7 @@
                             <div class="author">
                                 <span class="avatar">{{ $n->inicial }}</span>
                                 <div>
-                                    <div class="author-name">{{ $noticia->autor ?: 'Dasavena' }}</div>
+                                    <div class="author-name">{{ $noticia->firma ?: 'Dasavena' }}</div>
                                     <div class="author-role">{{ $n->fecha->isoFormat('dddd D [de] MMMM [de] YYYY') }}</div>
                                 </div>
                             </div>
@@ -720,15 +746,15 @@
                             </div>
                         </div>
 
-                        <div class="modal-content">{{ $n->texto }}</div>
+                        <div class="modal-content">{{ \App\Support\TextoComunicado::html($noticia->contenido) }}</div>
 
-                        @if($noticia->multimedia)
-                            <a href="{{ $noticia->multimedia }}" target="_blank" rel="noopener" class="modal-media">
+                        @if($noticia->enlace)
+                            <a href="{{ $noticia->enlace }}" target="_blank" rel="noopener" class="modal-media">
                                 <span class="modal-media-icon">
                                     <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.14v13.72a1 1 0 001.52.85l10.6-6.86a1 1 0 000-1.7L9.52 4.29A1 1 0 008 5.14z"/></svg>
                                 </span>
                                 <span>
-                                    <strong>Ver contenido multimedia</strong>
+                                    <strong>{{ $noticia->tipo === 'red_social' ? 'Ver la publicación' : 'Abrir enlace' }}</strong>
                                     <small>Se abrirá en una pestaña nueva</small>
                                 </span>
                             </a>
@@ -741,9 +767,9 @@
                                     Galería · {{ $n->fotos }} {{ $n->fotos === 1 ? 'imagen' : 'imágenes' }}
                                 </p>
                                 <div class="modal-gallery-grid">
-                                    @foreach($noticia->galeria as $imagen)
-                                        <button type="button" class="modal-gallery-item" data-lightbox="{{ asset('storage/' . $imagen->imagen) }}" aria-label="Ver imagen {{ $loop->iteration }}">
-                                            <img src="{{ asset('storage/' . $imagen->imagen) }}" alt="" loading="lazy">
+                                    @foreach($noticia->imagenes as $imagen)
+                                        <button type="button" class="modal-gallery-item" data-lightbox="{{ $imagen->url }}" aria-label="Ver imagen {{ $loop->iteration }}">
+                                            <img src="{{ $imagen->url }}" alt="" loading="lazy">
                                         </button>
                                     @endforeach
                                 </div>
@@ -830,7 +856,7 @@
         schedule();
     })();
 
-    // ── Modales noticias ──────────────────────────────────────────────────────
+    // ── Modales ───────────────────────────────────────────────────────────────
     let openModal = null, lastFocus = null;
 
     function openNewsModal(id) {
@@ -876,6 +902,7 @@
     }
     function closeLightbox() { lightbox.classList.remove('show'); }
 
+    // Fotos de la galería: se navega entre todas
     document.querySelectorAll('[data-lightbox]').forEach(btn => {
         btn.addEventListener('click', () => {
             lbImages = [...btn.closest('.modal-gallery-grid').querySelectorAll('[data-lightbox]')].map(b => b.dataset.lightbox);
@@ -884,6 +911,18 @@
             showLightbox(lbImages.indexOf(btn.dataset.lightbox));
         });
     });
+
+    // "Ver imagen" (botón o tocar la imagen): la imagen principal, sola
+    document.querySelectorAll('[data-ver-imagen]').forEach(el => {
+        el.addEventListener('click', e => {
+            e.stopPropagation();
+            lbImages = [el.dataset.verImagen];
+            lightbox.classList.add('single');
+            lightbox.classList.add('show');
+            showLightbox(0);
+        });
+    });
+
     lightbox.addEventListener('click', e => {
         const action = e.target.closest('[data-lb]')?.dataset.lb;
         if (action === 'prev') showLightbox(lbIndex - 1);

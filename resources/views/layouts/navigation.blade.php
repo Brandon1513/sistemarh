@@ -248,10 +248,23 @@
                 Dashboard
             </a>
 
+            {{-- Comunicados (marketing y RH) --}}
+            @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
+                <a href="{{ route('comunicados.admin.index') }}"
+                   class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
+                    <span style="font-size:14px;">📣</span>
+                    Comunicados
+                    @php $pendientesRevision = \App\Models\Comunicado::where('estado', 'en_revision')->where('revisor_id', auth()->id())->count(); @endphp
+@if($pendientesRevision)
+    <span style="background:#D6A644; color:#473524; font-size:11px; font-weight:800; padding:1px 7px; border-radius:20px;">{{ $pendientesRevision }}</span>
+@endif
+                </a>
+            @endif
+
             {{-- Administración --}}
             @if(Auth::user()->hasAnyRole(['administrador','recursos_humanos']))
                 <div class="nav-dropdown">
-                    <button class="nav-dropdown-trigger {{ request()->routeIs('empleados.*', 'periodos.*', 'dias_inhabiles.*') ? 'open' : '' }}"
+                    <button class="nav-dropdown-trigger {{ request()->routeIs('empleados.*', 'periodos.*', 'dias_inhabiles.*', 'grupos.*') ? 'open' : '' }}"
                         @click="activeDropdown = activeDropdown === 'admin' ? null : 'admin'"
                         :class="{ 'open': activeDropdown === 'admin' }">
                         <div class="nav-section-icon icon-admin">
@@ -276,6 +289,10 @@
                         <a href="{{ route('dias_inhabiles.index') }}" class="panel-item {{ request()->routeIs('dias_inhabiles.*') ? 'active' : '' }}">
                             <div class="panel-item-icon" style="background:#fce8ee;">🗓️</div>
                             Días Inhábiles
+                        </a>
+                        <a href="{{ route('grupos.index') }}" class="panel-item {{ request()->routeIs('grupos.*') ? 'active' : '' }}">
+                            <div class="panel-item-icon" style="background:#e0eaff;">🫂</div>
+                            Grupos
                         </a>
                     </div>
                 </div>
@@ -339,7 +356,6 @@
                             <div class="panel-item-icon" style="background:#faf3e0;">📋</div>
                             Registrar Vacación Espontánea
                         </a>
-
                     </div>
                 </div>
             @endif
@@ -447,6 +463,16 @@
                 <a href="{{ route('dashboard') }}" class="mob-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <span class="mob-icon">🏠</span> Dashboard
                 </a>
+                @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
+                    <a href="{{ route('comunicados.admin.index') }}" class="mob-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
+                        <span class="mob-icon">📣</span> Comunicados
+                        @php $pendientesRevision = \App\Models\Comunicado::where('estado', 'en_revision')->where('revisor_id', auth()->id())->count(); @endphp
+@if($pendientesRevision)
+    <span style="background:#D6A644; color:#473524; font-size:11px; font-weight:800; padding:1px 7px; border-radius:20px;">{{ $pendientesRevision }}</span>
+@endif
+                        
+                    </a>
+                @endif
             </div>
 
             {{-- Solicitudes --}}
@@ -480,6 +506,9 @@
                     <a href="{{ route('dias_inhabiles.index') }}" class="mob-link {{ request()->routeIs('dias_inhabiles.*') ? 'active' : '' }}">
                         <span class="mob-icon">🗓️</span> Días Inhábiles
                     </a>
+                    <a href="{{ route('grupos.index') }}" class="mob-link {{ request()->routeIs('grupos.*') ? 'active' : '' }}">
+                        <span class="mob-icon">🫂</span> Grupos
+                    </a>
                 </div>
             @endif
 
@@ -500,7 +529,6 @@
                     <a href="{{ route('vacaciones.espontanea.create') }}" class="mob-link {{ request()->routeIs('vacaciones.espontanea.*') ? 'active' : '' }}">
                         <span class="mob-icon">📋</span> Vacación Espontánea
                     </a>
-
                 </div>
             @endif
 
