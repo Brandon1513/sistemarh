@@ -48,7 +48,7 @@ class Comunicado extends Model
         'tipo', 'categoria', 'titulo', 'resumen', 'contenido', 'imagen', 'usar_plantilla', 'encabezado', 'enlace',
         'autor_id', 'firma',
         'estado', 'revisor_id', 'comentario_revision', 'revisado_en', 'publicar_en', 'publicado_en', 'fijado',
-        'enviar_push', 'enviar_correo', 'remitente',
+        'enviar_push', 'enviar_correo', 'remitente', 'correo_enviado_en'
     ];
 
     protected function casts(): array
@@ -60,6 +60,7 @@ class Comunicado extends Model
             'publicado_en'   => 'datetime',
             'fijado'         => 'boolean',
             'enviar_push'    => 'boolean',
+            'correo_enviado_en' => 'datetime',
         ];
     }
 

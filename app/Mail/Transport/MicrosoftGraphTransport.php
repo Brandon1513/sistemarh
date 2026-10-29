@@ -55,10 +55,17 @@ class MicrosoftGraphTransport extends AbstractTransport
             'saveToSentItems' => false,
         ];
 
+        // Sale del buzón que dice el correo (comunicacion@ o intranet@), si es uno de los permitidos.
+        // Cualquier otro remitente se cambia por el de siempre, para no mandar a nombre de nadie más.
+        $de = $email->getFrom()[0] ?? null;
+        $buzon = $de && in_array(strtolower($de->getAddress()), $this->buzonesPermitidos(), true)
+            ? $de->getAddress()
+            : $this->remitente;
+
         $respuesta = Http::withToken($this->token())
             ->acceptJson()
             ->timeout(30)
-            ->post("https://graph.microsoft.com/v1.0/users/{$this->remitente}/sendMail", $payload);
+            ->post("https://graph.microsoft.com/v1.0/users/{$buzon}/sendMail", $payload);
 
         if ($respuesta->failed()) {
             // Si el token venció antes de tiempo, la próxima vez se pide uno nuevo
@@ -118,5 +125,18 @@ class MicrosoftGraphTransport extends AbstractTransport
     public function __toString(): string
     {
         return 'microsoft-graph';
+    }
+
+    /** Los buzones desde los que la intranet puede mandar. */
+    private function buzonesPermitidos(): array
+    {
+        return collect(config('comunicados.remitentes'))
+            ->pluck('correo')
+            ->push($this->remitente)
+            ->map(fn ($c) => strtolower((string) $c))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

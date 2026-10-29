@@ -70,6 +70,7 @@ class ComunicadoController extends Controller
         Gate::authorize('create', [Comunicado::class, $tipo]);
 
         $comunicado = new Comunicado([
+            'enviar_correo' => 'automatico',
             'enviar_push' => true,
             'tipo'           => $tipo,
             'firma'          => ComunicadosService::firmaPorDefecto($tipo),
@@ -235,10 +236,13 @@ class ComunicadoController extends Controller
             : [];
 
         if ($request->input('para') === 'elegir' && $destinos === []) {
-            return response()->json(['total' => 0]);
+            return response()->json(['total' => 0, 'correo' => '']);
         }
 
-        return response()->json(['total' => Comunicado::consultaDestinatarios($destinos)->count()]);
+        return response()->json([
+            'total'  => Comunicado::consultaDestinatarios($destinos)->count(),
+            'correo' => app(\App\Services\CorreoComunicados::class)->resumen($destinos),
+        ]);
     }
 
     /**
@@ -297,6 +301,7 @@ class ComunicadoController extends Controller
         'firma'            => 'nullable|string|max:100',
         'fijado'           => 'nullable|boolean',
         'enviar_push'      => 'nullable|boolean',
+        'enviar_correo'    => 'nullable|boolean',
         'usar_plantilla'   => 'nullable|boolean',
         'encabezado'       => ['nullable', Rule::in(Comunicado::ENCABEZADOS)],
         'imagen'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',

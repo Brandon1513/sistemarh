@@ -384,9 +384,18 @@
                                     <span style="font-size:13px;"><strong>🔔 Enviar notificación push</strong><br><span class="hint">A los destinatarios que tienen la app, al publicarse.</span></span>
                                 </label>
 
+                                <label class="check" style="padding:10px 12px;">
+                                    <input type="hidden" name="enviar_correo" value="0">
+                                    <input type="checkbox" name="enviar_correo" value="1" {{ old('enviar_correo', ($comunicado->enviar_correo ?? 'automatico') !== 'ninguno') ? 'checked' : '' }}>
+                                    <span style="font-size:13px;"><strong>📧 Enviar por correo</strong><br><span class="hint" id="resumen-correo">Calculando…</span></span>
+                                </label>
+
                                 @if($comunicado->estado === 'publicado' && $comunicado->publicado_en)
                                     <span class="hint">Publicado el {{ $comunicado->publicado_en->locale('es')->isoFormat('D [de] MMMM [a las] H:mm') }}. La push ya se envió; los cambios no la repiten.</span>
                                 @endif
+                                @if($comunicado->correo_enviado_en)
+    <span class="hint">📧 El correo se envió el {{ $comunicado->correo_enviado_en->locale('es')->isoFormat('D [de] MMMM [a las] H:mm') }} desde {{ $comunicado->remitente }}.</span>
+@endif
                             </div>
                         </div>
 
@@ -574,8 +583,10 @@
                             headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
                             body: datos,
                         });
-                        const { total: n } = await r.json();
+                        const { total: n, correo } = await r.json();
                         total.textContent = n;
+                        const resumenCorreo = document.getElementById('resumen-correo');
+                        if (resumenCorreo) resumenCorreo.textContent = correo || 'Elige destinatarios para saber a quién se manda.';
                         palabra.textContent = n === 1 ? 'persona' : 'personas';
                     } catch {
                         total.textContent = '?';

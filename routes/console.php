@@ -24,3 +24,9 @@ Artisan::command('periodos:activar', function () {
 
 // Revisa cada minuto si hay comunicados programados cuya hora ya llegó
 Schedule::command('comunicados:publicar-programados')->everyMinute()->withoutOverlapping();
+
+// Manda los correos pendientes de la cola. Termina cuando ya no hay nada o a los 40 segundos,
+// para que la siguiente vuelta del despertador no se encime.
+Schedule::command('queue:work --stop-when-empty --max-time=40 --tries=3')
+    ->everyMinute()
+    ->withoutOverlapping();

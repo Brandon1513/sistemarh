@@ -42,6 +42,7 @@ class GrupoController extends Controller
                 'nombre'      => $datos['nombre'],
                 'descripcion' => $datos['descripcion'] ?? null,
                 'creado_por'  => $request->user()->id,
+                'correo_grupo' => $datos['correo_grupo'] ?? null,
             ]);
             $grupo->usuarios()->sync($datos['integrantes'] ?? []);
 
@@ -67,6 +68,7 @@ class GrupoController extends Controller
             $grupo->update([
                 'nombre'      => $datos['nombre'],
                 'descripcion' => $datos['descripcion'] ?? null,
+                'correo_grupo' => $datos['correo_grupo'] ?? null,
             ]);
             $grupo->usuarios()->sync($datos['integrantes'] ?? []);
         });
@@ -105,6 +107,7 @@ class GrupoController extends Controller
             'descripcion'   => 'nullable|string|max:255',
             'integrantes'   => 'nullable|array',
             'integrantes.*' => 'integer|exists:users,id',
+            'correo_grupo'  => 'nullable|email|max:255',
         ], [
             'nombre.unique' => 'Ya existe un grupo con ese nombre.',
         ]);

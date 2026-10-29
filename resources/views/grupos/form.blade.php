@@ -72,6 +72,13 @@
                         <input id="descripcion" name="descripcion" class="input" maxlength="255"
                                value="{{ old('descripcion', $grupo->descripcion) }}" placeholder="Para qué es este grupo">
                     </div>
+                    <div class="field">
+                        <label class="label" for="correo_grupo">Correo del grupo de Microsoft 365 <span style="font-weight:400; color:var(--muted);">(opcional)</span></label>
+                        <input id="correo_grupo" name="correo_grupo" type="email" class="input" maxlength="255"
+                            value="{{ old('correo_grupo', $grupo->correo_grupo) }}" placeholder="comite@dasavena.com">
+                        <span class="hint">Si lo pones, los comunicados que vayan solo a este grupo se mandan en un solo correo a esa dirección.</span>
+                        @error('correo_grupo')<span class="error">⚠ {{ $message }}</span>@enderror
+                    </div>
 
                     <div class="field">
                         <span class="label">Agregar personas</span>

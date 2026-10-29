@@ -12,12 +12,15 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Services\CorreoComunicados;
 
 class ComunicadosService
 {
-    public function __construct(private PushService $push)
-    {
-    }
+    public function __construct(
+    private PushService $push,
+    private CorreoComunicados $correos,
+) {
+}
 
     /** Cómo aparece el autor si no se escribe otra firma. */
     public static function firmaPorDefecto(?string $tipo): string
@@ -70,6 +73,7 @@ class ComunicadosService
                 'usar_plantilla' => $tipo === 'aviso' && ! empty($datos['usar_plantilla']),
                 'encabezado'     => $tipo === 'aviso' ? ($datos['encabezado'] ?? 'AVISO IMPORTANTE') : null,
                 'enviar_push'    => (bool) ($datos['enviar_push'] ?? false),
+                'enviar_correo'  => ! empty($datos['enviar_correo']) ? 'automatico' : 'ninguno',
             ]);
 
             // Ya publicado: la fecha de programación no aplica
@@ -166,12 +170,11 @@ class ComunicadosService
     }
 
     /**
-     * Lo hace visible para sus destinatarios y, la primera vez, les manda la push.
-     * (En la siguiente parte, aquí también se mandará el correo.)
+     * Lo hace visible para sus destinatarios y, la primera vez, les avisa por push y por correo.
      */
     public function publicar(Comunicado $comunicado): void
     {
-        // Solo la primera publicación avisa; volver a publicar uno archivado no repite la push
+        // Solo la primera publicación avisa; volver a publicar uno archivado no repite nada
         $primeraVez = $comunicado->publicado_en === null;
 
         $comunicado->update([
@@ -180,8 +183,21 @@ class ComunicadosService
             'publicar_en'  => null,
         ]);
 
-        if ($primeraVez && $comunicado->enviar_push) {
+        if (! $primeraVez) {
+            return;
+        }
+
+        if ($comunicado->enviar_push) {
             $this->avisarPorPush($comunicado);
+        }
+
+        if ($comunicado->enviar_correo !== 'ninguno' && ! $comunicado->correo_enviado_en) {
+            try {
+                $envios = $this->correos->enviar($comunicado);
+                Log::info('Correos de comunicado en la cola', ['comunicado' => $comunicado->id, 'envios' => $envios]);
+            } catch (\Throwable $e) {
+                Log::warning('No se pudieron preparar los correos del comunicado', ['comunicado' => $comunicado->id, 'error' => $e->getMessage()]);
+            }
         }
     }
 

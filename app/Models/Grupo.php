@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Grupo extends Model
 {
-    protected $fillable = ['nombre', 'descripcion', 'creado_por', 'activo'];
+    protected $fillable = ['nombre', 'descripcion', 'creado_por', 'activo', 'correo_grupo'];
 
     protected function casts(): array
     {
