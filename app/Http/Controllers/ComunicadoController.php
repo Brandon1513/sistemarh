@@ -70,6 +70,7 @@ class ComunicadoController extends Controller
         Gate::authorize('create', [Comunicado::class, $tipo]);
 
         $comunicado = new Comunicado([
+            'enviar_push' => true,
             'tipo'           => $tipo,
             'firma'          => ComunicadosService::firmaPorDefecto($tipo),
             // Los avisos de RH nuevos vienen con la plantilla activada
@@ -157,9 +158,13 @@ class ComunicadoController extends Controller
     {
         Gate::authorize('review', $comunicado);
         $this->comunicados->aprobarRevision($comunicado);
+        $comunicado->refresh();
 
-        return redirect()->route('comunicados.admin.index', ['estado' => 'por_revisar'])
-            ->with('success', "Aprobaste «{$comunicado->titulo}»: ya está publicado y le avisamos a su autor.");
+        $mensaje = $comunicado->estado === 'programado'
+            ? "Aprobaste «{$comunicado->titulo}»: se publicará el " . $comunicado->publicar_en->locale('es')->isoFormat('D [de] MMMM [a las] H:mm') . ' y le avisamos a su autor.'
+            : "Aprobaste «{$comunicado->titulo}»: ya está publicado y le avisamos a su autor.";
+
+        return redirect()->route('comunicados.admin.index', ['estado' => 'por_revisar'])->with('success', $mensaje);
     }
 
     public function devolver(Request $request, Comunicado $comunicado)
@@ -277,53 +282,64 @@ class ComunicadoController extends Controller
     }
 
     private function reglas(Request $request): array
-    {
-        $publicando = in_array($request->input('accion'), ['publicar', 'revision'], true);
-        $tipo = $request->input('tipo');
+{
+    $publicando = in_array($request->input('accion'), ['publicar', 'revision'], true);
+    $tipo = $request->input('tipo');
 
-        return [
-            'tipo'             => ['required', Rule::in(['noticia', 'red_social', 'aviso'])],
-            'categoria'        => ['nullable', Rule::in(array_keys(Comunicado::CATEGORIAS_AVISO))],
-            'titulo'           => 'required|string|max:255',
-            'resumen'          => 'nullable|string|max:300',
-            // Para publicar o mandar a revisión hace falta contenido, salvo en redes sociales
-            'contenido'        => [Rule::requiredIf($publicando && $tipo !== 'red_social'), 'nullable', 'string', 'max:20000'],
-            'enlace'           => [Rule::requiredIf($tipo === 'red_social'), 'nullable', 'url', 'max:255'],
-            'firma'            => 'nullable|string|max:100',
-            'fijado'           => 'nullable|boolean',
-            'usar_plantilla'   => 'nullable|boolean',
-            'encabezado'       => ['nullable', Rule::in(Comunicado::ENCABEZADOS)],
-            'imagen'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'imagen_generada'  => 'nullable|image|mimes:png|max:4096',
-            'quitar_imagen'    => 'nullable|boolean',
-            'galeria'          => 'nullable|array|max:20',
-            'galeria.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
-            'quitar_galeria'   => 'nullable|array',
-            'quitar_galeria.*' => 'integer',
-            'para'             => 'required|in:todos,elegir',
-            'destinos'         => 'required_if:para,elegir|array',
-            'destinos.*'       => ['string', 'regex:/^(sede|departamento|grupo|usuario):\d+$/'],
-            'revisor_id'       => 'required_if:accion,revision|nullable|integer',
-            'accion'           => 'required|in:borrador,publicar,revision',
-        ];
-    }
+    return [
+        'tipo'             => ['required', Rule::in(['noticia', 'red_social', 'aviso'])],
+        'categoria'        => ['nullable', Rule::in(array_keys(Comunicado::CATEGORIAS_AVISO))],
+        'titulo'           => 'required|string|max:255',
+        'resumen'          => 'nullable|string|max:300',
+        // Para publicar o mandar a revisión hace falta contenido, salvo en redes sociales
+        'contenido'        => [Rule::requiredIf($publicando && $tipo !== 'red_social'), 'nullable', 'string', 'max:20000'],
+        'enlace'           => [Rule::requiredIf($tipo === 'red_social'), 'nullable', 'url', 'max:255'],
+        'firma'            => 'nullable|string|max:100',
+        'fijado'           => 'nullable|boolean',
+        'enviar_push'      => 'nullable|boolean',
+        'usar_plantilla'   => 'nullable|boolean',
+        'encabezado'       => ['nullable', Rule::in(Comunicado::ENCABEZADOS)],
+        'imagen'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        'imagen_generada'  => 'nullable|image|mimes:png|max:4096',
+        'quitar_imagen'    => 'nullable|boolean',
+        'galeria'          => 'nullable|array|max:20',
+        'galeria.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+        'quitar_galeria'   => 'nullable|array',
+        'quitar_galeria.*' => 'integer',
+        'para'             => 'required|in:todos,elegir',
+        'destinos'         => 'required_if:para,elegir|array',
+        'destinos.*'       => ['string', 'regex:/^(sede|departamento|grupo|usuario):\d+$/'],
+        'revisor_id'       => 'required_if:accion,revision|nullable|integer',
+        'cuando'           => 'nullable|in:ahora,programar',
+        // Solo al publicar o mandar a revisión se exige que la fecha sea futura
+        'publicar_en'      => ['required_if:cuando,programar', 'nullable', 'date', ...($publicando ? ['after:now'] : [])],
+        'accion'           => 'required|in:borrador,publicar,revision',
+    ];
+}
 
     private function mensajes(): array
     {
         return [
-            'destinos.required_if'   => 'Elige al menos un destinatario, o marca "Para todos".',
-            'revisor_id.required_if' => 'Elige quién de Recursos Humanos lo va a revisar.',
+            'destinos.required_if'    => 'Elige al menos un destinatario, o marca "Para todos".',
+            'revisor_id.required_if'  => 'Elige quién de Recursos Humanos lo va a revisar.',
+            'publicar_en.required_if' => 'Elige la fecha y hora en que se va a publicar.',
+            'publicar_en.after'       => 'La fecha de publicación tiene que ser en el futuro.',
         ];
     }
 
-    private function despuesDeGuardar(Comunicado $comunicado, string $accion)
+   private function despuesDeGuardar(Comunicado $comunicado, string $accion)
     {
-        return match ($accion) {
-            'publicar' => redirect()->route('comunicados.admin.index')
+        $comunicado->refresh()->load('revisor');
+
+        return match (true) {
+            $comunicado->estado === 'programado' => redirect()->route('comunicados.admin.index')
+                ->with('success', "«{$comunicado->titulo}» se publicará el " . $comunicado->publicar_en->locale('es')->isoFormat('D [de] MMMM [a las] H:mm') . '.'),
+
+            $comunicado->estado === 'publicado' && $accion === 'publicar' => redirect()->route('comunicados.admin.index')
                 ->with('success', "«{$comunicado->titulo}» ya está publicado."),
 
-            'revision' => redirect()->route('comunicados.admin.index')
-                ->with('success', "«{$comunicado->titulo}» se envió a revisión con {$comunicado->fresh('revisor')->revisor?->name}. Te avisaremos por correo."),
+            $accion === 'revision' => redirect()->route('comunicados.admin.index')
+                ->with('success', "«{$comunicado->titulo}» se envió a revisión con {$comunicado->revisor?->name}. Te avisaremos por correo."),
 
             default => redirect()->route('comunicados.admin.edit', $comunicado)
                 ->with('success', 'Borrador guardado. Puedes seguir editándolo o publicarlo cuando esté listo.'),

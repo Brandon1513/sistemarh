@@ -6,13 +6,19 @@ use App\Models\Comunicado;
 use App\Models\User;
 use App\Notifications\ComunicadoRevision;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ComunicadosService
 {
+    public function __construct(private PushService $push)
+    {
+    }
+
     /** Cómo aparece el autor si no se escribe otra firma. */
     public static function firmaPorDefecto(?string $tipo): string
     {
@@ -45,6 +51,7 @@ class ComunicadosService
     /**
      * Crea o actualiza un comunicado con sus imágenes y destinatarios.
      * $datos['accion']: "borrador", "publicar" o "revision".
+     * $datos['cuando']: "ahora" o "programar" (con $datos['publicar_en']).
      */
     public function guardar(Comunicado $comunicado, array $datos, Request $request): Comunicado
     {
@@ -62,9 +69,22 @@ class ComunicadosService
                 'fijado'         => (bool) ($datos['fijado'] ?? false),
                 'usar_plantilla' => $tipo === 'aviso' && ! empty($datos['usar_plantilla']),
                 'encabezado'     => $tipo === 'aviso' ? ($datos['encabezado'] ?? 'AVISO IMPORTANTE') : null,
+                'enviar_push'    => (bool) ($datos['enviar_push'] ?? false),
             ]);
 
+            // Ya publicado: la fecha de programación no aplica
+            if ($comunicado->estado !== 'publicado') {
+                $comunicado->publicar_en = ($datos['cuando'] ?? 'ahora') === 'programar' && ! empty($datos['publicar_en'])
+                    ? Carbon::parse($datos['publicar_en'])
+                    : null;
+            }
+
             if (! $comunicado->exists) {
+                $comunicado->estado = 'borrador';
+            }
+
+            // Si estaba programado y se guarda como borrador, deja de estar programado
+            if ($comunicado->estado === 'programado' && $datos['accion'] === 'borrador') {
                 $comunicado->estado = 'borrador';
             }
 
@@ -124,7 +144,7 @@ class ComunicadosService
             if ($datos['accion'] === 'revision') {
                 $this->enviarARevision($comunicado, (int) $datos['revisor_id'], $request->user());
             } elseif ($datos['accion'] === 'publicar' && $comunicado->estado !== 'publicado') {
-                $this->publicar($comunicado);
+                $this->publicarOProgramar($comunicado);
             }
 
             return $comunicado;
@@ -132,22 +152,64 @@ class ComunicadosService
     }
 
     /**
-     * Lo hace visible para los empleados. En la fase 3, aquí se mandarán la push y el correo.
+     * Si tiene fecha futura, queda programado; si no, se publica ya.
+     */
+    public function publicarOProgramar(Comunicado $comunicado): void
+    {
+        if ($comunicado->publicar_en && $comunicado->publicar_en->isFuture()) {
+            $comunicado->update(['estado' => 'programado']);
+
+            return;
+        }
+
+        $this->publicar($comunicado);
+    }
+
+    /**
+     * Lo hace visible para sus destinatarios y, la primera vez, les manda la push.
+     * (En la siguiente parte, aquí también se mandará el correo.)
      */
     public function publicar(Comunicado $comunicado): void
     {
+        // Solo la primera publicación avisa; volver a publicar uno archivado no repite la push
+        $primeraVez = $comunicado->publicado_en === null;
+
         $comunicado->update([
             'estado'       => 'publicado',
-            // Si se vuelve a publicar uno archivado, conserva su fecha original
             'publicado_en' => $comunicado->publicado_en ?? now(),
             'publicar_en'  => null,
         ]);
+
+        if ($primeraVez && $comunicado->enviar_push) {
+            $this->avisarPorPush($comunicado);
+        }
     }
 
     /** Lo oculta para los empleados, sin borrarlo. */
     public function archivar(Comunicado $comunicado): void
     {
         $comunicado->update(['estado' => 'archivado', 'fijado' => false]);
+    }
+
+    /**
+     * La push a los destinatarios. Si Firebase falla, el comunicado queda publicado igual.
+     */
+    private function avisarPorPush(Comunicado $comunicado): void
+    {
+        $iconos = ['aviso' => '📢', 'noticia' => '📰', 'red_social' => '📱', 'cumpleanos' => '🎂'];
+
+        try {
+            $enviados = $this->push->enviarAMuchos(
+                $comunicado->destinatarios(),
+                trim(($iconos[$comunicado->tipo] ?? '📣') . ' ' . $comunicado->titulo),
+                Str::limit($comunicado->resumen_corto, 120),
+                ['destino' => 'comunicado', 'id' => $comunicado->id],
+            );
+
+            Log::info('Push de comunicado enviada', ['comunicado' => $comunicado->id, 'telefonos' => $enviados]);
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo enviar la push del comunicado', ['comunicado' => $comunicado->id, 'error' => $e->getMessage()]);
+        }
     }
 
     // ─── Revisión ────────────────────────────────────────────────────────────
@@ -175,11 +237,11 @@ class ComunicadosService
         $this->avisar(User::find($revisor->id), $comunicado, 'pendiente');
     }
 
-    /** El revisor lo aprueba: se publica y se le avisa al autor. */
+    /** El revisor lo aprueba: se publica (o queda programado) y se le avisa al autor. */
     public function aprobarRevision(Comunicado $comunicado): void
     {
         $comunicado->update(['revisado_en' => now(), 'comentario_revision' => null]);
-        $this->publicar($comunicado);
+        $this->publicarOProgramar($comunicado);
 
         $this->avisar($comunicado->autor, $comunicado->fresh(['revisor']), 'aprobado');
     }
@@ -212,7 +274,7 @@ class ComunicadosService
         }
 
         try {
-            $persona->notify(new \App\Notifications\ComunicadoRevision($comunicado->loadMissing(['autor', 'revisor']), $motivo));
+            $persona->notify(new ComunicadoRevision($comunicado->loadMissing(['autor', 'revisor']), $motivo));
         } catch (\Throwable $e) {
             Log::warning('No se pudo enviar el correo de revisión', ['comunicado' => $comunicado->id, 'error' => $e->getMessage()]);
         }

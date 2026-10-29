@@ -8,6 +8,10 @@
     // "Necesita revisión" viene marcado si regresó con errores pidiendo revisión,
     // o si se lo devolvieron (para reenviarlo al mismo revisor)
     $pideRevision = old('accion') === 'revision' || (! old() && $comunicado->estado === 'devuelto');
+
+    // Ahora o programado
+    $cuando = old('cuando', $comunicado->publicar_en ? 'programar' : 'ahora');
+    $fechaProgramada = old('publicar_en', $comunicado->publicar_en?->format('Y-m-d\TH:i'));
 @endphp
 
 <x-app-layout>
@@ -71,13 +75,16 @@
         .check input { width:18px; height:18px; margin-top:2px; accent-color:var(--brand); }
         .check:has(input:checked) { border-color:var(--brand); background:var(--brand-light); }
 
-        /* ── Destinatarios ── */
+        /* ── Opciones tipo radio (destinatarios y cuándo) ── */
         .para-opciones { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         .para-opcion { display:flex; align-items:center; gap:10px; padding:14px; border:1.5px solid var(--border); border-radius:12px; cursor:pointer; }
         .para-opcion input { width:18px; height:18px; accent-color:var(--brand); }
         .para-opcion:has(input:checked) { border-color:var(--brand); background:var(--brand-light); }
         .para-opcion strong { display:block; font-size:14px; color:var(--text); }
         .para-opcion span { font-size:12px; color:var(--muted); }
+        .para-opciones.compactas .para-opcion { padding:10px 12px; }
+
+        /* ── Destinatarios ── */
         .elegir-panel { display:flex; flex-direction:column; gap:18px; }
         .elegir-panel[hidden] { display:none; }
         .subtitulo { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:8px; }
@@ -112,6 +119,7 @@
         .alert-warning { background:#faf3e0; color:#7a5a12; border:1px solid #EED39B; }
         .alert-error { background:#fce8ee; color:#7a2039; border:1px solid #f0b3c3; }
         .alert-devuelto { background:#fce8ee; color:#7a2039; border:1px solid #f0b3c3; border-left:4px solid var(--rose); }
+        .alert-programado { background:#e0eaff; color:#2b4c9b; border:1px solid #b8ccf5; }
     </style>
 
     <div class="py-10" style="background-image:url('{{ asset('images/background-pattern.png') }}'); min-height:calc(100vh - 64px);">
@@ -138,6 +146,14 @@
                     <strong>↩ {{ $comunicado->revisor?->name ?? 'RH' }} te lo devolvió con estos comentarios:</strong>
                     <p style="margin-top:6px; white-space:pre-line;">{{ $comunicado->comentario_revision }}</p>
                     <p style="margin-top:8px; font-size:12.5px;">Corrígelo y vuelve a enviarlo a revisión.</p>
+                </div>
+            @endif
+
+            {{-- Si está programado, se recuerda cuándo sale --}}
+            @if($comunicado->estado === 'programado' && $comunicado->publicar_en)
+                <div class="alert alert-programado">
+                    ⏰ Este comunicado se publicará solo el <strong>{{ $comunicado->publicar_en->locale('es')->isoFormat('dddd D [de] MMMM [a las] H:mm') }}</strong>.
+                    Si lo guardas como borrador, deja de estar programado.
                 </div>
             @endif
 
@@ -305,6 +321,27 @@
                             <div class="card-body">
                                 <p class="card-title">Publicación</p>
 
+                                @if($comunicado->estado !== 'publicado')
+                                    {{-- Ahora o programado --}}
+                                    <div class="para-opciones compactas">
+                                        <label class="para-opcion">
+                                            <input type="radio" name="cuando" value="ahora" {{ $cuando === 'ahora' ? 'checked' : '' }}>
+                                            <div><strong>Ahora</strong></div>
+                                        </label>
+                                        <label class="para-opcion">
+                                            <input type="radio" name="cuando" value="programar" {{ $cuando === 'programar' ? 'checked' : '' }}>
+                                            <div><strong>⏰ Programar</strong></div>
+                                        </label>
+                                    </div>
+
+                                    <div class="field" id="campo-fecha" hidden>
+                                        <label class="label" for="publicar_en">Fecha y hora</label>
+                                        <input type="datetime-local" id="publicar_en" name="publicar_en" class="input"
+                                               value="{{ $fechaProgramada }}" min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}">
+                                        @error('publicar_en')<span class="hint" style="color:var(--rose);">⚠ {{ $message }}</span>@enderror
+                                    </div>
+                                @endif
+
                                 @if($comunicado->estado !== 'publicado' && $revisores->isNotEmpty())
                                     <label class="check">
                                         <input type="checkbox" id="necesita-revision" {{ $pideRevision ? 'checked' : '' }}>
@@ -329,7 +366,8 @@
                                 @endif
 
                                 <button type="submit" class="btn btn-primary" id="btn-publicar"
-                                        onclick="if (!confirm('Al publicarlo, lo verán sus destinatarios. ¿Continuar?')) return false; document.getElementById('accion').value = 'publicar';">
+                                        data-confirmar="Al publicarlo, lo verán sus destinatarios. ¿Continuar?"
+                                        onclick="if (!confirm(this.dataset.confirmar)) return false; document.getElementById('accion').value = 'publicar';">
                                     {{ $comunicado->estado === 'publicado' ? 'Guardar cambios' : 'Publicar ahora' }}
                                 </button>
 
@@ -339,7 +377,16 @@
                                         Guardar borrador
                                     </button>
                                 @endif
-                                <span class="hint">La programación por fecha llega en la siguiente fase.</span>
+
+                                <label class="check" style="padding:10px 12px;">
+                                    <input type="hidden" name="enviar_push" value="0">
+                                    <input type="checkbox" name="enviar_push" value="1" {{ old('enviar_push', $comunicado->enviar_push ?? true) ? 'checked' : '' }}>
+                                    <span style="font-size:13px;"><strong>🔔 Enviar notificación push</strong><br><span class="hint">A los destinatarios que tienen la app, al publicarse.</span></span>
+                                </label>
+
+                                @if($comunicado->estado === 'publicado' && $comunicado->publicado_en)
+                                    <span class="hint">Publicado el {{ $comunicado->publicado_en->locale('es')->isoFormat('D [de] MMMM [a las] H:mm') }}. La push ya se envió; los cambios no la repiten.</span>
+                                @endif
                             </div>
                         </div>
 
@@ -451,6 +498,29 @@
                 galeria.insertBefore(foto, galeria.lastElementChild);
             });
         });
+
+        // ── Ahora o programar: muestra la fecha y cambia el texto del botón ──
+        (() => {
+            const radios = document.querySelectorAll('input[name=cuando]');
+            if (!radios.length) return;
+
+            const campo    = document.getElementById('campo-fecha');
+            const fecha    = document.getElementById('publicar_en');
+            const publicar = document.getElementById('btn-publicar');
+
+            function aplicar() {
+                const programar = document.querySelector('input[name=cuando]:checked')?.value === 'programar';
+                campo.hidden = !programar;
+                fecha.required = programar;
+                publicar.textContent = programar ? '⏰ Programar publicación' : 'Publicar ahora';
+                publicar.dataset.confirmar = programar
+                    ? 'Se publicará solo en la fecha y hora elegidas. ¿Continuar?'
+                    : 'Al publicarlo, lo verán sus destinatarios. ¿Continuar?';
+            }
+
+            radios.forEach(r => r.addEventListener('change', aplicar));
+            aplicar();
+        })();
 
         // ── Necesita revisión: muestra el revisor y cambia "Publicar" por "Enviar a revisión" ──
         (() => {

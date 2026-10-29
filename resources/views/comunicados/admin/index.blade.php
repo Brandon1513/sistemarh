@@ -146,10 +146,10 @@
                         <span class="separador-tabs"></span>
                     @endif
 
-                    @foreach(['' => 'Todos', 'borrador' => 'Borradores', 'en_revision' => 'En revisión', 'devuelto' => 'Devueltos', 'publicado' => 'Publicados', 'archivado' => 'Archivados'] as $valor => $nombre)
+                    @foreach(['' => 'Todos', 'borrador' => 'Borradores', 'en_revision' => 'En revisión', 'devuelto' => 'Devueltos', 'programado' => 'Programados', 'publicado' => 'Publicados', 'archivado' => 'Archivados'] as $valor => $nombre)
                         @php $cuantos = $valor === '' ? $conteos->sum() : ($conteos[$valor] ?? 0); @endphp
-                        {{-- "En revisión" y "Devueltos" solo aparecen si hay alguno, para no llenar de pestañas vacías --}}
-                        @continue(in_array($valor, ['en_revision', 'devuelto']) && ! $cuantos && request('estado') !== $valor)
+                        {{-- Estas pestañas solo aparecen si hay alguno, para no llenar de pestañas vacías --}}
+                        @continue(in_array($valor, ['en_revision', 'devuelto', 'programado']) && ! $cuantos && request('estado') !== $valor)
                         <a href="{{ route('comunicados.admin.index', array_filter(['estado' => $valor ?: null, 'tipo' => request('tipo'), 'buscar' => request('buscar')])) }}"
                            class="tab {{ ! $viendoPorRevisar && (string) request('estado') === $valor ? 'active' : '' }}">
                             {{ $nombre }}
@@ -191,12 +191,16 @@
                                     <span style="color:var(--rose); font-weight:600;">↩ Con comentarios de {{ $c->revisor?->name ?? 'RH' }}</span>
                                 @endif
 
-                                @if($c->publicado_en)
+                                @if($c->estado === 'programado' && $c->publicar_en)
+                                    <span style="color:#2b4c9b; font-weight:600;">⏰ Se publica el {{ $c->publicar_en->locale('es')->isoFormat('D MMM, H:mm') }}</span>
+                                @elseif($c->publicado_en)
                                     <span>📅 {{ $c->publicado_en->locale('es')->isoFormat('D MMM YYYY, H:mm') }}</span>
                                 @else
                                     <span>Editado {{ $c->updated_at->locale('es')->diffForHumans() }}</span>
                                 @endif
+
                                 @if($c->imagenes_count)<span>🖼 {{ $c->imagenes_count }}</span>@endif
+                                @unless($c->enviar_push)<span title="Sin notificación push">🔕</span>@endunless
                             </div>
                         </div>
 
@@ -220,11 +224,11 @@
                                     {{ $c->estado === 'devuelto' ? 'Corregir' : 'Editar' }}
                                 </a>
 
-                                @if(in_array($c->estado, ['borrador', 'archivado']))
+                                @if(in_array($c->estado, ['borrador', 'archivado', 'programado']))
                                     <form method="POST" action="{{ route('comunicados.admin.publicar', $c) }}"
-                                          onsubmit="return confirm('¿Publicar «{{ addslashes($c->titulo) }}»? Lo verán sus destinatarios.')">
+                                          onsubmit="return confirm('{{ $c->estado === 'programado' ? '¿Publicar «' . addslashes($c->titulo) . '» ahora, antes de su hora?' : '¿Publicar «' . addslashes($c->titulo) . '»? Lo verán sus destinatarios.' }}')">
                                         @csrf
-                                        <button class="btn btn-green btn-sm">Publicar</button>
+                                        <button class="btn btn-green btn-sm">{{ $c->estado === 'programado' ? 'Publicar ya' : 'Publicar' }}</button>
                                     </form>
                                 @endif
 

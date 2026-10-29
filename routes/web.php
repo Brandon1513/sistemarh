@@ -13,6 +13,7 @@ use App\Http\Controllers\SolicitudPermisoController;
 use App\Http\Controllers\SolicitudVacacionController;
 use App\Models\CarruselImage;
 use App\Models\Noticia;
+use App\Http\Controllers\CronController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -254,5 +255,10 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
     Route::put('/dias-inhabiles/{diaInhabil}', [DiaInhabilController::class, 'update'])->name('dias_inhabiles.update');
     Route::delete('/dias-inhabiles/{diaInhabil}', [DiaInhabilController::class, 'destroy'])->name('dias_inhabiles.destroy');
 });
+
+// Despertador externo para las tareas programadas (no pide sesión; la protege la clave)
+Route::get('/cron/{token}', CronController::class)
+    ->middleware('throttle:10,1')
+    ->name('cron');
 
 require __DIR__.'/auth.php';

@@ -39,7 +39,9 @@ class ComunicadoRevision extends Notification
             'aprobado' => (new MailMessage)
                 ->subject("Tu comunicado fue aprobado: {$c->titulo}")
                 ->greeting("Hola, {$nombre}")
-                ->line(($c->revisor?->name ?? 'RH') . " aprobó tu comunicado y ya está publicado:")
+                ->line(($c->revisor?->name ?? 'RH') . ($c->estado === 'programado'
+                    ? ' aprobó tu comunicado. Se publicará el ' . $c->publicar_en->locale('es')->isoFormat('D [de] MMMM [a las] H:mm') . ':'
+                    : ' aprobó tu comunicado y ya está publicado:'))
                 ->line("**{$c->titulo}**")
                 ->action('Ver mis comunicados', route('comunicados.admin.index')),
 
