@@ -214,6 +214,10 @@ Route::middleware('auth')
         Route::post('/{comunicado}/publicar', 'publicar')->name('publicar');
         Route::post('/{comunicado}/archivar', 'archivar')->name('archivar');
         Route::delete('/{comunicado}', 'destroy')->name('destroy');
+        Route::get('/{comunicado}/revisar', 'revisar')->name('revisar');
+        Route::post('/{comunicado}/aprobar', 'aprobar')->name('aprobar');
+        Route::post('/{comunicado}/devolver', 'devolver')->name('devolver');
+        Route::post('/{comunicado}/retirar', 'retirar')->name('retirar');
     });
 
     /*
@@ -232,6 +236,7 @@ Route::middleware('auth')
             Route::post('/', 'store')->name('store');
             Route::get('/{grupo}/editar', 'edit')->name('edit');
             Route::put('/{grupo}', 'update')->name('update');
+            Route::patch('/{grupo}/toggle', 'toggle')->name('toggle');
             Route::delete('/{grupo}', 'destroy')->name('destroy');
         });
 

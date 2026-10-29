@@ -73,7 +73,15 @@ class GrupoController extends Controller
 
         return redirect()->route('grupos.index')->with('success', "Grupo «{$grupo->nombre}» actualizado.");
     }
+    
+    public function toggle(Grupo $grupo)
+    {
+        $grupo->update(['activo' => ! $grupo->activo]);
 
+        return back()->with('success', $grupo->activo
+            ? "«{$grupo->nombre}» está activo otra vez."
+            : "«{$grupo->nombre}» se inactivó: ya no aparece para comunicados nuevos, pero los que ya lo usan siguen funcionando.");
+    }
     public function destroy(Grupo $grupo)
     {
         // Si se borrara un grupo en uso, sus comunicados se quedarían sin destinatarios

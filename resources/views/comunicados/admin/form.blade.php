@@ -4,6 +4,10 @@
     $editando = $comunicado->exists;
     $tipo = old('tipo', $comunicado->tipo);
     $iconosTipo = ['noticia' => '📰', 'red_social' => '📱', 'aviso' => '📢'];
+
+    // "Necesita revisión" viene marcado si regresó con errores pidiendo revisión,
+    // o si se lo devolvieron (para reenviarlo al mismo revisor)
+    $pideRevision = old('accion') === 'revision' || (! old() && $comunicado->estado === 'devuelto');
 @endphp
 
 <x-app-layout>
@@ -34,6 +38,7 @@
         .card-body { padding:26px 28px; display:flex; flex-direction:column; gap:20px; }
         .card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--brand); }
         .field { display:flex; flex-direction:column; gap:5px; }
+        .field[hidden] { display:none; }
         .label { font-size:13px; font-weight:600; color:var(--brown); }
         .req { color:var(--rose); }
         .opt { font-size:11px; font-weight:400; color:var(--muted); background:#f0e6f5; border-radius:4px; padding:1px 7px; margin-left:4px; }
@@ -64,6 +69,7 @@
 
         .check { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border:1.5px solid var(--border); border-radius:9px; cursor:pointer; }
         .check input { width:18px; height:18px; margin-top:2px; accent-color:var(--brand); }
+        .check:has(input:checked) { border-color:var(--brand); background:var(--brand-light); }
 
         /* ── Destinatarios ── */
         .para-opciones { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -95,14 +101,17 @@
         .alcance strong { color:var(--brand); font-size:16px; }
 
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 20px; height:44px; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; border:none; text-decoration:none; width:100%; }
+        .btn[hidden] { display:none; }
         .btn-primary { background:var(--brand); color:#fff; }
         .btn-primary:hover { background:var(--brand-dark); }
+        .btn-gold { background:var(--gold); color:#fff; }
         .btn-outline { background:#fff; color:var(--brand); border:1.5px solid var(--brand-mid); }
         .btn-outline:hover { border-color:var(--brand); }
         .alert { padding:12px 16px; border-radius:10px; font-size:13.5px; margin-bottom:16px; }
         .alert-success { background:#e8f5ee; color:#1b6b38; border:1px solid #b3dfc3; }
         .alert-warning { background:#faf3e0; color:#7a5a12; border:1px solid #EED39B; }
         .alert-error { background:#fce8ee; color:#7a2039; border:1px solid #f0b3c3; }
+        .alert-devuelto { background:#fce8ee; color:#7a2039; border:1px solid #f0b3c3; border-left:4px solid var(--rose); }
     </style>
 
     <div class="py-10" style="background-image:url('{{ asset('images/background-pattern.png') }}'); min-height:calc(100vh - 64px);">
@@ -120,6 +129,15 @@
                     <ul style="margin:6px 0 0 18px; list-style:disc;">
                         @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
                     </ul>
+                </div>
+            @endif
+
+            {{-- Si se lo devolvieron, el comentario del revisor va hasta arriba --}}
+            @if($comunicado->estado === 'devuelto' && $comunicado->comentario_revision)
+                <div class="alert alert-devuelto">
+                    <strong>↩ {{ $comunicado->revisor?->name ?? 'RH' }} te lo devolvió con estos comentarios:</strong>
+                    <p style="margin-top:6px; white-space:pre-line;">{{ $comunicado->comentario_revision }}</p>
+                    <p style="margin-top:8px; font-size:12.5px;">Corrígelo y vuelve a enviarlo a revisión.</p>
                 </div>
             @endif
 
@@ -245,9 +263,10 @@
                                         @else
                                             <div class="chips-opciones">
                                                 @foreach($grupos as $grupo)
-                                                    <label class="chip-opcion">
+                                                    <label class="chip-opcion" @unless($grupo->activo) title="Este grupo está inactivo" @endunless>
                                                         <input type="checkbox" name="destinos[]" value="grupo:{{ $grupo->id }}" {{ in_array("grupo:{$grupo->id}", $elegidos) ? 'checked' : '' }}>
                                                         {{ $grupo->nombre }} <small>{{ $grupo->usuarios_count }}</small>
+                                                        @unless($grupo->activo)<small>· inactivo</small>@endunless
                                                     </label>
                                                 @endforeach
                                             </div>
@@ -285,17 +304,42 @@
                         <div class="card">
                             <div class="card-body">
                                 <p class="card-title">Publicación</p>
-                                <button type="submit" class="btn btn-primary"
+
+                                @if($comunicado->estado !== 'publicado' && $revisores->isNotEmpty())
+                                    <label class="check">
+                                        <input type="checkbox" id="necesita-revision" {{ $pideRevision ? 'checked' : '' }}>
+                                        <span style="font-size:13.5px;"><strong>🔎 Necesita revisión</strong><br><span class="hint">Una persona de RH lo revisa antes de publicarlo.</span></span>
+                                    </label>
+
+                                    <div class="field" id="campo-revisor" hidden>
+                                        <label class="label" for="revisor_id">¿Quién lo revisa?</label>
+                                        <select id="revisor_id" name="revisor_id" class="select">
+                                            <option value="">Elige a alguien de RH…</option>
+                                            @foreach($revisores as $revisor)
+                                                <option value="{{ $revisor->id }}" {{ (string) old('revisor_id', $comunicado->revisor_id) === (string) $revisor->id ? 'selected' : '' }}>{{ $revisor->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('revisor_id')<span class="hint" style="color:var(--rose);">⚠ {{ $message }}</span>@enderror
+                                    </div>
+
+                                    <button type="submit" class="btn btn-gold" id="btn-revision" hidden
+                                            onclick="document.getElementById('accion').value = 'revision';">
+                                        🔎 Enviar a revisión
+                                    </button>
+                                @endif
+
+                                <button type="submit" class="btn btn-primary" id="btn-publicar"
                                         onclick="if (!confirm('Al publicarlo, lo verán sus destinatarios. ¿Continuar?')) return false; document.getElementById('accion').value = 'publicar';">
                                     {{ $comunicado->estado === 'publicado' ? 'Guardar cambios' : 'Publicar ahora' }}
                                 </button>
+
                                 @if($comunicado->estado !== 'publicado')
                                     <button type="submit" class="btn btn-outline" formnovalidate
                                             onclick="document.getElementById('accion').value = 'borrador';">
                                         Guardar borrador
                                     </button>
                                 @endif
-                                <span class="hint">La programación por fecha y la revisión llegan en la siguiente fase.</span>
+                                <span class="hint">La programación por fecha llega en la siguiente fase.</span>
                             </div>
                         </div>
 
@@ -407,6 +451,28 @@
                 galeria.insertBefore(foto, galeria.lastElementChild);
             });
         });
+
+        // ── Necesita revisión: muestra el revisor y cambia "Publicar" por "Enviar a revisión" ──
+        (() => {
+            const casilla = document.getElementById('necesita-revision');
+            if (!casilla) return;
+
+            const campo    = document.getElementById('campo-revisor');
+            const revisor  = document.getElementById('revisor_id');
+            const revision = document.getElementById('btn-revision');
+            const publicar = document.getElementById('btn-publicar');
+
+            function aplicar() {
+                campo.hidden     = !casilla.checked;
+                revision.hidden  = !casilla.checked;
+                publicar.hidden  = casilla.checked;
+                revisor.required = casilla.checked;
+                if (!casilla.checked) revisor.value = '';
+            }
+
+            casilla.addEventListener('change', aplicar);
+            aplicar();
+        })();
 
         // ── Destinatarios: elegir, buscar personas y contar ──
         (() => {

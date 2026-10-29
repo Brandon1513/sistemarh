@@ -254,6 +254,10 @@
                    class="nav-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
                     <span style="font-size:14px;">📣</span>
                     Comunicados
+                    @php $pendientesRevision = \App\Models\Comunicado::where('estado', 'en_revision')->where('revisor_id', auth()->id())->count(); @endphp
+@if($pendientesRevision)
+    <span style="background:#D6A644; color:#473524; font-size:11px; font-weight:800; padding:1px 7px; border-radius:20px;">{{ $pendientesRevision }}</span>
+@endif
                 </a>
             @endif
 
@@ -462,6 +466,11 @@
                 @if(Auth::user()->hasAnyRole(['marketing', 'recursos_humanos', 'administrador']))
                     <a href="{{ route('comunicados.admin.index') }}" class="mob-link {{ request()->routeIs('comunicados.admin.*') ? 'active' : '' }}">
                         <span class="mob-icon">📣</span> Comunicados
+                        @php $pendientesRevision = \App\Models\Comunicado::where('estado', 'en_revision')->where('revisor_id', auth()->id())->count(); @endphp
+@if($pendientesRevision)
+    <span style="background:#D6A644; color:#473524; font-size:11px; font-weight:800; padding:1px 7px; border-radius:20px;">{{ $pendientesRevision }}</span>
+@endif
+                        
                     </a>
                 @endif
             </div>

@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Grupo extends Model
 {
-    protected $fillable = ['nombre', 'descripcion', 'creado_por'];
+    protected $fillable = ['nombre', 'descripcion', 'creado_por', 'activo'];
+
+    protected function casts(): array
+    {
+        return ['activo' => 'boolean'];
+    }
 
     public function usuarios()
     {

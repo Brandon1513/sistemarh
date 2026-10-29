@@ -26,17 +26,24 @@ class ComunicadoController extends Controller
     {
         Gate::authorize('viewAny', Comunicado::class);
 
-        // Cada quien solo ve los tipos que le tocan
-        $tipos = ComunicadoPolicy::tiposDe($request->user());
+        $usuario = $request->user();
+        $tipos = ComunicadoPolicy::tiposDe($usuario);
 
-        $query = Comunicado::with(['autor', 'destinos'])->withCount('imagenes')->whereIn('tipo', $tipos);
+        if ($request->input('estado') === 'por_revisar') {
+            // Los que este usuario tiene que revisar, sean del tipo que sean
+            $query = Comunicado::with(['autor', 'destinos'])->withCount('imagenes')
+                ->where('estado', 'en_revision')
+                ->where('revisor_id', $usuario->id);
+        } else {
+            $query = Comunicado::with(['autor', 'destinos', 'revisor'])->withCount('imagenes')->whereIn('tipo', $tipos);
 
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->input('estado'));
-        }
+            if ($request->filled('estado')) {
+                $query->where('estado', $request->input('estado'));
+            }
 
-        if ($request->filled('tipo') && in_array($request->input('tipo'), $tipos, true)) {
-            $query->where('tipo', $request->input('tipo'));
+            if ($request->filled('tipo') && in_array($request->input('tipo'), $tipos, true)) {
+                $query->where('tipo', $request->input('tipo'));
+            }
         }
 
         if ($request->filled('buscar')) {
@@ -50,7 +57,9 @@ class ComunicadoController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
-        return view('comunicados.admin.index', compact('comunicados', 'tipos', 'conteos'));
+        $porRevisar = Comunicado::where('estado', 'en_revision')->where('revisor_id', $usuario->id)->count();
+
+        return view('comunicados.admin.index', compact('comunicados', 'tipos', 'conteos', 'porRevisar'));
     }
 
     public function create(Request $request)
@@ -68,7 +77,7 @@ class ComunicadoController extends Controller
             'encabezado'     => $tipo === 'aviso' ? 'AVISO IMPORTANTE' : null,
         ]);
 
-        return view('comunicados.admin.form', ['comunicado' => $comunicado, 'tipos' => $tipos] + $this->datosFormulario($comunicado));
+        return view('comunicados.admin.form', ['comunicado' => $comunicado, 'tipos' => $tipos] + $this->datosFormulario($comunicado, $request->user()));
     }
 
     public function store(Request $request)
@@ -89,10 +98,10 @@ class ComunicadoController extends Controller
     {
         Gate::authorize('update', $comunicado);
 
-        $comunicado->load(['imagenes', 'destinos']);
+        $comunicado->load(['imagenes', 'destinos', 'revisor']);
         $tipos = ComunicadoPolicy::tiposDe($request->user());
 
-        return view('comunicados.admin.form', ['comunicado' => $comunicado, 'tipos' => $tipos] + $this->datosFormulario($comunicado));
+        return view('comunicados.admin.form', ['comunicado' => $comunicado, 'tipos' => $tipos] + $this->datosFormulario($comunicado, $request->user()));
     }
 
     public function update(Request $request, Comunicado $comunicado)
@@ -130,6 +139,56 @@ class ComunicadoController extends Controller
 
         return redirect()->route('comunicados.admin.index')->with('success', "«{$comunicado->titulo}» se eliminó.");
     }
+
+    // ─── Revisión ────────────────────────────────────────────────────────────
+
+    /** La vista previa para el revisor, con los botones de aprobar y devolver. */
+    public function revisar(Comunicado $comunicado)
+    {
+        Gate::authorize('review', $comunicado);
+
+        $comunicado->load(['imagenes', 'destinos', 'autor']);
+        $alcance = $comunicado->destinatarios()->count();
+
+        return view('comunicados.admin.revisar', compact('comunicado', 'alcance'));
+    }
+
+    public function aprobar(Comunicado $comunicado)
+    {
+        Gate::authorize('review', $comunicado);
+        $this->comunicados->aprobarRevision($comunicado);
+
+        return redirect()->route('comunicados.admin.index', ['estado' => 'por_revisar'])
+            ->with('success', "Aprobaste «{$comunicado->titulo}»: ya está publicado y le avisamos a su autor.");
+    }
+
+    public function devolver(Request $request, Comunicado $comunicado)
+    {
+        Gate::authorize('review', $comunicado);
+
+        $datos = $request->validate([
+            'comentario' => 'required|string|min:5|max:2000',
+        ], [
+            'comentario.required' => 'Escribe qué hay que corregir, para que el autor sepa qué cambiar.',
+            'comentario.min'      => 'Escribe un poco más de detalle de qué hay que corregir.',
+        ]);
+
+        $this->comunicados->devolver($comunicado, $datos['comentario']);
+
+        return redirect()->route('comunicados.admin.index', ['estado' => 'por_revisar'])
+            ->with('success', "Devolviste «{$comunicado->titulo}» a su autor con tus comentarios.");
+    }
+
+    public function retirar(Comunicado $comunicado)
+    {
+        Gate::authorize('retirar', $comunicado);
+        $this->comunicados->retirarRevision($comunicado);
+
+        return redirect()->route('comunicados.admin.edit', $comunicado)
+            ->with('success', 'Lo retiraste de la revisión; volvió a borrador y ya puedes editarlo.');
+    }
+
+    // ─── Apoyo al formulario ─────────────────────────────────────────────────
 
     /**
      * Búsqueda de personas para elegir destinatarios (por nombre, correo o clave de empleado).
@@ -170,7 +229,6 @@ class ComunicadoController extends Controller
             ? ComunicadosService::leerDestinos((array) $request->input('destinos', []))
             : [];
 
-        // Eligió "Elegir" pero todavía no marcó nada: nadie
         if ($request->input('para') === 'elegir' && $destinos === []) {
             return response()->json(['total' => 0]);
         }
@@ -179,9 +237,9 @@ class ComunicadoController extends Controller
     }
 
     /**
-     * Las listas para elegir destinatarios, y lo que ya tiene elegido el comunicado.
+     * Las listas para elegir destinatarios y revisor, y lo que ya tiene elegido el comunicado.
      */
-    private function datosFormulario(Comunicado $comunicado): array
+    private function datosFormulario(Comunicado $comunicado, User $usuario): array
     {
         $actuales = $comunicado->exists
             ? $comunicado->destinos->map(fn ($d) => "{$d->tipo}:{$d->destino_id}")->all()
@@ -194,10 +252,18 @@ class ComunicadoController extends Controller
             ->filter(fn ($v) => str_starts_with((string) $v, 'usuario:'))
             ->map(fn ($v) => (int) substr($v, 8));
 
+        $idsGrupos = collect($elegidos)
+            ->filter(fn ($v) => str_starts_with((string) $v, 'grupo:'))
+            ->map(fn ($v) => (int) substr($v, 6));
+
         return [
             'sedes'         => Sede::orderBy('nombre')->get(['id', 'nombre']),
             'departamentos' => Department::orderBy('name')->get(['id', 'name']),
-            'grupos'        => Grupo::withCount('usuarios')->orderBy('nombre')->get(),
+            // Los grupos activos, más los inactivos que este comunicado ya tenía elegidos
+            'grupos'        => Grupo::withCount('usuarios')
+                ->where(fn ($q) => $q->where('activo', true)->orWhereIn('id', $idsGrupos))
+                ->orderBy('nombre')
+                ->get(),
             'elegidos'      => $elegidos,
             'para'          => old('para', $actuales ? 'elegir' : 'todos'),
             'personas'      => User::with('sede')->whereIn('id', $idsPersonas)->orderBy('name')->get()
@@ -206,12 +272,13 @@ class ComunicadoController extends Controller
                     'nombre'  => $u->name,
                     'detalle' => collect([$u->puesto_empleado, $u->sede?->nombre])->filter()->implode(' · '),
                 ]),
+            'revisores'     => ComunicadosService::revisoresPara($usuario),
         ];
     }
 
     private function reglas(Request $request): array
     {
-        $publicando = $request->input('accion') === 'publicar';
+        $publicando = in_array($request->input('accion'), ['publicar', 'revision'], true);
         $tipo = $request->input('tipo');
 
         return [
@@ -219,7 +286,7 @@ class ComunicadoController extends Controller
             'categoria'        => ['nullable', Rule::in(array_keys(Comunicado::CATEGORIAS_AVISO))],
             'titulo'           => 'required|string|max:255',
             'resumen'          => 'nullable|string|max:300',
-            // Para publicar hace falta contenido, salvo en redes sociales, que se apoyan en su liga
+            // Para publicar o mandar a revisión hace falta contenido, salvo en redes sociales
             'contenido'        => [Rule::requiredIf($publicando && $tipo !== 'red_social'), 'nullable', 'string', 'max:20000'],
             'enlace'           => [Rule::requiredIf($tipo === 'red_social'), 'nullable', 'url', 'max:255'],
             'firma'            => 'nullable|string|max:100',
@@ -236,25 +303,30 @@ class ComunicadoController extends Controller
             'para'             => 'required|in:todos,elegir',
             'destinos'         => 'required_if:para,elegir|array',
             'destinos.*'       => ['string', 'regex:/^(sede|departamento|grupo|usuario):\d+$/'],
-            'accion'           => 'required|in:borrador,publicar',
+            'revisor_id'       => 'required_if:accion,revision|nullable|integer',
+            'accion'           => 'required|in:borrador,publicar,revision',
         ];
     }
 
     private function mensajes(): array
     {
         return [
-            'destinos.required_if' => 'Elige al menos un destinatario, o marca "Para todos".',
+            'destinos.required_if'   => 'Elige al menos un destinatario, o marca "Para todos".',
+            'revisor_id.required_if' => 'Elige quién de Recursos Humanos lo va a revisar.',
         ];
     }
 
     private function despuesDeGuardar(Comunicado $comunicado, string $accion)
     {
-        if ($accion === 'publicar') {
-            return redirect()->route('comunicados.admin.index')
-                ->with('success', "«{$comunicado->titulo}» ya está publicado.");
-        }
+        return match ($accion) {
+            'publicar' => redirect()->route('comunicados.admin.index')
+                ->with('success', "«{$comunicado->titulo}» ya está publicado."),
 
-        return redirect()->route('comunicados.admin.edit', $comunicado)
-            ->with('success', 'Borrador guardado. Puedes seguir editándolo o publicarlo cuando esté listo.');
+            'revision' => redirect()->route('comunicados.admin.index')
+                ->with('success', "«{$comunicado->titulo}» se envió a revisión con {$comunicado->fresh('revisor')->revisor?->name}. Te avisaremos por correo."),
+
+            default => redirect()->route('comunicados.admin.edit', $comunicado)
+                ->with('success', 'Borrador guardado. Puedes seguir editándolo o publicarlo cuando esté listo.'),
+        };
     }
 }

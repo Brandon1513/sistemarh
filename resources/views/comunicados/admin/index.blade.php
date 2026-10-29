@@ -10,6 +10,7 @@
         'archivado'   => ['#f0ecf3', '#7a6682'],
     ];
     $iconosTipo = ['noticia' => '📰', 'red_social' => '📱', 'aviso' => '📢', 'cumpleanos' => '🎂'];
+    $viendoPorRevisar = request('estado') === 'por_revisar';
 @endphp
 
 <x-app-layout>
@@ -50,6 +51,10 @@
         .tab:hover { color:var(--brand); }
         .tab.active { color:var(--brand); border-bottom-color:var(--brand); }
         .tab .n { margin-left:5px; font-size:11px; background:var(--brand-light); color:var(--brand); padding:1px 7px; border-radius:20px; }
+        .tab-revisar { color:#8a6a1f; }
+        .tab-revisar .n { background:var(--gold); color:var(--brown); }
+        .tab-revisar.active { color:#8a6a1f; border-bottom-color:var(--gold); }
+        .separador-tabs { width:1px; background:var(--border); margin:10px 6px; }
 
         .fila { display:grid; grid-template-columns:72px minmax(0,1fr) auto; gap:16px; align-items:center; padding:14px 24px; border-bottom:1px solid #f0e6f5; }
         .fila:last-child { border-bottom:none; }
@@ -67,7 +72,10 @@
         .nuevo-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; font-size:13.5px; font-weight:500; color:var(--text); text-decoration:none; }
         .nuevo-item:hover { background:var(--brand-light); color:var(--brand); }
 
-        .alert-success { padding:12px 16px; border-radius:10px; font-size:13.5px; margin-bottom:16px; background:#e8f5ee; color:#1b6b38; border:1px solid #b3dfc3; }
+        .alert { padding:12px 16px; border-radius:10px; font-size:13.5px; margin-bottom:16px; }
+        .alert-success { background:#e8f5ee; color:#1b6b38; border:1px solid #b3dfc3; }
+        .alert-warning { background:#faf3e0; color:#7a5a12; border:1px solid #EED39B; }
+        .aviso-revision { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 18px; border-radius:12px; margin-bottom:16px; background:var(--gold-pale); border:1px solid var(--gold-light); color:#7a5a12; font-size:14px; }
         .vacio { text-align:center; padding:56px 24px; color:var(--muted); }
     </style>
 
@@ -75,7 +83,18 @@
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
 
             @if(session('success'))
-                <div class="alert-success">✓ {{ session('success') }}</div>
+                <div class="alert alert-success">✓ {{ session('success') }}</div>
+            @endif
+            @if(session('warning'))
+                <div class="alert alert-warning">⚠ {{ session('warning') }}</div>
+            @endif
+
+            {{-- Recordatorio para el revisor, si tiene pendientes y no está viendo esa pestaña --}}
+            @if($porRevisar > 0 && ! $viendoPorRevisar)
+                <div class="aviso-revision">
+                    <span>🔎 Tienes <strong>{{ $porRevisar }}</strong> {{ $porRevisar === 1 ? 'comunicado' : 'comunicados' }} esperando tu revisión.</span>
+                    <a href="{{ route('comunicados.admin.index', ['estado' => 'por_revisar']) }}" class="btn btn-gold btn-sm">Revisar ahora</a>
+                </div>
             @endif
 
             <div class="card">
@@ -87,7 +106,7 @@
                             <label class="f-label" for="buscar">Buscar</label>
                             <input id="buscar" name="buscar" class="f-input" value="{{ request('buscar') }}" placeholder="Título...">
                         </div>
-                        @if(count($tipos) > 1)
+                        @if(count($tipos) > 1 && ! $viendoPorRevisar)
                             <div>
                                 <label class="f-label" for="tipo">Tipo</label>
                                 <select id="tipo" name="tipo" class="f-input" onchange="this.form.submit()">
@@ -119,11 +138,22 @@
 
                 {{-- Pestañas por estado --}}
                 <nav class="tabs">
-                    @foreach(['' => 'Todos', 'borrador' => 'Borradores', 'publicado' => 'Publicados', 'archivado' => 'Archivados'] as $valor => $nombre)
-                        <a href="{{ request()->fullUrlWithQuery(['estado' => $valor ?: null, 'page' => null]) }}"
-                           class="tab {{ (string) request('estado') === $valor ? 'active' : '' }}">
+                    @if($porRevisar > 0 || $viendoPorRevisar)
+                        <a href="{{ route('comunicados.admin.index', ['estado' => 'por_revisar']) }}"
+                           class="tab tab-revisar {{ $viendoPorRevisar ? 'active' : '' }}">
+                            🔎 Por revisar <span class="n">{{ $porRevisar }}</span>
+                        </a>
+                        <span class="separador-tabs"></span>
+                    @endif
+
+                    @foreach(['' => 'Todos', 'borrador' => 'Borradores', 'en_revision' => 'En revisión', 'devuelto' => 'Devueltos', 'publicado' => 'Publicados', 'archivado' => 'Archivados'] as $valor => $nombre)
+                        @php $cuantos = $valor === '' ? $conteos->sum() : ($conteos[$valor] ?? 0); @endphp
+                        {{-- "En revisión" y "Devueltos" solo aparecen si hay alguno, para no llenar de pestañas vacías --}}
+                        @continue(in_array($valor, ['en_revision', 'devuelto']) && ! $cuantos && request('estado') !== $valor)
+                        <a href="{{ route('comunicados.admin.index', array_filter(['estado' => $valor ?: null, 'tipo' => request('tipo'), 'buscar' => request('buscar')])) }}"
+                           class="tab {{ ! $viendoPorRevisar && (string) request('estado') === $valor ? 'active' : '' }}">
                             {{ $nombre }}
-                            <span class="n">{{ $valor === '' ? $conteos->sum() : ($conteos[$valor] ?? 0) }}</span>
+                            <span class="n">{{ $cuantos }}</span>
                         </a>
                     @endforeach
                 </nav>
@@ -147,7 +177,20 @@
                                 <span class="chip" style="background:{{ $fondo }}; color:{{ $color }};">{{ $c->estado_nombre }}</span>
                                 <span>{{ $iconosTipo[$c->tipo] ?? '' }} {{ $c->tipo_nombre }}@if($c->categoria) · {{ Comunicado::CATEGORIAS_AVISO[$c->categoria] ?? $c->categoria }}@endif</span>
                                 <span title="Destinatarios">👥 {{ $c->etiqueta_destinos }}</span>
-                                <span>✍ {{ $c->firma ?: 'Sin firma' }}</span>
+
+                                @if($viendoPorRevisar)
+                                    <span>✍ Lo escribió {{ $c->autor?->name ?? '—' }}</span>
+                                @else
+                                    <span>✍ {{ $c->firma ?: 'Sin firma' }}</span>
+                                @endif
+
+                                @if($c->estado === 'en_revision' && ! $viendoPorRevisar)
+                                    <span>🔎 Con {{ $c->revisor?->name ?? 'RH' }}</span>
+                                @endif
+                                @if($c->estado === 'devuelto')
+                                    <span style="color:var(--rose); font-weight:600;">↩ Con comentarios de {{ $c->revisor?->name ?? 'RH' }}</span>
+                                @endif
+
                                 @if($c->publicado_en)
                                     <span>📅 {{ $c->publicado_en->locale('es')->isoFormat('D MMM YYYY, H:mm') }}</span>
                                 @else
@@ -158,12 +201,28 @@
                         </div>
 
                         <div class="acciones">
-                            @can('update', $c)
-                                <a href="{{ route('comunicados.admin.edit', $c) }}" class="btn btn-gold btn-sm">Editar</a>
+                            {{-- El revisor: revisar --}}
+                            @can('review', $c)
+                                <a href="{{ route('comunicados.admin.revisar', $c) }}" class="btn btn-gold btn-sm">🔎 Revisar</a>
+                            @endcan
 
-                                @if(in_array($c->estado, ['borrador', 'devuelto', 'archivado']))
+                            {{-- El autor, mientras está en revisión: retirarlo --}}
+                            @can('retirar', $c)
+                                <form method="POST" action="{{ route('comunicados.admin.retirar', $c) }}"
+                                      onsubmit="return confirm('¿Retirar «{{ addslashes($c->titulo) }}» de la revisión? Regresa a borrador.')">
+                                    @csrf
+                                    <button class="btn btn-gray btn-sm">Retirar de revisión</button>
+                                </form>
+                            @endcan
+
+                            @can('update', $c)
+                                <a href="{{ route('comunicados.admin.edit', $c) }}" class="btn btn-gold btn-sm">
+                                    {{ $c->estado === 'devuelto' ? 'Corregir' : 'Editar' }}
+                                </a>
+
+                                @if(in_array($c->estado, ['borrador', 'archivado']))
                                     <form method="POST" action="{{ route('comunicados.admin.publicar', $c) }}"
-                                          onsubmit="return confirm('¿Publicar «{{ addslashes($c->titulo) }}»? Lo verán todos los empleados.')">
+                                          onsubmit="return confirm('¿Publicar «{{ addslashes($c->titulo) }}»? Lo verán sus destinatarios.')">
                                         @csrf
                                         <button class="btn btn-green btn-sm">Publicar</button>
                                     </form>
@@ -179,20 +238,28 @@
                             @endcan
 
                             @can('delete', $c)
-                                <form method="POST" action="{{ route('comunicados.admin.destroy', $c) }}"
-                                      onsubmit="return confirm('¿Eliminar «{{ addslashes($c->titulo) }}»?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-rose btn-sm">Eliminar</button>
-                                </form>
+                                @if($c->estado !== 'en_revision')
+                                    <form method="POST" action="{{ route('comunicados.admin.destroy', $c) }}"
+                                          onsubmit="return confirm('¿Eliminar «{{ addslashes($c->titulo) }}»?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-rose btn-sm">Eliminar</button>
+                                    </form>
+                                @endif
                             @endcan
                         </div>
                     </div>
                 @empty
                     <div class="vacio">
-                        <div style="font-size:40px; margin-bottom:8px;">📭</div>
-                        <p style="font-weight:700; color:var(--text);">No hay comunicados aquí</p>
-                        <p style="font-size:13px;">Cambia el filtro o crea uno nuevo.</p>
+                        @if($viendoPorRevisar)
+                            <div style="font-size:40px; margin-bottom:8px;">✅</div>
+                            <p style="font-weight:700; color:var(--text);">No tienes nada por revisar</p>
+                            <p style="font-size:13px;">Cuando alguien te pida revisar un comunicado, aparecerá aquí y te llegará un correo.</p>
+                        @else
+                            <div style="font-size:40px; margin-bottom:8px;">📭</div>
+                            <p style="font-weight:700; color:var(--text);">No hay comunicados aquí</p>
+                            <p style="font-size:13px;">Cambia el filtro o crea uno nuevo.</p>
+                        @endif
                     </div>
                 @endforelse
 

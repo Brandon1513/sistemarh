@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Models\Comunicado;
+use App\Models\User;
+use App\Notifications\ComunicadoRevision;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ComunicadosService
 {
@@ -32,8 +36,15 @@ class ComunicadosService
             ->all();
     }
 
+    /** Las personas de RH que pueden revisar (todas, menos quien pide la revisión). */
+    public static function revisoresPara(User $autor)
+    {
+        return User::role('recursos_humanos')->where('id', '!=', $autor->id)->orderBy('name')->get(['id', 'name']);
+    }
+
     /**
-     * Crea o actualiza un comunicado con sus imágenes y destinatarios. Si $datos['accion'] es "publicar", lo publica.
+     * Crea o actualiza un comunicado con sus imágenes y destinatarios.
+     * $datos['accion']: "borrador", "publicar" o "revision".
      */
     public function guardar(Comunicado $comunicado, array $datos, Request $request): Comunicado
     {
@@ -110,7 +121,9 @@ class ComunicadosService
                 ]);
             }
 
-            if ($datos['accion'] === 'publicar' && $comunicado->estado !== 'publicado') {
+            if ($datos['accion'] === 'revision') {
+                $this->enviarARevision($comunicado, (int) $datos['revisor_id'], $request->user());
+            } elseif ($datos['accion'] === 'publicar' && $comunicado->estado !== 'publicado') {
                 $this->publicar($comunicado);
             }
 
@@ -135,6 +148,74 @@ class ComunicadosService
     public function archivar(Comunicado $comunicado): void
     {
         $comunicado->update(['estado' => 'archivado', 'fijado' => false]);
+    }
+
+    // ─── Revisión ────────────────────────────────────────────────────────────
+
+    /**
+     * Lo pone en revisión con una persona de RH y le avisa por correo.
+     */
+    public function enviarARevision(Comunicado $comunicado, int $revisorId, User $autor): void
+    {
+        $revisor = self::revisoresPara($autor)->firstWhere('id', $revisorId);
+
+        if (! $revisor) {
+            throw ValidationException::withMessages([
+                'revisor_id' => 'Elige a una persona de Recursos Humanos para revisarlo (no puedes ser tú).',
+            ]);
+        }
+
+        $comunicado->update([
+            'estado'              => 'en_revision',
+            'revisor_id'          => $revisor->id,
+            'comentario_revision' => null,
+            'revisado_en'         => null,
+        ]);
+
+        $this->avisar(User::find($revisor->id), $comunicado, 'pendiente');
+    }
+
+    /** El revisor lo aprueba: se publica y se le avisa al autor. */
+    public function aprobarRevision(Comunicado $comunicado): void
+    {
+        $comunicado->update(['revisado_en' => now(), 'comentario_revision' => null]);
+        $this->publicar($comunicado);
+
+        $this->avisar($comunicado->autor, $comunicado->fresh(['revisor']), 'aprobado');
+    }
+
+    /** El revisor lo devuelve con un comentario: regresa al autor para corregirlo. */
+    public function devolver(Comunicado $comunicado, string $comentario): void
+    {
+        $comunicado->update([
+            'estado'              => 'devuelto',
+            'comentario_revision' => $comentario,
+            'revisado_en'         => now(),
+        ]);
+
+        $this->avisar($comunicado->autor, $comunicado->fresh(['revisor']), 'devuelto');
+    }
+
+    /** El autor lo retira de la revisión: regresa a borrador. */
+    public function retirarRevision(Comunicado $comunicado): void
+    {
+        $comunicado->update(['estado' => 'borrador', 'revisor_id' => null]);
+    }
+
+    /**
+     * Los correos de la revisión nunca deben romper el flujo: si fallan, queda en el log.
+     */
+    private function avisar(?User $persona, Comunicado $comunicado, string $motivo): void
+    {
+        if (! $persona) {
+            return;
+        }
+
+        try {
+            $persona->notify(new \App\Notifications\ComunicadoRevision($comunicado->loadMissing(['autor', 'revisor']), $motivo));
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo enviar el correo de revisión', ['comunicado' => $comunicado->id, 'error' => $e->getMessage()]);
+        }
     }
 
     private function borrarArchivo(string $ruta): void

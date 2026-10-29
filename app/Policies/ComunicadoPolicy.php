@@ -63,4 +63,10 @@ class ComunicadoPolicy
             && $comunicado->estado === 'en_revision'
             && $comunicado->revisor_id === $user->id;
     }
+    /** Retirar de la revisión: quien administra ese tipo, mientras siga en revisión. */
+    public function retirar(User $user, Comunicado $comunicado): bool
+    {
+        return in_array($comunicado->tipo, self::tiposDe($user), true)
+            && $comunicado->estado === 'en_revision';
+    }
 }
