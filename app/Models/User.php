@@ -20,13 +20,16 @@ class User extends Authenticatable
         'password',
         'activo',
         'supervisor_id',
-        'clave_empleado',   
-        'fecha_ingreso',    
-        'puesto_empleado',  
+        'clave_empleado',
+        'fecha_ingreso',
+        'puesto_empleado',
         'departamento_id',
-        'foto_perfil',      
+        'foto_perfil',
         'sede_id',
-        'fecha_nacimiento', 'turno', 'foto_oficial', 'incluir_celebraciones',
+        'fecha_nacimiento',
+        'turno',
+        'foto_oficial',
+        'incluir_celebraciones',
 
     ];
 
@@ -55,12 +58,12 @@ class User extends Authenticatable
 
     // Conversión de fechas a objetos Carbon
     protected $dates = [
-        'fecha_ingreso',   
+        'fecha_ingreso',
     ];
 
     public const TURNOS = [
-    'diurno'   => 'Turno diurno',
-    'nocturno' => 'Turno nocturno',
+        'diurno'   => 'Turno diurno',
+        'nocturno' => 'Turno nocturno',
     ];
 
     public function getFotoOficialUrlAttribute(): ?string
@@ -77,10 +80,10 @@ class User extends Authenticatable
         return $query->where('incluir_celebraciones', true)
             ->whereNotNull('fecha_nacimiento')
             ->where(function ($w) use ($dia) {
-                $w->where(fn ($x) => $x->whereMonth('fecha_nacimiento', $dia->month)->whereDay('fecha_nacimiento', $dia->day));
+                $w->where(fn($x) => $x->whereMonth('fecha_nacimiento', $dia->month)->whereDay('fecha_nacimiento', $dia->day));
 
                 if ($dia->month === 2 && $dia->day === 28 && ! $dia->isLeapYear()) {
-                    $w->orWhere(fn ($x) => $x->whereMonth('fecha_nacimiento', 2)->whereDay('fecha_nacimiento', 29));
+                    $w->orWhere(fn($x) => $x->whereMonth('fecha_nacimiento', 2)->whereDay('fecha_nacimiento', 29));
                 }
             });
     }
@@ -94,10 +97,10 @@ class User extends Authenticatable
             ->whereNotNull('fecha_ingreso')
             ->whereYear('fecha_ingreso', '<', $dia->year)
             ->where(function ($w) use ($dia) {
-                $w->where(fn ($x) => $x->whereMonth('fecha_ingreso', $dia->month)->whereDay('fecha_ingreso', $dia->day));
+                $w->where(fn($x) => $x->whereMonth('fecha_ingreso', $dia->month)->whereDay('fecha_ingreso', $dia->day));
 
                 if ($dia->month === 2 && $dia->day === 28 && ! $dia->isLeapYear()) {
-                    $w->orWhere(fn ($x) => $x->whereMonth('fecha_ingreso', 2)->whereDay('fecha_ingreso', 29));
+                    $w->orWhere(fn($x) => $x->whereMonth('fecha_ingreso', 2)->whereDay('fecha_ingreso', 29));
                 }
             });
     }
@@ -105,9 +108,10 @@ class User extends Authenticatable
     /** Cuántos años cumple en la empresa ese día. */
     public function aniosEnLaEmpresa(\Illuminate\Support\Carbon $dia): int
     {
-        return $this->fecha_ingreso ? $this->fecha_ingreso->diffInYears($dia->copy()->endOfDay()) : 0;
+        return $this->fecha_ingreso
+            ? (int) floor($this->fecha_ingreso->diffInYears($dia->copy()->endOfDay()))
+            : 0;
     }
-
     // Relación con el supervisor del usuario
     public function supervisor()
     {
@@ -140,7 +144,7 @@ class User extends Authenticatable
     // En el modelo User
     public function departamento()
     {
-    return $this->belongsTo(Department::class);
+        return $this->belongsTo(Department::class);
     }
     public function vacaciones()
     {
@@ -163,5 +167,4 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Grupo::class, 'grupo_usuario');
     }
-
 }
