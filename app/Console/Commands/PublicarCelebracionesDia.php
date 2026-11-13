@@ -15,6 +15,11 @@ class PublicarCelebracionesDia extends Command
 
     public function handle(CelebracionesService $celebraciones): int
     {
+        if (! config('celebraciones.activas')) {
+            $this->warn('Las celebraciones automáticas están apagadas (CELEBRACIONES_ACTIVAS=false). No se publicó nada.');
+
+            return self::SUCCESS;
+        }
         $dia = $this->option('fecha') ? Carbon::parse($this->option('fecha'))->startOfDay() : today();
 
         $archivadas = $celebraciones->archivarAnteriores($dia);

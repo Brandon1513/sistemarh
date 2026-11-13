@@ -14,6 +14,11 @@ class PublicarCumpleanerosMes extends Command
 
     public function handle(CelebracionesService $celebraciones): int
     {
+        if (! config('celebraciones.activas')) {
+            $this->warn('Las celebraciones automáticas están apagadas (CELEBRACIONES_ACTIVAS=false). No se publicó nada.');
+
+            return self::SUCCESS;
+        }
         $mes = $this->option('mes') ? Carbon::parse($this->option('mes') . '-01') : today();
 
         $comunicado = $celebraciones->publicarListaMes($mes, (bool) $this->option('forzar'));

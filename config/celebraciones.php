@@ -8,6 +8,9 @@
  */
 
 return [
+    // Interruptor general de las celebraciones automáticas (cumpleaños, aniversarios y lista del mes).
+// Apagado: los comandos de las 7:00 no publican nada. La invitación al festejo funciona igual.
+'activas' => (bool) env('CELEBRACIONES_ACTIVAS', false),
 
     'colores' => [
         'morado' => '#6A2C75',
