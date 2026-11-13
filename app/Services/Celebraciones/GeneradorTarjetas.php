@@ -101,9 +101,7 @@ class GeneradorTarjetas
 
         // Se dibuja al tamaño del fondo de marketing y al final se achica, para que pese poco en el correo
         if (! empty($p['salida_ancho']) && imagesx($img) > $p['salida_ancho']) {
-            $chica = imagescale($img, $p['salida_ancho'], -1, IMG_BICUBIC);
-            imagedestroy($img);
-            $img = $chica;
+            $img = $this->achicar($img, $p['salida_ancho']);
         }
 
         ob_start();
@@ -410,6 +408,21 @@ class GeneradorTarjetas
         $b = imagettfbbox($tamano, 0, $fuente, $texto);
 
         return abs($b[2] - $b[0]);
+    }
+
+    /**
+     * Achica la imagen a ese ancho, sin deformarla. Se usa imagecopyresampled y no imagescale,
+     * porque algunas versiones de GD (como la del servidor) no soportan todos los modos de imagescale.
+     */
+    private function achicar(\GdImage $img, int $ancho): \GdImage
+    {
+        $alto = (int) round(imagesy($img) * $ancho / imagesx($img));
+
+        $chica = imagecreatetruecolor($ancho, $alto);
+        imagecopyresampled($chica, $img, 0, 0, 0, 0, $ancho, $alto, imagesx($img), imagesy($img));
+        imagedestroy($img);
+
+        return $chica;
     }
 
     /** Un color por nombre (de la config) o en #RRGGBB. $alfa: 0 opaco … 127 transparente. */
