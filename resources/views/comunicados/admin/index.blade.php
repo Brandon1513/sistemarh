@@ -9,8 +9,11 @@
         'publicado'   => ['#e6f4ec', '#1b6b38'],
         'archivado'   => ['#f0ecf3', '#7a6682'],
     ];
-    $iconosTipo = ['noticia' => '📰', 'red_social' => '📱', 'aviso' => '📢', 'cumpleanos' => '🎂'];
+    $iconosTipo = ['noticia' => '📰', 'red_social' => '📱', 'aviso' => '📢', 'cumpleanos' => '🎂', 'aniversario' => '🏅'];
     $viendoPorRevisar = request('estado') === 'por_revisar';
+
+    // Los tipos que se pueden crear a mano (las celebraciones las genera el sistema)
+    $creables = array_values(array_diff($tipos, ['cumpleanos', 'aniversario']));
 @endphp
 
 <x-app-layout>
@@ -45,6 +48,7 @@
         .btn-green { background:#2d7a4f; color:#fff; }
         .btn-gray { background:#f0ecf3; color:var(--muted); }
         .btn-rose { background:var(--rose); color:#fff; }
+        .botones-nuevo { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
 
         .tabs { display:flex; gap:4px; padding:0 24px; border-bottom:1px solid var(--border); overflow-x:auto; }
         .tab { padding:12px 14px; font-size:13px; font-weight:600; color:var(--muted); text-decoration:none; border-bottom:2.5px solid transparent; white-space:nowrap; }
@@ -98,7 +102,7 @@
             @endif
 
             <div class="card">
-                {{-- Filtros y botón de nuevo --}}
+                {{-- Filtros y botones de nuevo --}}
                 <form method="GET" class="toolbar">
                     <input type="hidden" name="estado" value="{{ request('estado') }}">
                     <div class="filtros">
@@ -120,17 +124,25 @@
                         <button type="submit" class="btn btn-outline">Filtrar</button>
                     </div>
 
-                    <div class="nuevo-menu" id="nuevoMenu">
-                        @if(count($tipos) === 1)
-                            <a href="{{ route('comunicados.admin.create', ['tipo' => $tipos[0]]) }}" class="btn btn-primary">＋ Nuevo {{ Str::lower(Comunicado::TIPOS[$tipos[0]]) }}</a>
-                        @else
-                            <button type="button" class="btn btn-primary" onclick="this.parentElement.classList.toggle('open')">＋ Nuevo comunicado ▾</button>
-                            <div class="nuevo-panel">
-                                @foreach($tipos as $t)
-                                    <a href="{{ route('comunicados.admin.create', ['tipo' => $t]) }}" class="nuevo-item">
-                                        <span>{{ $iconosTipo[$t] }}</span> {{ Comunicado::TIPOS[$t] }}
-                                    </a>
-                                @endforeach
+                    <div class="botones-nuevo">
+                        @if(auth()->user()->hasAnyRole(['recursos_humanos', 'administrador']))
+                            <a href="{{ route('festejos.create') }}" class="btn btn-gold">🎉 Invitación al festejo</a>
+                        @endif
+
+                        @if(count($creables) > 0)
+                            <div class="nuevo-menu" id="nuevoMenu">
+                                @if(count($creables) === 1)
+                                    <a href="{{ route('comunicados.admin.create', ['tipo' => $creables[0]]) }}" class="btn btn-primary">＋ Nuevo {{ Str::lower(Comunicado::TIPOS[$creables[0]]) }}</a>
+                                @else
+                                    <button type="button" class="btn btn-primary" onclick="this.parentElement.classList.toggle('open')">＋ Nuevo comunicado ▾</button>
+                                    <div class="nuevo-panel">
+                                        @foreach($creables as $t)
+                                            <a href="{{ route('comunicados.admin.create', ['tipo' => $t]) }}" class="nuevo-item">
+                                                <span>{{ $iconosTipo[$t] }}</span> {{ Comunicado::TIPOS[$t] }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>
@@ -176,6 +188,7 @@
                             <div class="meta">
                                 <span class="chip" style="background:{{ $fondo }}; color:{{ $color }};">{{ $c->estado_nombre }}</span>
                                 <span>{{ $iconosTipo[$c->tipo] ?? '' }} {{ $c->tipo_nombre }}@if($c->categoria) · {{ Comunicado::CATEGORIAS_AVISO[$c->categoria] ?? $c->categoria }}@endif</span>
+                                @if($c->celebracion)<span title="La generó el sistema">⚙ Automática</span>@endif
                                 <span title="Destinatarios">👥 {{ $c->etiqueta_destinos }}</span>
 
                                 @if($viendoPorRevisar)
@@ -200,6 +213,14 @@
                                 @endif
 
                                 @if($c->imagenes_count)<span>🖼 {{ $c->imagenes_count }}</span>@endif
+
+                                @if($c->estado === 'publicado')
+                                    @php $alcanceFila = $c->destinatarios()->count(); @endphp
+                                    <a href="{{ route('comunicados.admin.lecturas', $c) }}" title="Ver quién lo leyó"
+                                       style="color:var(--brand); font-weight:700; text-decoration:none;">
+                                        👁 {{ $c->lecturas_count }} de {{ $alcanceFila }}
+                                    </a>
+                                @endif
                                 @unless($c->enviar_push)<span title="Sin notificación push">🔕</span>@endunless
                             </div>
                         </div>
@@ -220,9 +241,12 @@
                             @endcan
 
                             @can('update', $c)
-                                <a href="{{ route('comunicados.admin.edit', $c) }}" class="btn btn-gold btn-sm">
-                                    {{ $c->estado === 'devuelto' ? 'Corregir' : 'Editar' }}
-                                </a>
+                                {{-- Las celebraciones las genera el sistema: no se editan con el formulario --}}
+                                @if(! $c->celebracion)
+                                    <a href="{{ route('comunicados.admin.edit', $c) }}" class="btn btn-gold btn-sm">
+                                        {{ $c->estado === 'devuelto' ? 'Corregir' : 'Editar' }}
+                                    </a>
+                                @endif
 
                                 @if(in_array($c->estado, ['borrador', 'archivado', 'programado']))
                                     <form method="POST" action="{{ route('comunicados.admin.publicar', $c) }}"

@@ -17,10 +17,9 @@ use App\Services\CorreoComunicados;
 class ComunicadosService
 {
     public function __construct(
-    private PushService $push,
-    private CorreoComunicados $correos,
-) {
-}
+        private PushService $push,
+        private CorreoComunicados $correos,
+    ) {}
 
     /** Cómo aparece el autor si no se escribe otra firma. */
     public static function firmaPorDefecto(?string $tipo): string
@@ -34,7 +33,7 @@ class ComunicadosService
     public static function leerDestinos(array $valores): array
     {
         return collect($valores)
-            ->filter(fn ($v) => is_string($v) && preg_match('/^(sede|departamento|grupo|usuario):\d+$/', $v))
+            ->filter(fn($v) => is_string($v) && preg_match('/^(sede|departamento|grupo|usuario):\d+$/', $v))
             ->unique()
             ->map(function ($v) {
                 [$tipo, $id] = explode(':', $v, 2);
@@ -210,14 +209,23 @@ class ComunicadosService
     /**
      * La push a los destinatarios. Si Firebase falla, el comunicado queda publicado igual.
      */
+    /**
+     * La push a los destinatarios. Si Firebase falla, el comunicado queda publicado igual.
+     */
     private function avisarPorPush(Comunicado $comunicado): void
     {
-        $iconos = ['aviso' => '📢', 'noticia' => '📰', 'red_social' => '📱', 'cumpleanos' => '🎂'];
+        $iconos = ['aviso' => '📢', 'noticia' => '📰', 'red_social' => '📱', 'cumpleanos' => '🎂', 'aniversario' => '🏅'];
+
+        // Si el título ya empieza con un emoji (como "🎉 Festejo..."), no se le agrega otro
+        $yaTraeIcono = ! preg_match('/^[\p{L}\p{N}¡¿«"]/u', $comunicado->titulo);
+        $titulo = $yaTraeIcono
+            ? $comunicado->titulo
+            : trim(($iconos[$comunicado->tipo] ?? '📣') . ' ' . $comunicado->titulo);
 
         try {
             $enviados = $this->push->enviarAMuchos(
                 $comunicado->destinatarios(),
-                trim(($iconos[$comunicado->tipo] ?? '📣') . ' ' . $comunicado->titulo),
+                $titulo,
                 Str::limit($comunicado->resumen_corto, 120),
                 ['destino' => 'comunicado', 'id' => $comunicado->id],
             );

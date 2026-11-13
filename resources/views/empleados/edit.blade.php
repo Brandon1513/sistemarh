@@ -16,6 +16,7 @@
             --brand-mid:   #BBA4C0;
             --gold:        #D6A644;
             --gold-light:  #EED39B;
+            --gold-pale:   #faf3e0;
             --brown:       #473524;
             --rose:        #AA4969;
             --beige-light: #f7f3ef;
@@ -79,6 +80,18 @@
         .upload-btn { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border:1.5px dashed var(--border); border-radius:9px; cursor:pointer; font-size:13px; color:var(--muted); background:#f9f5fb; transition:all .15s; position:relative; }
         .upload-btn:hover { border-color:var(--brand); color:var(--brand); background:var(--brand-light); }
         .upload-btn input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+
+        /* Foto oficial */
+        .oficial-preview { width:84px; height:104px; border-radius:10px; object-fit:cover; border:3px solid var(--gold-light); background:var(--gold-pale); display:flex; align-items:center; justify-content:center; font-size:28px; }
+        img.oficial-preview { display:block; }
+        .quitar { display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:12.5px; color:var(--rose); cursor:pointer; }
+        .quitar input { accent-color:var(--rose); }
+
+        /* Casilla de celebraciones */
+        .check-card { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border:1.5px solid var(--border); border-radius:9px; cursor:pointer; }
+        .check-card input { width:18px; height:18px; margin-top:2px; accent-color:var(--brand); }
+        .check-card:has(input:checked) { border-color:var(--brand); background:var(--brand-light); }
+        .check-card strong { font-size:13.5px; color:var(--text); }
 
         /* Roles */
         .roles-grid { display:flex; flex-wrap:wrap; gap:10px; }
@@ -178,6 +191,7 @@
                                 <input id="fecha_ingreso" name="fecha_ingreso" type="date"
                                     value="{{ old('fecha_ingreso', $user->fecha_ingreso ? \Carbon\Carbon::parse($user->fecha_ingreso)->format('Y-m-d') : '') }}"
                                     class="field-input {{ $errors->has('fecha_ingreso') ? 'err' : '' }}" required>
+                                <span class="field-hint">También se usa para su aniversario en la empresa.</span>
                                 @error('fecha_ingreso')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                             <div class="col-span-2 field">
@@ -208,7 +222,7 @@
                                 </select>
                                 @error('supervisor_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
-                            <div class="col-span-2 field">
+                            <div class="field">
                                 <label class="field-label" for="sede_id">Sede <span class="req">*</span></label>
                                 <select name="sede_id" id="sede_id"
                                     class="field-select {{ $errors->has('sede_id') ? 'err' : '' }}" required>
@@ -221,6 +235,70 @@
                                     Define los días inhábiles que aplican a sus vacaciones y permisos.
                                 </span>
                                 @error('sede_id')<span class="field-error">⚠ {{ $message }}</span>@enderror
+                            </div>
+                            <div class="field">
+                                <label class="field-label" for="turno">Turno <span class="opt">Opcional</span></label>
+                                <select name="turno" id="turno" class="field-select {{ $errors->has('turno') ? 'err' : '' }}">
+                                    <option value="">Sin turno</option>
+                                    @foreach (\App\Models\User::TURNOS as $valor => $nombre)
+                                        <option value="{{ $valor }}" {{ old('turno', $user->turno) === $valor ? 'selected' : '' }}>{{ $nombre }}</option>
+                                    @endforeach
+                                </select>
+                                @error('turno')<span class="field-error">⚠ {{ $message }}</span>@enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Celebraciones --}}
+                    <div class="form-section">
+                        <p class="section-title">
+                            <span style="font-size:15px;">🎂</span>
+                            Celebraciones
+                        </p>
+                        <div class="form-grid">
+                            <div class="field">
+                                <label class="field-label" for="fecha_nacimiento">Fecha de nacimiento <span class="opt">Opcional</span></label>
+                                <input id="fecha_nacimiento" name="fecha_nacimiento" type="date"
+                                    value="{{ old('fecha_nacimiento', $user->fecha_nacimiento?->format('Y-m-d')) }}"
+                                    max="{{ now()->subDay()->format('Y-m-d') }}"
+                                    class="field-input {{ $errors->has('fecha_nacimiento') ? 'err' : '' }}">
+                                <span class="field-hint">Solo se publica el día y el mes, nunca el año.</span>
+                                @error('fecha_nacimiento')<span class="field-error">⚠ {{ $message }}</span>@enderror
+                            </div>
+
+                            <div class="field" style="justify-content:flex-end;">
+                                <label class="check-card">
+                                    <input type="hidden" name="incluir_celebraciones" value="0">
+                                    <input type="checkbox" name="incluir_celebraciones" value="1" {{ old('incluir_celebraciones', $user->incluir_celebraciones ?? true) ? 'checked' : '' }}>
+                                    <span><strong>Incluir en cumpleaños y aniversarios</strong><br>
+                                        <span class="field-hint">Desmárcalo si la persona pidió que no se publiquen.</span></span>
+                                </label>
+                            </div>
+
+                            <div class="col-span-2 field">
+                                <label class="field-label">Foto oficial <span class="opt">Para las felicitaciones</span></label>
+                                <div class="photo-row">
+                                    @if($user->foto_oficial_url)
+                                        <img src="{{ $user->foto_oficial_url }}" class="oficial-preview" id="oficial-preview" alt="Foto oficial">
+                                    @else
+                                        <div class="oficial-preview" id="oficial-preview">👤</div>
+                                    @endif
+                                    <div>
+                                        <label class="upload-btn">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            {{ $user->foto_oficial ? 'Cambiar foto oficial' : 'Subir foto oficial' }}
+                                            <input type="file" name="foto_oficial" accept="image/jpeg,image/png,image/webp" onchange="previewOficial(event)">
+                                        </label>
+                                        <p class="field-hint" style="margin-top:6px;">La de credencial, de frente y con fondo claro. JPG, PNG o WEBP hasta 4 MB.<br>No es la foto de perfil que el empleado usa en la app.</p>
+                                        <p id="oficial-fname" style="font-size:12px;color:var(--muted);margin-top:4px;"></p>
+                                        @if($user->foto_oficial)
+                                            <label class="quitar">
+                                                <input type="checkbox" name="quitar_foto_oficial" value="1"> Quitar la foto oficial
+                                            </label>
+                                        @endif
+                                    </div>
+                                </div>
+                                @error('foto_oficial')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>
@@ -328,6 +406,18 @@
             // Actualizar banner también
             const bannerImg = document.getElementById('banner-img');
             if (bannerImg) bannerImg.src = URL.createObjectURL(file);
+        }
+        // Vista previa de la foto oficial
+        function previewOficial(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const actual = document.getElementById('oficial-preview');
+            const img = document.createElement('img');
+            img.id = 'oficial-preview';
+            img.className = 'oficial-preview';
+            img.src = URL.createObjectURL(file);
+            actual.replaceWith(img);
+            document.getElementById('oficial-fname').textContent = '📎 ' + file.name;
         }
     </script>
 </x-app-layout>

@@ -13,18 +13,22 @@ class ComunicadoPolicy
         'recursos_humanos' => ['aviso'],
     ];
 
-    /** Los tipos que este usuario puede crear y administrar. */
+    /** Los tipos de comunicado que administra cada rol. */
     public static function tiposDe(User $user): array
     {
         if ($user->hasRole('administrador')) {
-            return ['noticia', 'red_social', 'aviso'];
+            return ['noticia', 'red_social', 'aviso', 'cumpleanos', 'aniversario'];
         }
 
         $tipos = [];
-        foreach (self::TIPOS_POR_ROL as $rol => $tiposDelRol) {
-            if ($user->hasRole($rol)) {
-                $tipos = array_merge($tipos, $tiposDelRol);
-            }
+
+        if ($user->hasRole('marketing')) {
+            array_push($tipos, 'noticia', 'red_social');
+        }
+
+        // RH: sus avisos y las celebraciones (cumpleaños, aniversarios, lista del mes e invitaciones)
+        if ($user->hasRole('recursos_humanos')) {
+            array_push($tipos, 'aviso', 'cumpleanos', 'aniversario');
         }
 
         return array_values(array_unique($tipos));

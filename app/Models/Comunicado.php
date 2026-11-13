@@ -16,6 +16,7 @@ class Comunicado extends Model
         'red_social' => 'Red social',
         'aviso'      => 'Aviso de RH',
         'cumpleanos' => 'Cumpleaños',
+        'aniversario' => 'Aniversario',
     ];
 
     public const CATEGORIAS_AVISO = [
@@ -45,10 +46,32 @@ class Comunicado extends Model
     ];
 
     protected $fillable = [
-        'tipo', 'categoria', 'titulo', 'resumen', 'contenido', 'imagen', 'usar_plantilla', 'encabezado', 'enlace',
-        'autor_id', 'firma',
-        'estado', 'revisor_id', 'comentario_revision', 'revisado_en', 'publicar_en', 'publicado_en', 'fijado',
-        'enviar_push', 'enviar_correo', 'remitente', 'correo_enviado_en'
+        'tipo',
+        'categoria',
+        'titulo',
+        'resumen',
+        'contenido',
+        'imagen',
+        'usar_plantilla',
+        'encabezado',
+        'enlace',
+        'autor_id',
+        'firma',
+        'estado',
+        'revisor_id',
+        'comentario_revision',
+        'revisado_en',
+        'publicar_en',
+        'publicado_en',
+        'fijado',
+        'enviar_push',
+        'enviar_correo',
+        'remitente',
+        'correo_enviado_en',
+        'celebracion',
+        'celebrado_id',
+        'celebracion_fecha',
+        'celebracion_datos'
     ];
 
     protected function casts(): array
@@ -61,6 +84,8 @@ class Comunicado extends Model
             'fijado'         => 'boolean',
             'enviar_push'    => 'boolean',
             'correo_enviado_en' => 'datetime',
+            'celebracion_fecha' => 'date',
+            'celebracion_datos' => 'array',
         ];
     }
 
@@ -69,6 +94,10 @@ class Comunicado extends Model
     public function autor()
     {
         return $this->belongsTo(User::class, 'autor_id');
+    }
+    public function celebrado()
+    {
+        return $this->belongsTo(User::class, 'celebrado_id');
     }
 
     public function revisor()
@@ -84,6 +113,10 @@ class Comunicado extends Model
     public function destinos()
     {
         return $this->hasMany(ComunicadoDestino::class);
+    }
+    public function lecturas()
+    {
+        return $this->hasMany(ComunicadoLectura::class);
     }
 
     // ─── Consultas ───────────────────────────────────────────────────────────
@@ -108,14 +141,30 @@ class Comunicado extends Model
     {
         return $query->where(function ($q) use ($user) {
             $q->whereDoesntHave('destinos')
-              ->orWhereHas('destinos', function ($d) use ($user) {
-                  $d->where(fn ($w) => $w->where('tipo', 'sede')->where('destino_id', $user->sede_id))
-                    ->orWhere(fn ($w) => $w->where('tipo', 'departamento')->where('destino_id', $user->departamento_id))
-                    ->orWhere(fn ($w) => $w->where('tipo', 'usuario')->where('destino_id', $user->id))
-                    ->orWhere(fn ($w) => $w->where('tipo', 'grupo')
-                        ->whereIn('destino_id', $user->grupos()->select('grupos.id')));
-              });
+                ->orWhereHas('destinos', function ($d) use ($user) {
+                    $d->where(fn($w) => $w->where('tipo', 'sede')->where('destino_id', $user->sede_id))
+                        ->orWhere(fn($w) => $w->where('tipo', 'departamento')->where('destino_id', $user->departamento_id))
+                        ->orWhere(fn($w) => $w->where('tipo', 'usuario')->where('destino_id', $user->id))
+                        ->orWhere(fn($w) => $w->where('tipo', 'grupo')
+                            ->whereIn('destino_id', $user->grupos()->select('grupos.id')));
+                });
         });
+    }
+    /** Agrega "leido" (true/false) a cada comunicado, para este usuario. */
+    public function scopeConLeidoPor(Builder $query, User $user): Builder
+    {
+        return $query->withExists(['lecturas as leido' => fn($l) => $l->where('user_id', $user->id)]);
+    }
+
+    /** Registra que este usuario lo abrió. Si ya lo había abierto, no hace nada. */
+    public function marcarLeido(User $user, string $canal = 'web'): void
+    {
+        ComunicadoLectura::insertOrIgnore([
+            'comunicado_id' => $this->id,
+            'user_id'       => $user->id,
+            'canal'         => $canal,
+            'leido_en'      => now(),
+        ]);
     }
 
     /**
@@ -126,7 +175,7 @@ class Comunicado extends Model
     public static function consultaDestinatarios(array $destinos): Builder
     {
         $usuarios = User::query();
-        $porTipo = collect($destinos)->groupBy('tipo')->map(fn ($grupo) => $grupo->pluck('destino_id')->all());
+        $porTipo = collect($destinos)->groupBy('tipo')->map(fn($grupo) => $grupo->pluck('destino_id')->all());
 
         if ($porTipo->isEmpty()) {
             return $usuarios;
@@ -143,7 +192,7 @@ class Comunicado extends Model
                 $q->orWhereIn('id', $ids);
             }
             if ($ids = $porTipo->get('grupo')) {
-                $q->orWhereHas('grupos', fn ($g) => $g->whereIn('grupos.id', $ids));
+                $q->orWhereHas('grupos', fn($g) => $g->whereIn('grupos.id', $ids));
             }
         });
     }
@@ -213,7 +262,7 @@ class Comunicado extends Model
         ];
 
         $partes = $destinos->where('tipo', '!=', 'usuario')
-            ->map(fn ($d) => $nombres[$d->tipo][$d->destino_id] ?? null)
+            ->map(fn($d) => $nombres[$d->tipo][$d->destino_id] ?? null)
             ->filter()
             ->values();
 

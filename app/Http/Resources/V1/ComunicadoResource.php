@@ -26,6 +26,8 @@ class ComunicadoResource extends JsonResource
             'publicado_en'     => $this->publicado_en?->toIso8601String(),
             'imagenes_count'   => $this->whenCounted('imagenes'),
             'imagenes'         => $this->whenLoaded('imagenes', fn () => $this->imagenes->map->url->values()),
+                // En la lista viene de la consulta; en el detalle, si lo está viendo, ya lo leyó
+            'leido' => (bool) ($this->resource->getAttribute('leido') ?? true),
         ];
     }
 }

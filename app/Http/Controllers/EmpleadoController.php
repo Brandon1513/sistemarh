@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
 
@@ -29,6 +30,44 @@ class EmpleadoController extends Controller
         return compact('supervisors', 'roles', 'departamentos', 'sedes');
     }
 
+    /** Las reglas de los datos de celebraciones, iguales al crear y al editar. */
+    private function reglasCelebraciones(): array
+    {
+        return [
+            'fecha_nacimiento'      => 'nullable|date|before:today|after:1930-01-01',
+            'turno'                 => ['nullable', Rule::in(array_keys(User::TURNOS))],
+            'foto_oficial'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'quitar_foto_oficial'   => 'nullable|boolean',
+            'incluir_celebraciones' => 'nullable|boolean',
+        ];
+    }
+
+    /**
+     * Guarda la fecha de nacimiento, el turno, la casilla de celebraciones y la foto oficial.
+     */
+    private function guardarCelebraciones(User $user, Request $request): void
+    {
+        $user->fecha_nacimiento      = $request->input('fecha_nacimiento') ?: null;
+        $user->turno                 = $request->input('turno') ?: null;
+        $user->incluir_celebraciones = $request->boolean('incluir_celebraciones');
+
+        // Quitar la foto oficial
+        if ($request->boolean('quitar_foto_oficial') && $user->foto_oficial) {
+            Storage::disk('public')->delete($user->foto_oficial);
+            $user->foto_oficial = null;
+        }
+
+        // Reemplazar la foto oficial
+        if ($request->hasFile('foto_oficial')) {
+            if ($user->foto_oficial) {
+                Storage::disk('public')->delete($user->foto_oficial);
+            }
+            $user->foto_oficial = $request->file('foto_oficial')->store('empleados/fotos', 'public');
+        }
+
+        $user->save();
+    }
+
     public function index(Request $request)
     {
         // Se cargan las relaciones de una vez, en lugar de una consulta por cada fila de la tabla
@@ -39,7 +78,7 @@ class EmpleadoController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -105,7 +144,9 @@ class EmpleadoController extends Controller
             'departamento_id' => 'required|exists:departments,id',
             'sede_id'         => 'required|exists:sedes,id',
             'foto_perfil'     => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
+            'roles'           => 'nullable|array',
+            'roles.*'         => 'exists:roles,name',
+        ] + $this->reglasCelebraciones());
 
         $user = User::create([
             'name'            => $request->name,
@@ -120,10 +161,11 @@ class EmpleadoController extends Controller
         ]);
 
         if ($request->hasFile('foto_perfil')) {
-            $imagePath = $request->file('foto_perfil')->store('fotos_perfil', 'public');
-            $user->foto_perfil = $imagePath;
+            $user->foto_perfil = $request->file('foto_perfil')->store('fotos_perfil', 'public');
             $user->save();
         }
+
+        $this->guardarCelebraciones($user, $request);
 
         $roles = Role::whereIn('name', $request->input('roles', ['empleado']))->get();
         $user->syncRoles($roles);
@@ -135,7 +177,8 @@ class EmpleadoController extends Controller
 
     public function edit($id): View
     {
-        $user = User::findOrFail($id);
+        // Sin el filtro de activos: también se puede editar a un empleado inactivo
+        $user = User::withoutGlobalScope('activo')->findOrFail($id);
         $data = array_merge(['user' => $user], $this->getCommonData());
 
         return view('empleados.edit', $data);
@@ -156,9 +199,9 @@ class EmpleadoController extends Controller
             'roles'           => 'nullable|array',
             'roles.*'         => 'exists:roles,name',
             'foto_perfil'     => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
+        ] + $this->reglasCelebraciones());
 
-        $user = User::findOrFail($id);
+        $user = User::withoutGlobalScope('activo')->findOrFail($id);
         $user->name            = $request->name;
         $user->email           = $request->email;
         $user->supervisor_id   = $request->supervisor_id;
@@ -174,13 +217,14 @@ class EmpleadoController extends Controller
 
         $user->save();
 
+        $this->guardarCelebraciones($user, $request);
+
         if ($request->hasFile('foto_perfil')) {
             if ($user->foto_perfil && Storage::disk('public')->exists($user->foto_perfil)) {
                 Storage::disk('public')->delete($user->foto_perfil);
             }
 
-            $imagePath = $request->file('foto_perfil')->store('fotos_perfil', 'public');
-            $user->foto_perfil = $imagePath;
+            $user->foto_perfil = $request->file('foto_perfil')->store('fotos_perfil', 'public');
             $user->save();
 
             $notificationController = Container::getInstance()->make(NotificationController::class);

@@ -22,7 +22,7 @@ class ComunicadoCorreo extends Mailable
     public function envelope(): Envelope
     {
         $remitente = CorreoComunicados::remitentePara($this->comunicado);
-        $iconos = ['aviso' => '📢 ', 'noticia' => '📰 ', 'red_social' => '📱 '];
+        $iconos = ['aviso' => '📢 ', 'noticia' => '📰 ', 'red_social' => '📱 ', 'aniversario' => '🏅 '];
 
         return new Envelope(
             from: new Address($remitente['correo'], $remitente['nombre']),

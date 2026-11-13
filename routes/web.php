@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\CarruselController;
 use App\Http\Controllers\ComunicadoController;
+use App\Http\Controllers\CronController;
 use App\Http\Controllers\DiaInhabilController;
 use App\Http\Controllers\EmpleadoController;
+use App\Http\Controllers\FestejoController;
 use App\Http\Controllers\GrupoController;
+use App\Http\Controllers\LecturaComunicadoController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\PeriodoVacacionController;
 use App\Http\Controllers\PermissionController;
@@ -13,7 +16,6 @@ use App\Http\Controllers\SolicitudPermisoController;
 use App\Http\Controllers\SolicitudVacacionController;
 use App\Models\CarruselImage;
 use App\Models\Noticia;
-use App\Http\Controllers\CronController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -32,6 +34,11 @@ Route::get('/dashboard', function () {
 Route::get('/noticias-publicas', [NoticiaController::class, 'publicIndex'])
     ->middleware('auth')
     ->name('noticias.public');
+
+    // El empleado abrió un comunicado (lo llaman el dashboard y "Ver todos")
+    Route::post('/comunicados/{comunicado}/leido', LecturaComunicadoController::class)
+    ->middleware(['auth', 'throttle:60,1'])
+    ->name('comunicados.leido');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -219,6 +226,7 @@ Route::middleware('auth')
         Route::post('/{comunicado}/aprobar', 'aprobar')->name('aprobar');
         Route::post('/{comunicado}/devolver', 'devolver')->name('devolver');
         Route::post('/{comunicado}/retirar', 'retirar')->name('retirar');
+        Route::get('/{comunicado}/lecturas', 'lecturas')->name('lecturas');
     });
 
     /*
@@ -255,6 +263,22 @@ Route::middleware(['auth', 'role:administrador|recursos_humanos'])->group(functi
     Route::put('/dias-inhabiles/{diaInhabil}', [DiaInhabilController::class, 'update'])->name('dias_inhabiles.update');
     Route::delete('/dias-inhabiles/{diaInhabil}', [DiaInhabilController::class, 'destroy'])->name('dias_inhabiles.destroy');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Invitación al festejo de cumpleaños (la crea RH)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'role:administrador|recursos_humanos'])
+    ->prefix('gestion/festejos')
+    ->name('festejos.')
+    ->controller(FestejoController::class)
+    ->group(function () {
+        Route::get('/nuevo', 'create')->name('create');
+        Route::post('/vista-previa', 'vistaPrevia')->name('vista-previa');
+        Route::post('/', 'store')->name('store');
+    });
 
 // Despertador externo para las tareas programadas (no pide sesión; la protege la clave)
 Route::get('/cron/{token}', CronController::class)
