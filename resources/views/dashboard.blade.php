@@ -867,6 +867,7 @@
         modal.querySelector('.modal-scroll').scrollTop = 0;
         document.body.style.overflow = 'hidden';
         openModal = modal;
+        marcarLeido(id);
         setTimeout(() => modal.querySelector('[data-close]').focus(), 50);
     }
     function closeNewsModal() {
@@ -875,6 +876,16 @@
         document.body.style.overflow = '';
         openModal = null;
         if (lastFocus) lastFocus.focus();
+    }
+
+    // Avisa que el empleado abrió el comunicado (si falla, no pasa nada: no interrumpe la lectura)
+    function marcarLeido(id) {
+        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+        fetch(@json(url('/comunicados')) + '/' + id + '/leido', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+            keepalive: true,
+        }).catch(() => {});
     }
 
     document.querySelectorAll('[data-news]').forEach(card => {

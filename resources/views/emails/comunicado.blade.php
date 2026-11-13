@@ -29,7 +29,7 @@
                                         @endif
                                     </td>
                                     <td style="color:#EED39B; font-size:13px; font-weight:bold; letter-spacing:1px; text-transform:uppercase;">
-                                        {{ $c->tipo === 'aviso' ? 'Recursos Humanos' : 'Intranet Dasavena' }}
+                                        {{ in_array($c->tipo, ['aviso', 'cumpleanos', 'aniversario']) ? 'Recursos Humanos' : 'Intranet Dasavena' }}
                                     </td>
                                 </tr>
                             </table>
@@ -46,7 +46,7 @@
                     @endif
 
                     {{-- Título y texto. En los avisos con plantilla no se repite: la imagen ya lo trae --}}
-                    @if(! ($c->usar_plantilla && $rutaImagen && is_file($rutaImagen)))
+                    @if(! (($c->usar_plantilla || $c->celebracion) && $rutaImagen && is_file($rutaImagen)))
                         <tr>
                             <td style="padding:26px 28px 8px;">
                                 <h1 style="margin:0 0 6px; font-size:22px; line-height:1.3; color:#3d1545;">{{ $c->titulo }}</h1>

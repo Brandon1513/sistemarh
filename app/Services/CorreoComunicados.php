@@ -21,7 +21,10 @@ class CorreoComunicados
     {
         $remitentes = config('comunicados.remitentes');
 
-        return $comunicado->tipo === 'aviso' ? $remitentes['aviso'] : $remitentes['otros'];
+        // Los avisos y las celebraciones los manda RH; las noticias y redes, la intranet
+        return in_array($comunicado->tipo, ['aviso', 'cumpleanos', 'aniversario'], true)
+            ? $remitentes['aviso']
+            : $remitentes['otros'];
     }
 
     /**
@@ -51,8 +54,8 @@ class CorreoComunicados
         $direcciones = Comunicado::consultaDestinatarios($destinos)
             ->whereNotNull('email')
             ->pluck('email')
-            ->map(fn ($e) => strtolower(trim($e)))
-            ->filter(fn ($e) => $this->esCorporativo($e))
+            ->map(fn($e) => strtolower(trim($e)))
+            ->filter(fn($e) => $this->esCorporativo($e))
             ->unique()
             ->values()
             ->all();
@@ -105,6 +108,6 @@ class CorreoComunicados
     private function esCorporativo(string $correo): bool
     {
         return collect(config('comunicados.dominios'))
-            ->contains(fn ($dominio) => Str::endsWith($correo, '@' . strtolower($dominio)));
+            ->contains(fn($dominio) => Str::endsWith($correo, '@' . strtolower($dominio)));
     }
 }

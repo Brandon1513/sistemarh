@@ -20,12 +20,13 @@ class User extends Authenticatable
         'password',
         'activo',
         'supervisor_id',
-        'clave_empleado',   // Agrega este campo
-        'fecha_ingreso',    // Agrega este campo
-        'puesto_empleado',  // Agrega este campo
+        'clave_empleado',   
+        'fecha_ingreso',    
+        'puesto_empleado',  
         'departamento_id',
-        'foto_perfil',      // Agrega este campo
+        'foto_perfil',      
         'sede_id',
+        'fecha_nacimiento', 'turno', 'foto_oficial', 'incluir_celebraciones',
 
     ];
 
@@ -47,12 +48,65 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'fecha_ingreso' => 'date',
+        'fecha_nacimiento'      => 'date',
+        'fecha_ingreso'         => 'date',
+        'incluir_celebraciones' => 'boolean',
     ];
 
     // Conversión de fechas a objetos Carbon
     protected $dates = [
-        'fecha_ingreso',   // Agrega este campo si quieres tratarlo como fecha
+        'fecha_ingreso',   
     ];
+
+    public const TURNOS = [
+    'diurno'   => 'Turno diurno',
+    'nocturno' => 'Turno nocturno',
+    ];
+
+    public function getFotoOficialUrlAttribute(): ?string
+    {
+        return $this->foto_oficial ? asset('storage/' . $this->foto_oficial) : null;
+    }
+
+    /**
+     * Los que cumplen años ese día (y que RH dejó incluidos en las celebraciones).
+     * Los del 29 de febrero celebran el 28 en los años que no son bisiestos.
+     */
+    public function scopeCumpleanosEl(\Illuminate\Database\Eloquent\Builder $query, \Illuminate\Support\Carbon $dia): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('incluir_celebraciones', true)
+            ->whereNotNull('fecha_nacimiento')
+            ->where(function ($w) use ($dia) {
+                $w->where(fn ($x) => $x->whereMonth('fecha_nacimiento', $dia->month)->whereDay('fecha_nacimiento', $dia->day));
+
+                if ($dia->month === 2 && $dia->day === 28 && ! $dia->isLeapYear()) {
+                    $w->orWhere(fn ($x) => $x->whereMonth('fecha_nacimiento', 2)->whereDay('fecha_nacimiento', 29));
+                }
+            });
+    }
+
+    /**
+     * Los que cumplen años en la empresa ese día (al menos uno: el día que entraron no cuenta).
+     */
+    public function scopeAniversarioEl(\Illuminate\Database\Eloquent\Builder $query, \Illuminate\Support\Carbon $dia): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('incluir_celebraciones', true)
+            ->whereNotNull('fecha_ingreso')
+            ->whereYear('fecha_ingreso', '<', $dia->year)
+            ->where(function ($w) use ($dia) {
+                $w->where(fn ($x) => $x->whereMonth('fecha_ingreso', $dia->month)->whereDay('fecha_ingreso', $dia->day));
+
+                if ($dia->month === 2 && $dia->day === 28 && ! $dia->isLeapYear()) {
+                    $w->orWhere(fn ($x) => $x->whereMonth('fecha_ingreso', 2)->whereDay('fecha_ingreso', 29));
+                }
+            });
+    }
+
+    /** Cuántos años cumple en la empresa ese día. */
+    public function aniosEnLaEmpresa(\Illuminate\Support\Carbon $dia): int
+    {
+        return $this->fecha_ingreso ? $this->fecha_ingreso->diffInYears($dia->copy()->endOfDay()) : 0;
+    }
 
     // Relación con el supervisor del usuario
     public function supervisor()

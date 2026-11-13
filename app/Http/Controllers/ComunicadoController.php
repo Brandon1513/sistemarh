@@ -18,9 +18,7 @@ use Illuminate\Validation\Rule;
  */
 class ComunicadoController extends Controller
 {
-    public function __construct(private ComunicadosService $comunicados)
-    {
-    }
+    public function __construct(private ComunicadosService $comunicados) {}
 
     public function index(Request $request)
     {
@@ -35,7 +33,9 @@ class ComunicadoController extends Controller
                 ->where('estado', 'en_revision')
                 ->where('revisor_id', $usuario->id);
         } else {
-            $query = Comunicado::with(['autor', 'destinos', 'revisor'])->withCount('imagenes')->whereIn('tipo', $tipos);
+            $query = Comunicado::with(['autor', 'destinos', 'revisor'])
+                ->withCount(['imagenes', 'lecturas'])
+                ->whereIn('tipo', $tipos);
 
             if ($request->filled('estado')) {
                 $query->where('estado', $request->input('estado'));
@@ -142,6 +142,55 @@ class ComunicadoController extends Controller
         return redirect()->route('comunicados.admin.index')->with('success', "«{$comunicado->titulo}» se eliminó.");
     }
 
+    /**
+     * Quién ya leyó el comunicado y quién falta. Con ?exportar=csv, se descarga para Excel.
+     */
+    public function lecturas(Request $request, Comunicado $comunicado)
+    {
+        Gate::authorize('update', $comunicado);
+
+        $leyeron = $comunicado->lecturas()
+            ->with(['user.sede', 'user.departamento'])
+            ->orderByDesc('leido_en')
+            ->get()
+            ->filter(fn($l) => $l->user); // por si alguien se dio de baja
+
+        $faltan = $comunicado->destinatarios()
+            ->with(['sede', 'departamento'])
+            ->whereNotIn('users.id', $leyeron->pluck('user_id'))
+            ->orderBy('name')
+            ->get();
+
+        if ($request->query('exportar') === 'csv') {
+            $nombre = 'lecturas-' . \Illuminate\Support\Str::slug($comunicado->titulo) . '.csv';
+
+            return response()->streamDownload(function () use ($leyeron, $faltan) {
+                $salida = fopen('php://output', 'w');
+                fwrite($salida, "\xEF\xBB\xBF"); // para que Excel respete los acentos
+                fputcsv($salida, ['Nombre', 'Correo', 'Departamento', 'Sede', 'Estado', 'Leído el', 'Desde']);
+
+                foreach ($leyeron as $l) {
+                    fputcsv($salida, [
+                        $l->user->name,
+                        $l->user->email,
+                        $l->user->departamento?->name,
+                        $l->user->sede?->nombre,
+                        'Leído',
+                        $l->leido_en->format('d/m/Y H:i'),
+                        $l->canal === 'app' ? 'App' : 'Web'
+                    ]);
+                }
+                foreach ($faltan as $u) {
+                    fputcsv($salida, [$u->name, $u->email, $u->departamento?->name, $u->sede?->nombre, 'Pendiente', '', '']);
+                }
+
+                fclose($salida);
+            }, $nombre, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }
+
+        return view('comunicados.admin.lecturas', compact('comunicado', 'leyeron', 'faltan'));
+    }
+
     // ─── Revisión ────────────────────────────────────────────────────────────
 
     /** La vista previa para el revisor, con los botones de aprobar y devolver. */
@@ -209,13 +258,13 @@ class ComunicadoController extends Controller
         }
 
         $personas = User::with('sede')
-            ->where(fn ($w) => $w->where('name', 'like', "%{$q}%")
+            ->where(fn($w) => $w->where('name', 'like', "%{$q}%")
                 ->orWhere('email', 'like', "%{$q}%")
                 ->orWhere('clave_empleado', 'like', "%{$q}%"))
             ->orderBy('name')
             ->limit(15)
             ->get()
-            ->map(fn (User $u) => [
+            ->map(fn(User $u) => [
                 'id'      => $u->id,
                 'nombre'  => $u->name,
                 'detalle' => collect([$u->puesto_empleado, $u->sede?->nombre])->filter()->implode(' · '),
@@ -251,32 +300,32 @@ class ComunicadoController extends Controller
     private function datosFormulario(Comunicado $comunicado, User $usuario): array
     {
         $actuales = $comunicado->exists
-            ? $comunicado->destinos->map(fn ($d) => "{$d->tipo}:{$d->destino_id}")->all()
+            ? $comunicado->destinos->map(fn($d) => "{$d->tipo}:{$d->destino_id}")->all()
             : [];
 
         // Si el formulario regresó con errores, se respeta lo que la persona había marcado
         $elegidos = old('destinos', $actuales);
 
         $idsPersonas = collect($elegidos)
-            ->filter(fn ($v) => str_starts_with((string) $v, 'usuario:'))
-            ->map(fn ($v) => (int) substr($v, 8));
+            ->filter(fn($v) => str_starts_with((string) $v, 'usuario:'))
+            ->map(fn($v) => (int) substr($v, 8));
 
         $idsGrupos = collect($elegidos)
-            ->filter(fn ($v) => str_starts_with((string) $v, 'grupo:'))
-            ->map(fn ($v) => (int) substr($v, 6));
+            ->filter(fn($v) => str_starts_with((string) $v, 'grupo:'))
+            ->map(fn($v) => (int) substr($v, 6));
 
         return [
             'sedes'         => Sede::orderBy('nombre')->get(['id', 'nombre']),
             'departamentos' => Department::orderBy('name')->get(['id', 'name']),
             // Los grupos activos, más los inactivos que este comunicado ya tenía elegidos
             'grupos'        => Grupo::withCount('usuarios')
-                ->where(fn ($q) => $q->where('activo', true)->orWhereIn('id', $idsGrupos))
+                ->where(fn($q) => $q->where('activo', true)->orWhereIn('id', $idsGrupos))
                 ->orderBy('nombre')
                 ->get(),
             'elegidos'      => $elegidos,
             'para'          => old('para', $actuales ? 'elegir' : 'todos'),
             'personas'      => User::with('sede')->whereIn('id', $idsPersonas)->orderBy('name')->get()
-                ->map(fn (User $u) => [
+                ->map(fn(User $u) => [
                     'id'      => $u->id,
                     'nombre'  => $u->name,
                     'detalle' => collect([$u->puesto_empleado, $u->sede?->nombre])->filter()->implode(' · '),
@@ -286,41 +335,41 @@ class ComunicadoController extends Controller
     }
 
     private function reglas(Request $request): array
-{
-    $publicando = in_array($request->input('accion'), ['publicar', 'revision'], true);
-    $tipo = $request->input('tipo');
+    {
+        $publicando = in_array($request->input('accion'), ['publicar', 'revision'], true);
+        $tipo = $request->input('tipo');
 
-    return [
-        'tipo'             => ['required', Rule::in(['noticia', 'red_social', 'aviso'])],
-        'categoria'        => ['nullable', Rule::in(array_keys(Comunicado::CATEGORIAS_AVISO))],
-        'titulo'           => 'required|string|max:255',
-        'resumen'          => 'nullable|string|max:300',
-        // Para publicar o mandar a revisión hace falta contenido, salvo en redes sociales
-        'contenido'        => [Rule::requiredIf($publicando && $tipo !== 'red_social'), 'nullable', 'string', 'max:20000'],
-        'enlace'           => [Rule::requiredIf($tipo === 'red_social'), 'nullable', 'url', 'max:255'],
-        'firma'            => 'nullable|string|max:100',
-        'fijado'           => 'nullable|boolean',
-        'enviar_push'      => 'nullable|boolean',
-        'enviar_correo'    => 'nullable|boolean',
-        'usar_plantilla'   => 'nullable|boolean',
-        'encabezado'       => ['nullable', Rule::in(Comunicado::ENCABEZADOS)],
-        'imagen'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-        'imagen_generada'  => 'nullable|image|mimes:png|max:4096',
-        'quitar_imagen'    => 'nullable|boolean',
-        'galeria'          => 'nullable|array|max:20',
-        'galeria.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
-        'quitar_galeria'   => 'nullable|array',
-        'quitar_galeria.*' => 'integer',
-        'para'             => 'required|in:todos,elegir',
-        'destinos'         => 'required_if:para,elegir|array',
-        'destinos.*'       => ['string', 'regex:/^(sede|departamento|grupo|usuario):\d+$/'],
-        'revisor_id'       => 'required_if:accion,revision|nullable|integer',
-        'cuando'           => 'nullable|in:ahora,programar',
-        // Solo al publicar o mandar a revisión se exige que la fecha sea futura
-        'publicar_en'      => ['required_if:cuando,programar', 'nullable', 'date', ...($publicando ? ['after:now'] : [])],
-        'accion'           => 'required|in:borrador,publicar,revision',
-    ];
-}
+        return [
+            'tipo'             => ['required', Rule::in(['noticia', 'red_social', 'aviso'])],
+            'categoria'        => ['nullable', Rule::in(array_keys(Comunicado::CATEGORIAS_AVISO))],
+            'titulo'           => 'required|string|max:255',
+            'resumen'          => 'nullable|string|max:300',
+            // Para publicar o mandar a revisión hace falta contenido, salvo en redes sociales
+            'contenido'        => [Rule::requiredIf($publicando && $tipo !== 'red_social'), 'nullable', 'string', 'max:20000'],
+            'enlace'           => [Rule::requiredIf($tipo === 'red_social'), 'nullable', 'url', 'max:255'],
+            'firma'            => 'nullable|string|max:100',
+            'fijado'           => 'nullable|boolean',
+            'enviar_push'      => 'nullable|boolean',
+            'enviar_correo'    => 'nullable|boolean',
+            'usar_plantilla'   => 'nullable|boolean',
+            'encabezado'       => ['nullable', Rule::in(Comunicado::ENCABEZADOS)],
+            'imagen'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'imagen_generada'  => 'nullable|image|mimes:png|max:4096',
+            'quitar_imagen'    => 'nullable|boolean',
+            'galeria'          => 'nullable|array|max:20',
+            'galeria.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+            'quitar_galeria'   => 'nullable|array',
+            'quitar_galeria.*' => 'integer',
+            'para'             => 'required|in:todos,elegir',
+            'destinos'         => 'required_if:para,elegir|array',
+            'destinos.*'       => ['string', 'regex:/^(sede|departamento|grupo|usuario):\d+$/'],
+            'revisor_id'       => 'required_if:accion,revision|nullable|integer',
+            'cuando'           => 'nullable|in:ahora,programar',
+            // Solo al publicar o mandar a revisión se exige que la fecha sea futura
+            'publicar_en'      => ['required_if:cuando,programar', 'nullable', 'date', ...($publicando ? ['after:now'] : [])],
+            'accion'           => 'required|in:borrador,publicar,revision',
+        ];
+    }
 
     private function mensajes(): array
     {
@@ -332,7 +381,7 @@ class ComunicadoController extends Controller
         ];
     }
 
-   private function despuesDeGuardar(Comunicado $comunicado, string $accion)
+    private function despuesDeGuardar(Comunicado $comunicado, string $accion)
     {
         $comunicado->refresh()->load('revisor');
 

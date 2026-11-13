@@ -39,6 +39,7 @@
         .tag-aviso      { background:#fce8ee; color:var(--rose); }
         .tag-red_social { background:#e0eaff; color:#2b4c9b; }
         .tag-cumpleanos { background:var(--gold-pale); color:#8a6a1f; }
+        .tag-aniversario { background:var(--gold-pale); color:#8a6a1f; }
 
         /* Modal */
         .news-modal { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:rgba(42,10,50,.6); backdrop-filter:blur(4px); padding:20px; opacity:0; pointer-events:none; transition:opacity .2s; }
@@ -199,7 +200,14 @@
     </div>
 
     <script>
-        function openModal(id)  { document.getElementById('modal-'+id).classList.add('show'); document.body.style.overflow='hidden'; }
+        function openModal(id) {
+                document.getElementById('modal-'+id).classList.add('show');
+                document.body.style.overflow = 'hidden';
+                const token = document.querySelector('meta[name="csrf-token"]')?.content;
+                fetch(@json(url('/comunicados')) + '/' + id + '/leido', {
+                    method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }, keepalive: true,
+                }).catch(() => {});
+            }
         function closeModal(id) { document.getElementById('modal-'+id).classList.remove('show'); document.body.style.overflow=''; }
         function handleBg(e,id){ if(e.target===e.currentTarget) closeModal(id); }
         function expandText(id)  { document.getElementById('short-'+id).style.display='none'; document.getElementById('full-'+id).style.display='block'; }
