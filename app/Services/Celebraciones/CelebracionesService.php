@@ -20,8 +20,7 @@ class CelebracionesService
         private GeneradorTarjetas $generador,
         private PushService $push,
         private CorreoComunicados $correos,
-    ) {
-    }
+    ) {}
 
     /** Los del día anterior se archivan: siguen en la pestaña de Celebraciones, pero ya no en el inicio. */
     public function archivarAnteriores(Carbon $dia): int
@@ -101,32 +100,18 @@ class CelebracionesService
         $yaSeAviso = (bool) $existente?->correo_enviado_en;
         $existente?->forceDelete();
 
-        $personas = User::where('incluir_celebraciones', true)
-            ->whereNotNull('fecha_nacimiento')
-            ->whereMonth('fecha_nacimiento', $inicio->month)
-            ->get()
-            ->sortBy(fn ($u) => str_pad($u->fecha_nacimiento->day, 2, '0', STR_PAD_LEFT) . ' ' . $u->name);
+        $secciones = $this->seccionesDelMes($inicio);
 
-        if ($personas->isEmpty()) {
+        if ($secciones === []) {
             return null;
         }
-
-        $titulos = ['diurno' => 'TURNO DIURNO', 'nocturno' => 'TURNO NOCTURNO'];
-        $secciones = $personas->groupBy(fn ($u) => $titulos[$u->turno] ?? 'OTROS')
-            ->sortKeys()
-            ->map(fn ($grupo) => $grupo->map(fn ($u) => [
-                'dia'    => $u->fecha_nacimiento->day,
-                'nombre' => mb_strtoupper($u->name),
-                'puesto' => mb_strtoupper((string) $u->puesto_empleado),
-            ])->values()->all())
-            ->all();
 
         $nombreMes = $inicio->copy()->locale('es')->isoFormat('MMMM');
 
         // El texto (para quien no ve la imagen): día y nombre, nunca el año
         $texto = collect($secciones)->map(function ($filas, $titulo) {
             return '**' . mb_convert_case($titulo, MB_CASE_TITLE) . "**\n"
-                . collect($filas)->map(fn ($f) => "{$f['dia']} · " . mb_convert_case($f['nombre'], MB_CASE_TITLE) . ($f['puesto'] ? ' — ' . mb_convert_case($f['puesto'], MB_CASE_TITLE) : ''))->implode("\n");
+                . collect($filas)->map(fn($f) => "{$f['dia']} · " . mb_convert_case($f['nombre'], MB_CASE_TITLE) . ($f['puesto'] ? ' — ' . mb_convert_case($f['puesto'], MB_CASE_TITLE) : ''))->implode("\n");
         })->implode("\n\n");
 
         // La lista del mes anterior se archiva
@@ -185,7 +170,7 @@ class CelebracionesService
         if ($avisos['push_a_todos'] ?? false) {
             try {
                 $this->push->enviarAMuchos(
-                    $comunicado->destinatarios()->when($excluir, fn ($q) => $q->where('users.id', '!=', $excluir)),
+                    $comunicado->destinatarios()->when($excluir, fn($q) => $q->where('users.id', '!=', $excluir)),
                     $tituloPush,
                     Str::limit($comunicado->resumen_corto, 120),
                     ['destino' => 'comunicado', 'id' => $comunicado->id],
@@ -212,5 +197,29 @@ class CelebracionesService
         } catch (\Throwable $e) {
             Log::warning('No se pudo enviar la felicitación', ['usuario' => $persona->id, 'error' => $e->getMessage()]);
         }
+    }
+    /**
+     * Los cumpleañeros de un mes, agrupados por turno: ['TURNO DIURNO' => [['dia', 'nombre', 'puesto'], ...], ...].
+     * Con $turno, solo ese turno.
+     */
+    public function seccionesDelMes(Carbon $mes, ?string $turno = null): array
+    {
+        $titulos = ['diurno' => 'TURNO DIURNO', 'nocturno' => 'TURNO NOCTURNO'];
+
+        return User::where('incluir_celebraciones', true)
+            ->whereNotNull('fecha_nacimiento')
+            ->whereMonth('fecha_nacimiento', $mes->month)
+            ->when($turno, fn($q) => $q->where('turno', $turno))
+            ->get()
+            ->sortBy(fn($u) => str_pad($u->fecha_nacimiento->day, 2, '0', STR_PAD_LEFT) . ' ' . $u->name)
+            ->groupBy(fn($u) => $titulos[$u->turno] ?? 'OTROS')
+            // Primero el diurno, luego el nocturno, y al final los que no tienen turno
+            ->sortBy(fn($grupo, $titulo) => ['TURNO DIURNO' => 1, 'TURNO NOCTURNO' => 2][$titulo] ?? 3)
+            ->map(fn($grupo) => $grupo->map(fn($u) => [
+                'dia'    => $u->fecha_nacimiento->day,
+                'nombre' => mb_strtoupper($u->name),
+                'puesto' => mb_strtoupper((string) $u->puesto_empleado),
+            ])->values()->all())
+            ->all();
     }
 }

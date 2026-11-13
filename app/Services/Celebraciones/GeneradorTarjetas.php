@@ -44,6 +44,19 @@ class GeneradorTarjetas
             'MES' => mb_strtoupper($mes->copy()->locale('es')->isoFormat('MMMM')),
         ], null, $secciones, "celebraciones/{$mes->format('Y-m')}/cumpleaneros-del-mes.png");
     }
+    /** La invitación al festejo, como PNG (para la vista previa). $variante: general | turno */
+    public function festejo(string $variante, array $datos, array $secciones = []): string
+    {
+        return $this->renderizar("festejo_{$variante}", $datos, null, $secciones);
+    }
+
+    /** La invitación al festejo, guardada. Regresa la ruta. */
+    public function guardarFestejo(string $variante, array $datos, array $secciones, Carbon $mes): string
+    {
+        $ruta = "celebraciones/{$mes->format('Y-m')}/festejo-{$variante}-" . now()->format('YmdHis') . '.png';
+
+        return $this->dibujar("festejo_{$variante}", $datos, null, $secciones, $ruta);
+    }
 
     // ─── Nombres ─────────────────────────────────────────────────────────────
 
@@ -61,7 +74,16 @@ class GeneradorTarjetas
 
     // ─── El dibujo ───────────────────────────────────────────────────────────
 
+    /** Arma la imagen y la guarda en el disco público. */
     private function dibujar(string $clave, array $datos, ?User $persona, array $secciones, string $ruta): string
+    {
+        Storage::disk('public')->put($ruta, $this->renderizar($clave, $datos, $persona, $secciones));
+
+        return $ruta;
+    }
+
+    /** Arma la imagen y regresa el PNG (sin guardarlo; lo usa también la vista previa). */
+    private function renderizar(string $clave, array $datos, ?User $persona = null, array $secciones = []): string
     {
         $p = config("celebraciones.plantillas.{$clave}");
         $alto = $this->altoNecesario($p, $secciones);
@@ -89,9 +111,7 @@ class GeneradorTarjetas
         $png = ob_get_clean();
         imagedestroy($img);
 
-        Storage::disk('public')->put($ruta, $png);
-
-        return $ruta;
+        return $png;
     }
 
     /** Si la lista del mes es larga, la imagen crece para que quepa completa. */
@@ -183,6 +203,9 @@ class GeneradorTarjetas
 
     private function texto(\GdImage $img, string $texto, array $e): void
     {
+        if (trim($texto) === '') {
+            return;
+        }
         $fuente = $this->fuente($e['fuente']);
         $tamano = $e['tamano'];
         $maximo = $e['ancho'] ?? imagesx($img) - 120;

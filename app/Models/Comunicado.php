@@ -71,6 +71,7 @@ class Comunicado extends Model
         'celebracion',
         'celebrado_id',
         'celebracion_fecha',
+        'celebracion_datos'
     ];
 
     protected function casts(): array
@@ -84,6 +85,7 @@ class Comunicado extends Model
             'enviar_push'    => 'boolean',
             'correo_enviado_en' => 'datetime',
             'celebracion_fecha' => 'date',
+            'celebracion_datos' => 'array',
         ];
     }
 

@@ -16,6 +16,7 @@ return [
         'rosa'   => '#AA4969',
         'blanco' => '#FFFFFF',
         'lila'   => '#BBA4C0',
+        'gris'   => '#4A4A4A',
     ],
 
     'fuentes' => [
@@ -40,8 +41,18 @@ return [
                 ['tipo' => 'texto', 'texto' => '¡Feliz Cumpleaños', 'fuente' => 'manuscrita', 'tamano' => 100, 'ancho' => 1110, 'color' => 'morado', 'y' => 610],
                 ['tipo' => 'texto', 'texto' => '{nombre}!', 'fuente' => 'manuscrita', 'tamano' => 100, 'ancho' => 1000, 'color' => 'morado', 'y' => 735],
                 ['tipo' => 'foto', 'x' => 437, 'y' => 821, 'ancho' => 670, 'alto' => 899, 'forma' => 'rectangulo', 'borde' => 'morado', 'grosor' => 11],
-                ['tipo' => 'parrafo', 'texto' => 'En este día tan especial te deseamos que todos tus sueños se cumplan y sea un año lleno de felicidad.',
-                    'fuente' => 'serif', 'tamano' => 31, 'color' => 'morado', 'x' => 64, 'y' => 1800, 'ancho' => 1085, 'alineacion' => 'izquierda', 'interlineado' => 56],
+                [
+                    'tipo' => 'parrafo',
+                    'texto' => 'En este día tan especial te deseamos que todos tus sueños se cumplan y sea un año lleno de felicidad.',
+                    'fuente' => 'serif',
+                    'tamano' => 31,
+                    'color' => 'morado',
+                    'x' => 64,
+                    'y' => 1800,
+                    'ancho' => 1085,
+                    'alineacion' => 'izquierda',
+                    'interlineado' => 56
+                ],
                 ['tipo' => 'texto', 'texto' => 'Con cariño, Equipo Dasavena', 'fuente' => 'serif', 'tamano' => 31, 'color' => 'morado', 'x' => 64, 'y' => 1912, 'alineacion' => 'izquierda'],
             ],
         ],
@@ -55,8 +66,16 @@ return [
             'elementos'    => [
                 ['tipo' => 'texto', 'texto' => '¡Felicidades!', 'fuente' => 'manuscrita', 'tamano' => 120, 'ancho' => 812, 'color' => 'blanco', 'y' => 462],
                 ['tipo' => 'texto', 'texto' => '{NOMBRE}', 'fuente' => 'grande', 'tamano' => 48, 'ancho' => 680, 'color' => 'blanco', 'y' => 612],
-                ['tipo' => 'parrafo', 'texto' => 'Hoy nos llena de orgullo celebrar un año más de tu colaboración y tenacidad, trabajando juntos por Dasavena',
-                    'fuente' => 'texto', 'tamano' => 23, 'color' => 'blanco', 'y' => 735, 'ancho' => 690, 'interlineado' => 40],
+                [
+                    'tipo' => 'parrafo',
+                    'texto' => 'Hoy nos llena de orgullo celebrar un año más de tu colaboración y tenacidad, trabajando juntos por Dasavena',
+                    'fuente' => 'texto',
+                    'tamano' => 23,
+                    'color' => 'blanco',
+                    'y' => 735,
+                    'ancho' => 690,
+                    'interlineado' => 40
+                ],
                 ['tipo' => 'texto', 'texto' => '{ANIOS}', 'fuente' => 'grande', 'tamano' => 150, 'ancho' => 620, 'color' => 'blanco', 'y' => 1045],
                 ['tipo' => 'foto', 'x' => 272, 'y' => 1062, 'ancho' => 536, 'alto' => 536, 'forma' => 'circulo', 'borde' => 'lila', 'grosor' => 3],
                 ['tipo' => 'texto', 'texto' => '{FECHA_INGRESO}', 'fuente' => 'grande', 'tamano' => 50, 'color' => 'blanco', 'y' => 1672],
@@ -75,10 +94,78 @@ return [
             'elementos'    => [
                 ['tipo' => 'texto', 'texto' => 'Cumpleañeros', 'fuente' => 'manuscrita', 'tamano' => 140, 'ancho' => 1080, 'color' => 'morado', 'y' => 465],
                 ['tipo' => 'texto', 'texto' => '{MES}', 'fuente' => 'grande', 'tamano' => 135, 'ancho' => 700, 'color' => 'morado', 'y' => 615],
-                ['tipo' => 'lista', 'y' => 658, 'alto_fila' => 42, 'fuente' => 'serif', 'tamano' => 25, 'color' => 'morado',
-                    'titulo_fuente' => 'serif', 'titulo_tamano' => 34, 'titulo_color' => 'dorado',
-                    'antes_titulo' => 42, 'despues_titulo' => 64,
-                    'columnas' => ['dia' => 41, 'nombre' => 88, 'puesto' => 867]],
+                [
+                    'tipo' => 'lista',
+                    'y' => 658,
+                    'alto_fila' => 42,
+                    'fuente' => 'serif',
+                    'tamano' => 25,
+                    'color' => 'morado',
+                    'titulo_fuente' => 'serif',
+                    'titulo_tamano' => 34,
+                    'titulo_color' => 'dorado',
+                    'antes_titulo' => 42,
+                    'despues_titulo' => 64,
+                    'columnas' => ['dia' => 41, 'nombre' => 88, 'puesto' => 867]
+                ],
+            ],
+        ],
+
+        // ── Invitación general, con confeti (fondo de 1545 × 1999) ─────────────
+        'festejo_general' => [
+            'fondo'        => 'celebraciones/fondo-festejo.png',
+            'provisional'  => 'crema',
+            'ancho'        => 1545,
+            'alto'         => 1999,
+            'salida_ancho' => 1080,
+            'elementos'    => [
+                ['tipo' => 'texto', 'texto' => 'Festejo', 'fuente' => 'manuscrita', 'tamano' => 130, 'ancho' => 520, 'color' => 'morado', 'y' => 590],
+                ['tipo' => 'texto', 'texto' => 'cumpleaños', 'fuente' => 'manuscrita', 'tamano' => 130, 'ancho' => 800, 'color' => 'morado', 'y' => 740],
+                ['tipo' => 'texto', 'texto' => '{MES}', 'fuente' => 'grande', 'tamano' => 135, 'ancho' => 500, 'color' => 'morado', 'y' => 940],
+                [
+                    'tipo' => 'parrafo',
+                    'texto' => 'Te invitamos a festejar con los cumpleañeros del mes',
+                    'fuente' => 'manuscrita',
+                    'tamano' => 62,
+                    'color' => 'gris',
+                    'y' => 1135,
+                    'ancho' => 830,
+                    'interlineado' => 85
+                ],
+                ['tipo' => 'texto', 'texto' => '{DIA}', 'fuente' => 'negrita', 'tamano' => 56, 'color' => 'morado', 'y' => 1468],
+                ['tipo' => 'texto', 'texto' => '{FECHA}', 'fuente' => 'negrita', 'tamano' => 56, 'ancho' => 1000, 'color' => 'morado', 'y' => 1540],
+                ['tipo' => 'parrafo', 'texto' => '{HORA_LUGAR}', 'fuente' => 'negrita', 'tamano' => 56, 'color' => 'morado', 'y' => 1690, 'ancho' => 850, 'interlineado' => 85],
+            ],
+        ],
+
+        // ── Invitación por turno, con su lista (fondo de 1545 × 1999) ──────────
+        'festejo_turno' => [
+            'fondo'        => 'celebraciones/fondo-lista-mes.png',
+            'provisional'  => 'crema',
+            'ancho'        => 1545,
+            'alto'         => 1999,
+            'salida_ancho' => 1080,
+            'elementos'    => [
+                ['tipo' => 'texto', 'texto' => 'Festejo cumpleaños', 'fuente' => 'manuscrita', 'tamano' => 120, 'ancho' => 1150, 'color' => 'morado', 'y' => 440],
+                ['tipo' => 'texto', 'texto' => '{MES}', 'fuente' => 'grande', 'tamano' => 125, 'ancho' => 520, 'color' => 'morado', 'y' => 600],
+                ['tipo' => 'texto', 'texto' => 'Queremos festejar sus cumpleaños el próximo', 'fuente' => 'texto', 'tamano' => 33, 'color' => 'morado', 'y' => 662],
+                ['tipo' => 'texto', 'texto' => '{FECHA_LARGA}', 'fuente' => 'negrita', 'tamano' => 33, 'color' => 'morado', 'y' => 708],
+                ['tipo' => 'texto', 'texto' => '{NOTA}', 'fuente' => 'texto', 'tamano' => 33, 'ancho' => 1300, 'color' => 'morado', 'y' => 756],
+                ['tipo' => 'texto', 'texto' => '{HORA_LUGAR}', 'fuente' => 'negrita', 'tamano' => 40, 'ancho' => 1250, 'color' => 'morado', 'y' => 850],
+                [
+                    'tipo' => 'lista',
+                    'y' => 848,
+                    'alto_fila' => 47,
+                    'fuente' => 'serif',
+                    'tamano' => 26,
+                    'color' => 'morado',
+                    'titulo_fuente' => 'serif',
+                    'titulo_tamano' => 34,
+                    'titulo_color' => 'dorado',
+                    'antes_titulo' => 42,
+                    'despues_titulo' => 80,
+                    'columnas' => ['dia' => 47, 'nombre' => 122, 'puesto' => 867]
+                ],
             ],
         ],
     ],
