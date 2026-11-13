@@ -17,7 +17,7 @@ Artisan::command('periodos:activar', function () {
     $controller->activarPeriodosAutomáticamente();
     $this->info('Periodos de vacaciones revisados y activados correctamente.');
 })->describe('Activa automáticamente los periodos de vacaciones cuando un empleado cumple su aniversario')
-  ->daily(); // 🔹 Se ejecutará una vez al día  
+    ->daily(); // 🔹 Se ejecutará una vez al día  
 
 // Para pruebas, puedes cambiarlo a cada minuto:
 //FacadeSchedule::command('periodos:activar')->everyMinute();
@@ -30,3 +30,7 @@ Schedule::command('comunicados:publicar-programados')->everyMinute()->withoutOve
 Schedule::command('queue:work --stop-when-empty --max-time=40 --tries=3')
     ->everyMinute()
     ->withoutOverlapping();
+
+// Celebraciones: cumpleaños y aniversarios cada mañana, y la lista el día 1
+Schedule::command('celebraciones:publicar-dia')->dailyAt('07:00')->withoutOverlapping();
+Schedule::command('celebraciones:lista-mes')->monthlyOn(1, '07:05')->withoutOverlapping();
