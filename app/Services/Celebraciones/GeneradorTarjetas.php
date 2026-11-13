@@ -77,6 +77,13 @@ class GeneradorTarjetas
             };
         }
 
+        // Se dibuja al tamaño del fondo de marketing y al final se achica, para que pese poco en el correo
+        if (! empty($p['salida_ancho']) && imagesx($img) > $p['salida_ancho']) {
+            $chica = imagescale($img, $p['salida_ancho'], -1, IMG_BICUBIC);
+            imagedestroy($img);
+            $img = $chica;
+        }
+
         ob_start();
         imagepng($img, null, 6);
         $png = ob_get_clean();
@@ -88,12 +95,16 @@ class GeneradorTarjetas
     }
 
     /** Si la lista del mes es larga, la imagen crece para que quepa completa. */
+    /** Si la lista del mes es larga, la imagen crece para que quepa completa. */
     private function altoNecesario(array $p, array $secciones): int
     {
         foreach ($p['elementos'] as $e) {
             if ($e['tipo'] === 'lista') {
-                $filas = collect($secciones)->sum(fn ($s) => count($s));
-                $necesario = $e['y'] + count($secciones) * ($e['alto_fila'] * 2.6) + $filas * $e['alto_fila'] + 120;
+                $filas = collect($secciones)->sum(fn($s) => count($s));
+                $necesario = $e['y']
+                    + count($secciones) * (($e['antes_titulo'] ?? 60) + ($e['despues_titulo'] ?? 60))
+                    + $filas * $e['alto_fila']
+                    + 120;
 
                 return (int) max($p['alto'], $necesario);
             }
@@ -101,7 +112,6 @@ class GeneradorTarjetas
 
         return $p['alto'];
     }
-
     private function lienzo(array $p, int $alto): \GdImage
     {
         $img = imagecreatetruecolor($p['ancho'], $alto);
@@ -213,10 +223,12 @@ class GeneradorTarjetas
         }
 
         $y = $e['y'];
+        $salto = $e['interlineado'] ?? (int) round($e['tamano'] * 1.6);
+
         foreach ($lineas as $l) {
             // ancho enorme: en un párrafo no se achica la letra, se parte en renglones
             $this->texto($img, $l, ['y' => $y, 'ancho' => 99999] + $e);
-            $y += (int) round($e['tamano'] * 1.6);
+            $y += $salto;
         }
     }
 
@@ -251,12 +263,20 @@ class GeneradorTarjetas
             // Sin foto oficial: sus iniciales
             imagefilledrectangle($recorte, 0, 0, $w, $h, $this->color($recorte, 'lila'));
             $iniciales = collect(explode(' ', self::nombreCorto($persona?->name ?? 'D')))
-                ->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->implode('');
+                ->map(fn($p) => mb_strtoupper(mb_substr($p, 0, 1)))->implode('');
             $fuente = $this->fuente('grande');
             $tam = (int) ($h * 0.32);
             $b = imagettfbbox($tam, 0, $fuente, $iniciales);
-            imagettftext($recorte, $tam, 0, (int) (($w - ($b[2] - $b[0])) / 2), (int) (($h + $tam) / 2),
-                $this->color($recorte, 'blanco'), $fuente, $iniciales);
+            imagettftext(
+                $recorte,
+                $tam,
+                0,
+                (int) (($w - ($b[2] - $b[0])) / 2),
+                (int) (($h + $tam) / 2),
+                $this->color($recorte, 'blanco'),
+                $fuente,
+                $iniciales
+            );
         }
 
         // Recorte en círculo: lo de fuera se vuelve transparente
@@ -313,20 +333,32 @@ class GeneradorTarjetas
         $colorTitulo = $this->color($img, $e['titulo_color']);
         $c = $e['columnas'];
 
+        // Lo que cabe en cada columna: si un nombre o puesto es más largo, se corta con "…"
+        $cabe = function (string $texto, int $ancho) use ($fuente, $e): string {
+            if ($this->anchoTexto($texto, $fuente, $e['tamano']) <= $ancho) {
+                return $texto;
+            }
+            while (mb_strlen($texto) > 3 && $this->anchoTexto($texto . '…', $fuente, $e['tamano']) > $ancho) {
+                $texto = mb_substr($texto, 0, -1);
+            }
+
+            return rtrim($texto) . '…';
+        };
+
         foreach ($secciones as $titulo => $filas) {
             // Título de la sección, centrado y subrayado
-            $y += (int) ($e['alto_fila'] * 1.4);
+            $y += $e['antes_titulo'] ?? 60;
             $b = imagettfbbox($e['titulo_tamano'], 0, $fuenteTitulo, $titulo);
             $ancho = $b[2] - $b[0];
             $xt = (int) ((imagesx($img) - $ancho) / 2);
             imagettftext($img, $e['titulo_tamano'], 0, $xt, $y, $colorTitulo, $fuenteTitulo, $titulo);
-            imagefilledrectangle($img, $xt, $y + 6, $xt + $ancho, $y + 8, $colorTitulo);
-            $y += (int) ($e['alto_fila'] * 1.2);
+            imagefilledrectangle($img, $xt, $y + 7, $xt + $ancho, $y + 9, $colorTitulo);
+            $y += $e['despues_titulo'] ?? 60;
 
             foreach ($filas as $fila) {
                 imagettftext($img, $e['tamano'], 0, $c['dia'], $y, $color, $fuente, (string) $fila['dia']);
-                imagettftext($img, $e['tamano'], 0, $c['nombre'], $y, $color, $fuente, Str::limit($fila['nombre'], 34, '…'));
-                imagettftext($img, $e['tamano'], 0, $c['puesto'], $y, $color, $fuente, Str::limit($fila['puesto'], 34, '…'));
+                imagettftext($img, $e['tamano'], 0, $c['nombre'], $y, $color, $fuente, $cabe($fila['nombre'], $c['puesto'] - $c['nombre'] - 20));
+                imagettftext($img, $e['tamano'], 0, $c['puesto'], $y, $color, $fuente, $cabe($fila['puesto'], imagesx($img) - $c['puesto'] - 30));
                 $y += $e['alto_fila'];
             }
         }
@@ -336,7 +368,7 @@ class GeneradorTarjetas
 
     private function reemplazar(string $texto, array $datos): string
     {
-        return strtr($texto, collect($datos)->mapWithKeys(fn ($v, $k) => ['{' . $k . '}' => $v])->all());
+        return strtr($texto, collect($datos)->mapWithKeys(fn($v, $k) => ['{' . $k . '}' => $v])->all());
     }
 
     private function fuente(string $clave): string
