@@ -66,6 +66,9 @@ class User extends Authenticatable
         'nocturno' => 'Turno nocturno',
     ];
 
+    /** Correos provisionales de quien no tiene correo: la intranet nunca les manda nada */
+    public const DOMINIO_SIN_CORREO = 'sin-correo.invalid';
+
     public function getFotoOficialUrlAttribute(): ?string
     {
         return $this->foto_oficial ? asset('storage/' . $this->foto_oficial) : null;

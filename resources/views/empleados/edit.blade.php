@@ -262,7 +262,7 @@
                                     value="{{ old('fecha_nacimiento', $user->fecha_nacimiento?->format('Y-m-d')) }}"
                                     max="{{ now()->subDay()->format('Y-m-d') }}"
                                     class="field-input {{ $errors->has('fecha_nacimiento') ? 'err' : '' }}">
-                                <span class="field-hint">Solo se publica el día y el mes, nunca el año.</span>
+                                <span class="field-hint">Solo se publica el día y el mes. Si dice año 2000, es de relleno.</span>
                                 @error('fecha_nacimiento')<span class="field-error">⚠ {{ $message }}</span>@enderror
                             </div>
 

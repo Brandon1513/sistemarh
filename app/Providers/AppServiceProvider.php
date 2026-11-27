@@ -28,8 +28,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Los Resources de la API se devuelven sin la envoltura {"data": ...}
         JsonResource::withoutWrapping();
+
         // Correo con Microsoft Graph, desde el buzón de la intranet (MAIL_MAILER=microsoft-graph)
-        \Illuminate\Support\Facades\Mail::extend('microsoft-graph', fn () => new \App\Mail\Transport\MicrosoftGraphTransport(
+        \Illuminate\Support\Facades\Mail::extend('microsoft-graph', fn() => new \App\Mail\Transport\MicrosoftGraphTransport(
             (string) config('services.microsoft_graph.tenant_id'),
             (string) config('services.microsoft_graph.client_id'),
             (string) config('services.microsoft_graph.client_secret'),
@@ -41,5 +42,29 @@ class AppServiceProvider extends ServiceProvider
             \SocialiteProviders\Manager\SocialiteWasCalled::class,
             [\SocialiteProviders\Azure\AzureExtendSocialite::class, 'handle'],
         );
+
+        // Los correos provisionales (@sin-correo.invalid) se quitan de cualquier envío;
+        // si no queda nadie a quien mandarlo, el correo no sale
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Mail\Events\MessageSending::class, function ($event) {
+            $sufijo = '@' . \App\Models\User::DOMINIO_SIN_CORREO;
+            $m = $event->message;
+            $quedan = 0;
+
+            foreach (['To' => $m->getTo(), 'Cc' => $m->getCc(), 'Bcc' => $m->getBcc()] as $campo => $direcciones) {
+                $reales = array_values(array_filter($direcciones, fn($a) => ! str_ends_with(strtolower($a->getAddress()), $sufijo)));
+                $quedan += count($reales);
+
+                if (count($reales) !== count($direcciones)) {
+                    $m->getHeaders()->remove($campo);
+                    if ($reales) {
+                        $m->{strtolower($campo)}(...$reales);
+                    }
+                }
+            }
+
+            if ($quedan === 0) {
+                return false; // no se manda
+            }
+        });
     }
 }
